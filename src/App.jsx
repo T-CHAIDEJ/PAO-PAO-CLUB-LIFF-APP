@@ -5,15 +5,17 @@ import BottomNav from './screens/BottomNav.jsx';
 import HomeScreen from './screens/HomeScreen.jsx';
 import TrackerScreen from './screens/TrackerScreen.jsx';
 import SizeChartScreen from './screens/SizeChartScreen.jsx';
+import KnowledgeScreen from './screens/KnowledgeScreen.jsx';
 import RewardsScreen from './screens/RewardsScreen.jsx';
 import ProfileScreen from './screens/ProfileScreen.jsx';
 
 const TITLES = {
-  home:    'PAO PAO Club',
-  tracker: 'ติดตามผ้าอ้อม',
-  size:    'ตารางไซส์',
-  rewards: 'ของรางวัล',
-  profile: 'โปรไฟล์',
+  home:      'PAO PAO Club',
+  tracker:   'พัฒนาการ',
+  size:      'ตารางไซส์',
+  knowledge: 'ความรู้',
+  rewards:   'ของรางวัล',
+  profile:   'โปรไฟล์',
 };
 
 function StatusBar() {
@@ -35,11 +37,12 @@ export default function App() {
   const go = (s) => setScreen(s);
 
   let view;
-  if      (screen === 'home')    view = <HomeScreen go={go} />;
-  else if (screen === 'tracker') view = <TrackerScreen go={go} />;
-  else if (screen === 'size')    view = <SizeChartScreen go={go} currentKg={8.5} />;
-  else if (screen === 'rewards') view = <RewardsScreen go={go} />;
-  else if (screen === 'profile') view = <ProfileScreen go={go} />;
+  if      (screen === 'home')      view = <HomeScreen go={go} />;
+  else if (screen === 'tracker')   view = <TrackerScreen go={go} />;
+  else if (screen === 'size')      view = <SizeChartScreen go={go} currentKg={8.5} />;
+  else if (screen === 'knowledge') view = <KnowledgeScreen go={go} />;
+  else if (screen === 'rewards')   view = <RewardsScreen go={go} />;
+  else if (screen === 'profile')   view = <ProfileScreen go={go} />;
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, background: '#E9EEF2' }}>
