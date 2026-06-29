@@ -1,7 +1,8 @@
 import React from 'react';
-import { Baby, Ruler, Gift, ScanLine, Bell, ChevronRight, Star, Package, TicketPercent } from 'lucide-react';
+import { Baby, Ruler, Gift, ScanLine, Bell, ChevronRight, Star, Package, TicketPercent, UserPlus } from 'lucide-react';
 import { Card, Badge, Button, ProgressBar } from '../components/index.jsx';
 import { SkyDeco, Wordmark, SectionTitle } from '../shared/index.jsx';
+import { recommendSize } from './TrackerScreen.jsx';
 
 const ACTIONS = [
   { id: 'tracker', Icon: Baby,      label: 'ติดตามผ้าอ้อม', tone: 'var(--blue-100)',  fg: 'var(--blue-600)'  },
@@ -16,7 +17,42 @@ const FEATURED = [
   { name: 'ผ้าเปียกเปา เปา',          pts: 350, Icon: TicketPercent, tag: 'ใหม่!' },
 ];
 
-export default function HomeScreen({ go }) {
+function GuestHero({ user, goOnboarding }) {
+  const suffix = user?.line_user_id
+    ? user.line_user_id.slice(-5).toUpperCase()
+    : Math.random().toString(36).slice(-5).toUpperCase();
+  return (
+    <div style={{ position: 'relative', marginTop: 4 }}>
+      <div style={{ font: 'var(--weight-semibold) 13px var(--font-base)', color: 'rgba(255,255,255,0.7)', letterSpacing: '.08em' }}>GUEST #{suffix}</div>
+      <div style={{ font: '800 20px var(--font-display)', marginTop: 2 }}>คุณยังไม่เป็นสมาชิก</div>
+      <div style={{ font: 'var(--weight-medium) 13px var(--font-base)', opacity: .85, marginTop: 4, lineHeight: 1.5 }}>
+        กดสมัครเพื่อไม่ให้พลาดสิทธิ์และประโยชน์ต่างๆ จากเรา
+      </div>
+      <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+        <Button variant="white" size="sm" onClick={() => goOnboarding('A')}>กำลังตั้งครรภ์</Button>
+        <Button variant="white" size="sm" onClick={() => goOnboarding('B')}>มีลูกแล้ว</Button>
+      </div>
+    </div>
+  );
+}
+
+function MemberHero({ user }) {
+  const name = user?.mother_name || user?.display_name || 'คุณแม่';
+  return (
+    <div style={{ position: 'relative', marginTop: 18 }}>
+      <div style={{ font: 'var(--weight-medium) 14px var(--font-base)', opacity: .9 }}>สวัสดีค่ะ 👶</div>
+      <div style={{ font: '800 24px var(--font-display)', marginTop: 2 }}>{name}</div>
+    </div>
+  );
+}
+
+export default function HomeScreen({ go, user, child, goOnboarding }) {
+  const isGuest = !user || user.segment === 'C';
+  const memberName = user?.mother_name || user?.display_name || 'คุณแม่';
+  const pts = 320;
+  const childKg = child?.weight_kg;
+  const sizeRec = childKg ? recommendSize(childKg) : null;
+
   return (
     <div style={{ background: 'var(--gradient-sky)', minHeight: '100%' }}>
       {/* Hero */}
@@ -28,30 +64,42 @@ export default function HomeScreen({ go }) {
             <Bell width={20} height={20} />
           </span>
         </div>
-        <div style={{ position: 'relative', marginTop: 18 }}>
-          <div style={{ font: 'var(--weight-medium) 14px var(--font-base)', opacity: .9 }}>สวัสดีค่ะ คุณแม่ 👶</div>
-          <div style={{ font: '800 24px var(--font-display)', marginTop: 2 }}>น้องเปา · 8.5 กก.</div>
-        </div>
+        {isGuest
+          ? <GuestHero user={user} goOnboarding={goOnboarding} />
+          : <MemberHero user={user} />
+        }
       </div>
 
-      {/* Points card overlapping hero */}
+      {/* Points card / Guest CTA card */}
       <div style={{ padding: '0 16px', marginTop: -42, position: 'relative' }}>
-        <Card style={{ boxShadow: 'var(--shadow-md)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div>
-              <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)' }}>แต้มสะสม PAO PAO Club</div>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 2 }}>
-                <span style={{ font: '800 30px var(--font-display)', color: 'var(--text-heading)' }}>320</span>
-                <span style={{ font: 'var(--weight-semibold) 14px var(--font-base)', color: 'var(--text-muted)' }}>แต้ม</span>
-              </div>
+        {isGuest ? (
+          <Card style={{ boxShadow: 'var(--shadow-md)', display: 'flex', alignItems: 'center', gap: 14 }}>
+            <span style={{ width: 52, height: 52, borderRadius: 16, background: 'var(--surface-soft)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
+              <UserPlus width={26} height={26} />
+            </span>
+            <div style={{ flex: 1 }}>
+              <div style={{ font: 'var(--weight-bold) 16px var(--font-display)', color: 'var(--text-heading)' }}>สมัครสมาชิกฟรี!</div>
+              <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)', marginTop: 2 }}>รับแต้มสะสมและสิทธิพิเศษมากมาย</div>
             </div>
-            <Badge variant="solidGreen">สมาชิก Silver</Badge>
-          </div>
-          <div style={{ marginTop: 14 }}>
-            <ProgressBar value={320} max={500} tone="green" />
-            <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)', marginTop: 6 }}>อีก 180 แต้ม เลื่อนขั้นเป็น Gold</div>
-          </div>
-        </Card>
+          </Card>
+        ) : (
+          <Card style={{ boxShadow: 'var(--shadow-md)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)' }}>แต้มสะสม PAO PAO Club</div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 2 }}>
+                  <span style={{ font: '800 30px var(--font-display)', color: 'var(--text-heading)' }}>{pts}</span>
+                  <span style={{ font: 'var(--weight-semibold) 14px var(--font-base)', color: 'var(--text-muted)' }}>แต้ม</span>
+                </div>
+              </div>
+              <Badge variant="solidGreen">สมาชิก Silver</Badge>
+            </div>
+            <div style={{ marginTop: 14 }}>
+              <ProgressBar value={pts} max={500} tone="green" />
+              <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)', marginTop: 6 }}>อีก {500 - pts} แต้ม เลื่อนขั้นเป็น Gold</div>
+            </div>
+          </Card>
+        )}
       </div>
 
       {/* Quick actions */}
@@ -68,19 +116,21 @@ export default function HomeScreen({ go }) {
         </div>
       </div>
 
-      {/* Recommended size */}
-      <div style={{ padding: '22px 16px 0' }}>
-        <Card tone="soft" interactive onClick={() => go('tracker')} style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <span style={{ width: 52, height: 52, borderRadius: 16, background: 'var(--color-secondary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
-            <Baby width={26} height={26} />
-          </span>
-          <div style={{ flex: 1 }}>
-            <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)' }}>ไซส์ที่แนะนำสำหรับน้องเปา</div>
-            <div style={{ font: 'var(--weight-bold) 18px var(--font-display)', color: 'var(--text-heading)' }}>Size L · 9–14 กก.</div>
-          </div>
-          <ChevronRight width={22} height={22} style={{ color: 'var(--text-faint)' }} />
-        </Card>
-      </div>
+      {/* Recommended size — member with child data only */}
+      {!isGuest && sizeRec && (
+        <div style={{ padding: '22px 16px 0' }}>
+          <Card tone="soft" interactive onClick={() => go('tracker')} style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <span style={{ width: 52, height: 52, borderRadius: 16, background: 'var(--color-secondary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
+              <Baby width={26} height={26} />
+            </span>
+            <div style={{ flex: 1 }}>
+              <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)' }}>ไซส์ที่แนะนำสำหรับลูกน้อย</div>
+              <div style={{ font: 'var(--weight-bold) 18px var(--font-display)', color: 'var(--text-heading)' }}>Size {sizeRec.code} · {sizeRec.min}–{sizeRec.max} กก.</div>
+            </div>
+            <ChevronRight width={22} height={22} style={{ color: 'var(--text-faint)' }} />
+          </Card>
+        </div>
+      )}
 
       {/* Promo banner */}
       <div style={{ padding: '18px 16px 0' }}>
