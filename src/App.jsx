@@ -94,10 +94,10 @@ export default function App() {
     );
   }
 
-  const navTab = screen === 'size' ? 'tracker' : screen;
+  const navTab = screen === 'size' ? 'tracker' : screen === 'profile' ? 'home' : screen;
 
   let view;
-  if      (screen === 'home')      view = <HomeScreen go={go} user={userData} child={childData} goOnboarding={goOnboarding} />;
+  if      (screen === 'home')      view = <HomeScreen go={go} user={userData} child={childData} goOnboarding={goOnboarding} goProfile={() => go('profile')} />;
   else if (screen === 'tracker')   view = <TrackerScreen go={go} />;
   else if (screen === 'size')      view = <SizeChartScreen go={go} currentKg={childData?.weight_kg ?? 8.5} />;
   else if (screen === 'knowledge') view = <KnowledgeScreen go={go} />;

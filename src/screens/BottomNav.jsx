@@ -1,12 +1,11 @@
 import React from 'react';
-import { Home, Activity, BookOpen, Gift, User } from 'lucide-react';
+import { Home, Activity, BookOpen, Gift } from 'lucide-react';
 
 const TABS = [
-  { id: 'home',      label: 'หน้าแรก',    Icon: Home },
-  { id: 'tracker',   label: 'พัฒนาการ',   Icon: Activity },
-  { id: 'knowledge', label: 'ความรู้',     Icon: BookOpen },
-  { id: 'rewards',   label: 'รางวัล',     Icon: Gift },
-  { id: 'profile',   label: 'โปรไฟล์',    Icon: User },
+  { id: 'home',      label: 'หน้าแรก',   Icon: Home },
+  { id: 'tracker',   label: 'พัฒนาการ',  Icon: Activity },
+  { id: 'knowledge', label: 'ความรู้',    Icon: BookOpen },
+  { id: 'rewards',   label: 'รางวัล',    Icon: Gift },
 ];
 
 export default function BottomNav({ active, onChange }) {

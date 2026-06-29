@@ -1,5 +1,5 @@
 import React from 'react';
-import { Baby, Ruler, Gift, ScanLine, Bell, ChevronRight, Star, Package, TicketPercent, UserPlus } from 'lucide-react';
+import { Baby, Ruler, Gift, ScanLine, Bell, ChevronRight, Star, Package, TicketPercent, UserPlus, UserCircle2 } from 'lucide-react';
 import { Card, Badge, Button, ProgressBar } from '../components/index.jsx';
 import { SkyDeco, Wordmark, SectionTitle } from '../shared/index.jsx';
 import { recommendSize } from './TrackerScreen.jsx';
@@ -42,7 +42,7 @@ function MemberHero({ user }) {
   );
 }
 
-export default function HomeScreen({ go, user, child, goOnboarding }) {
+export default function HomeScreen({ go, user, child, goOnboarding, goProfile }) {
   const isGuest = !user || user.segment === 'C';
   const memberName = user?.mother_name || user?.display_name || 'คุณแม่';
   const pts = 320;
@@ -56,9 +56,14 @@ export default function HomeScreen({ go, user, child, goOnboarding }) {
         <SkyDeco />
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <Wordmark dark scale={1} />
-          <span style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(255,255,255,.18)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Bell width={20} height={20} />
-          </span>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <span style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(255,255,255,.18)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Bell width={20} height={20} />
+            </span>
+            <button onClick={goProfile} style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(255,255,255,.18)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
+              <UserCircle2 width={22} height={22} />
+            </button>
+          </div>
         </div>
         {isGuest
           ? <GuestHero user={user} />
