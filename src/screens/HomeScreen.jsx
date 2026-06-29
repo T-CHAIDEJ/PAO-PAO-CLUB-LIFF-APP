@@ -17,7 +17,7 @@ const FEATURED = [
   { name: 'ผ้าเปียกเปา เปา',          pts: 350, Icon: TicketPercent, tag: 'ใหม่!' },
 ];
 
-function GuestHero({ user, goOnboarding }) {
+function GuestHero({ user }) {
   const suffix = user?.line_user_id
     ? user.line_user_id.slice(-5).toUpperCase()
     : Math.random().toString(36).slice(-5).toUpperCase();
@@ -27,10 +27,6 @@ function GuestHero({ user, goOnboarding }) {
       <div style={{ font: '800 20px var(--font-display)', marginTop: 2 }}>คุณยังไม่เป็นสมาชิก</div>
       <div style={{ font: 'var(--weight-medium) 13px var(--font-base)', opacity: .85, marginTop: 4, lineHeight: 1.5 }}>
         กดสมัครเพื่อไม่ให้พลาดสิทธิ์และประโยชน์ต่างๆ จากเรา
-      </div>
-      <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
-        <Button variant="white" size="sm" onClick={() => goOnboarding('A')}>กำลังตั้งครรภ์</Button>
-        <Button variant="white" size="sm" onClick={() => goOnboarding('B')}>มีลูกแล้ว</Button>
       </div>
     </div>
   );
@@ -65,7 +61,7 @@ export default function HomeScreen({ go, user, child, goOnboarding }) {
           </span>
         </div>
         {isGuest
-          ? <GuestHero user={user} goOnboarding={goOnboarding} />
+          ? <GuestHero user={user} />
           : <MemberHero user={user} />
         }
       </div>
@@ -73,13 +69,19 @@ export default function HomeScreen({ go, user, child, goOnboarding }) {
       {/* Points card / Guest CTA card */}
       <div style={{ padding: '0 16px', marginTop: -42, position: 'relative' }}>
         {isGuest ? (
-          <Card style={{ boxShadow: 'var(--shadow-md)', display: 'flex', alignItems: 'center', gap: 14 }}>
-            <span style={{ width: 52, height: 52, borderRadius: 16, background: 'var(--surface-soft)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
-              <UserPlus width={26} height={26} />
-            </span>
-            <div style={{ flex: 1 }}>
-              <div style={{ font: 'var(--weight-bold) 16px var(--font-display)', color: 'var(--text-heading)' }}>สมัครสมาชิกฟรี!</div>
-              <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)', marginTop: 2 }}>รับแต้มสะสมและสิทธิพิเศษมากมาย</div>
+          <Card style={{ boxShadow: 'var(--shadow-md)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <span style={{ width: 52, height: 52, borderRadius: 16, background: 'var(--surface-soft)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
+                <UserPlus width={26} height={26} />
+              </span>
+              <div style={{ flex: 1 }}>
+                <div style={{ font: 'var(--weight-bold) 16px var(--font-display)', color: 'var(--text-heading)' }}>สมัครสมาชิกฟรี!</div>
+                <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)', marginTop: 2 }}>รับแต้มสะสมและสิทธิพิเศษมากมาย</div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
+              <Button variant="primary" size="sm" fullWidth onClick={() => goOnboarding('A')}>กำลังตั้งครรภ์</Button>
+              <Button variant="primary" size="sm" fullWidth onClick={() => goOnboarding('B')}>มีลูกแล้ว</Button>
             </div>
           </Card>
         ) : (
