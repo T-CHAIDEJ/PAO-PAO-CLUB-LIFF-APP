@@ -3,7 +3,7 @@ import { initLiff } from './lib/liff.js';
 import { supabase } from './lib/supabase.js';
 import BottomNav from './screens/BottomNav.jsx';
 import HomeScreen from './screens/HomeScreen.jsx';
-import TrackerScreen from './screens/TrackerScreen.jsx';
+import TrackerScreen, { DiaperScreen } from './screens/TrackerScreen.jsx';
 import SizeChartScreen from './screens/SizeChartScreen.jsx';
 import KnowledgeScreen from './screens/KnowledgeScreen.jsx';
 import RewardsScreen from './screens/RewardsScreen.jsx';
@@ -94,11 +94,12 @@ export default function App() {
     );
   }
 
-  const navTab = screen === 'size' ? 'tracker' : screen === 'profile' ? 'home' : screen;
+  const navTab = screen === 'size' ? 'diaper' : screen === 'profile' ? 'home' : screen;
 
   let view;
   if      (screen === 'home')      view = <HomeScreen go={go} user={userData} child={childData} goOnboarding={goOnboarding} goProfile={() => go('profile')} />;
-  else if (screen === 'tracker')   view = <TrackerScreen go={go} />;
+  else if (screen === 'diaper')    view = <DiaperScreen go={go} />;
+  else if (screen === 'tracker')   view = <TrackerScreen />;
   else if (screen === 'size')      view = <SizeChartScreen go={go} currentKg={childData?.weight_kg ?? 8.5} />;
   else if (screen === 'knowledge') view = <KnowledgeScreen go={go} />;
   else if (screen === 'rewards')   view = <RewardsScreen go={go} />;

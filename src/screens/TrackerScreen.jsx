@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Minus, Plus, BellRing, RefreshCw, Scale, ChevronRight } from 'lucide-react';
-import { Card, Button, Switch, Tabs } from '../components/index.jsx';
+import { Card, Button, Switch } from '../components/index.jsx';
 import { SkyDeco, SectionTitle } from '../shared/index.jsx';
 import { GrowthPanel } from './BabyTrackerScreen.jsx';
 
@@ -15,11 +15,6 @@ const PP_SIZES = [
 export function recommendSize(kg) {
   return PP_SIZES.find(s => kg >= s.min && kg <= s.max) || PP_SIZES[PP_SIZES.length - 1];
 }
-
-const SUB_TABS = [
-  { label: 'การเจริญเติบโต', value: 'growth' },
-  { label: 'ผ้าอ้อม',        value: 'diaper' },
-];
 
 const stepBtn = { width: 52, height: 52, borderRadius: '50%', border: 'none', background: 'var(--surface-soft)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' };
 
@@ -100,9 +95,24 @@ function DiaperPanel({ go }) {
   );
 }
 
-export default function TrackerScreen({ go }) {
-  const [subTab, setSubTab] = useState('growth');
+export function DiaperScreen({ go }) {
+  return (
+    <div style={{ background: 'var(--gradient-sky)', minHeight: '100%', paddingBottom: 24 }}>
+      <div style={{ position: 'relative', background: 'var(--gradient-hero)', padding: '20px 20px 26px', color: '#fff', borderBottomLeftRadius: 28, borderBottomRightRadius: 28 }}>
+        <SkyDeco />
+        <div style={{ position: 'relative' }}>
+          <div style={{ font: 'var(--weight-medium) 13px var(--font-base)', opacity: .9 }}>ผ้าอ้อม</div>
+          <div style={{ font: '800 22px var(--font-display)', marginTop: 2 }}>น้องเปา</div>
+        </div>
+      </div>
+      <div style={{ padding: '16px 16px 0' }}>
+        <DiaperPanel go={go} />
+      </div>
+    </div>
+  );
+}
 
+export default function TrackerScreen() {
   return (
     <div style={{ background: 'var(--gradient-sky)', minHeight: '100%', paddingBottom: 24 }}>
       <div style={{ position: 'relative', background: 'var(--gradient-hero)', padding: '20px 20px 26px', color: '#fff', borderBottomLeftRadius: 28, borderBottomRightRadius: 28 }}>
@@ -112,13 +122,8 @@ export default function TrackerScreen({ go }) {
           <div style={{ font: '800 22px var(--font-display)', marginTop: 2 }}>น้องเปา</div>
         </div>
       </div>
-
-      <div style={{ padding: '18px 16px 0' }}>
-        <Tabs value={subTab} onChange={setSubTab} items={SUB_TABS} />
-      </div>
-
       <div style={{ padding: '16px 16px 0' }}>
-        {subTab === 'growth' ? <GrowthPanel /> : <DiaperPanel go={go} />}
+        <GrowthPanel />
       </div>
     </div>
   );

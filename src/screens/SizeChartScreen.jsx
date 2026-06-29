@@ -20,7 +20,7 @@ export default function SizeChartScreen({ go, currentKg = 8.5 }) {
       <div style={{ position: 'relative', background: 'var(--gradient-hero)', padding: '16px 16px 24px', color: '#fff', borderBottomLeftRadius: 28, borderBottomRightRadius: 28 }}>
         <SkyDeco />
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <button onClick={() => go('tracker')} style={{ width: 38, height: 38, borderRadius: '50%', border: 'none', background: 'rgba(255,255,255,.18)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+          <button onClick={() => go('diaper')} style={{ width: 38, height: 38, borderRadius: '50%', border: 'none', background: 'rgba(255,255,255,.18)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
             <ChevronLeft width={22} height={22} />
           </button>
           <div>
