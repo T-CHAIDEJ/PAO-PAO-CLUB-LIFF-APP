@@ -1,20 +1,27 @@
-import React from 'react';
-import { Baby, Ruler, Gift, ScanLine, Bell, ChevronRight, Star, Package, TicketPercent, UserPlus, UserCircle2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Baby, Ruler, Gift, ScanLine, Bell, ChevronRight, Star, Package, TicketPercent, UserPlus, UserCircle2, Mars, Venus } from 'lucide-react';
 import { Card, Badge, Button, ProgressBar } from '../components/index.jsx';
 import { SkyDeco, Wordmark, SectionTitle } from '../shared/index.jsx';
 import { recommendSize } from './TrackerScreen.jsx';
+import { supabase } from '../lib/supabase.js';
+import { STREAK_POINTS } from '../lib/points.js';
+
+function calcAge(birthdate) {
+  if (!birthdate) return null;
+  const ms = Date.now() - new Date(birthdate).getTime();
+  const totalMonths = Math.floor(ms / (1000 * 60 * 60 * 24 * 30.4375));
+  const years = Math.floor(totalMonths / 12);
+  const months = totalMonths % 12;
+  if (totalMonths < 1) return 'แรกเกิด';
+  if (years === 0) return `${months} เดือน`;
+  return months === 0 ? `${years} ปี` : `${years} ปี ${months} เดือน`;
+}
 
 const ACTIONS = [
-  { id: 'tracker', Icon: Baby,      label: 'ติดตามผ้าอ้อม', tone: 'var(--blue-100)',  fg: 'var(--blue-600)'  },
-  { id: 'size',    Icon: Ruler,     label: 'ตารางไซส์',     tone: 'var(--green-100)', fg: 'var(--green-700)' },
+  { id: 'tracker', Icon: Baby,      label: 'พัฒนาการ',      tone: 'var(--blue-100)',  fg: 'var(--blue-600)'  },
+  { id: 'diaper',  Icon: Ruler,     label: 'ผ้าอ้อม',       tone: 'var(--green-100)', fg: 'var(--green-700)' },
   { id: 'rewards', Icon: Gift,      label: 'แลกของรางวัล',  tone: 'var(--blue-100)',  fg: 'var(--blue-600)'  },
   { id: 'scan',    Icon: ScanLine,  label: 'สแกนรับแต้ม',  tone: 'var(--green-100)', fg: 'var(--green-700)' },
-];
-
-const FEATURED = [
-  { name: 'ส่วนลด 50 บาท',          pts: 200, Icon: TicketPercent, tag: 'ยอดนิยม' },
-  { name: 'ผ้าอ้อม Size M ฟรี 1 แพ็ค', pts: 800, Icon: Package,       tag: null },
-  { name: 'ผ้าเปียกเปา เปา',          pts: 350, Icon: TicketPercent, tag: 'ใหม่!' },
 ];
 
 function GuestHero({ user }) {
@@ -42,20 +49,256 @@ function MemberHero({ user }) {
   );
 }
 
-export default function HomeScreen({ go, user, child, goOnboarding, goProfile }) {
+function StatBox({ label, value, unit, bg, valueColor }) {
+  return (
+    <div style={{ background: bg ?? 'var(--surface-soft)', borderRadius: 'var(--radius-md)', padding: '10px 12px' }}>
+      <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)' }}>{label}</div>
+      {value != null ? (
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 3, marginTop: 2 }}>
+          <span style={{ font: '800 20px var(--font-display)', color: valueColor ?? 'var(--text-heading)' }}>{value}</span>
+          {unit && <span style={{ font: 'var(--weight-medium) 11px var(--font-base)', color: 'var(--text-muted)' }}>{unit}</span>}
+        </div>
+      ) : (
+        <div style={{ font: 'var(--weight-medium) 13px var(--font-base)', color: 'var(--text-faint)', marginTop: 2 }}>—</div>
+      )}
+    </div>
+  );
+}
+
+function BabyInfoCard({ child, latestKg, latestCm, go }) {
+  const isMale = child?.gender === 'male';
+  const isFemale = child?.gender === 'female';
+  const GenderIcon = isMale ? Mars : isFemale ? Venus : null;
+  const genderAccent = isMale ? 'var(--blue-100)' : isFemale ? '#fce7f3' : 'var(--surface-soft)';
+  const genderSymbolColor = isMale ? 'var(--blue-600)' : isFemale ? '#be185d' : 'var(--text-muted)';
+  const statBg = isMale ? 'var(--blue-100)' : isFemale ? '#fce7f3' : 'var(--surface-soft)';
+  const statColor = isMale ? 'var(--blue-600)' : isFemale ? '#be185d' : 'var(--text-heading)';
+
+  const childAge = calcAge(child?.birthdate);
+
+  const THAI_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  const birthdateLabel = child?.birthdate ? (() => {
+    const d = new Date(child.birthdate);
+    return `${d.getDate()} ${THAI_MONTHS[d.getMonth()]} ${d.getFullYear() + 543}`;
+  })() : null;
+
+  const daysSince = child?._recordedAt
+    ? Math.floor((Date.now() - new Date(child._recordedAt).getTime()) / (1000 * 60 * 60 * 24))
+    : null;
+  const needsNudge = daysSince !== null && daysSince >= 14;
+
+  return (
+    <Card interactive onClick={() => go('tracker')} style={{ boxShadow: 'var(--shadow-md)' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {GenderIcon && (
+            <span style={{ width: 40, height: 40, borderRadius: 12, background: genderAccent, color: genderSymbolColor, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
+              <GenderIcon width={22} height={22} strokeWidth={2.5} />
+            </span>
+          )}
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ font: 'var(--weight-bold) 17px var(--font-display)', color: 'var(--text-heading)' }}>
+                {child?.name || 'ลูกน้อย'}
+              </span>
+            </div>
+            {(childAge || birthdateLabel) && (
+              <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)', marginTop: 2 }}>
+                {childAge}{birthdateLabel ? ` · ${birthdateLabel}` : ''}
+              </div>
+            )}
+          </div>
+        </div>
+        <ChevronRight width={20} height={20} style={{ color: 'var(--text-faint)' }} />
+      </div>
+
+      {/* Stats grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <StatBox label="น้ำหนัก" value={latestKg != null ? latestKg.toFixed(1) : null} unit="กก." bg={statBg} valueColor={statColor} />
+        <StatBox label="ส่วนสูง" value={latestCm != null ? latestCm.toFixed(1) : null} unit="ซม." bg={statBg} valueColor={statColor} />
+      </div>
+
+      {needsNudge && (
+        <div style={{ marginTop: 10, padding: '8px 12px', background: 'var(--blue-100)', borderRadius: 'var(--radius-md)', font: 'var(--weight-medium) 12px var(--font-base)', color: 'var(--blue-600)' }}>
+          ⏰ ยังไม่ได้บันทึกข้อมูลมา {daysSince} วัน — กดเพื่ออัพเดต
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function SizeRecommendCard({ sizeRec, go }) {
+  if (!sizeRec) return null;
+  return (
+    <Card tone="green" interactive onClick={() => go('diaper')} style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+      <div style={{ width: 64, height: 64, borderRadius: 18, background: 'var(--color-secondary)', color: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 'none', boxShadow: 'var(--shadow-green)' }}>
+        <span style={{ font: '800 24px var(--font-display)', lineHeight: 1 }}>{sizeRec.code}</span>
+        <span style={{ font: 'var(--weight-semibold) 9px var(--font-base)', letterSpacing: '.06em', opacity: .9 }}>SIZE</span>
+      </div>
+      <div style={{ flex: 1 }}>
+        <div style={{ font: 'var(--type-caption)', color: 'var(--green-700)' }}>ไซส์ผ้าอ้อมแนะนำ</div>
+        <div style={{ font: 'var(--weight-bold) 19px var(--font-display)', color: 'var(--text-heading)' }}>Size {sizeRec.code}</div>
+        <div style={{ font: 'var(--type-body-sm)', color: 'var(--text-muted)' }}>สำหรับน้ำหนัก {sizeRec.min}–{sizeRec.max} กก.</div>
+      </div>
+      <ChevronRight width={22} height={22} style={{ color: 'var(--green-700)' }} />
+    </Card>
+  );
+}
+
+function StreakPopup({ checkin, onClose }) {
+  const streakDay = checkin?.streakDay ?? 1;
+  const awarded = checkin?.awarded ?? 0;
+  const streak = checkin?.streak ?? streakDay;
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(15,23,42,.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, animation: 'ppFade .2s ease' }}>
+      <style>{`@keyframes ppFade{from{opacity:0}to{opacity:1}}@keyframes ppPop{from{transform:scale(.82);opacity:0}to{transform:scale(1);opacity:1}}@keyframes ppFlame{0%,100%{transform:scale(1)}50%{transform:scale(1.09)}}`}</style>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 340, background: '#fff', borderRadius: 24, overflow: 'hidden', animation: 'ppPop .32s cubic-bezier(.32,1.4,.5,1)' }}>
+        <div style={{ background: 'var(--gradient-hero)', padding: '28px 20px 22px', textAlign: 'center', color: '#fff' }}>
+          <div style={{ fontSize: 60, lineHeight: 1, animation: 'ppFlame 1.6s ease-in-out infinite' }}>🔥</div>
+          <div style={{ font: '800 46px var(--font-display)', marginTop: 2 }}>{streak}</div>
+          <div style={{ font: 'var(--weight-semibold) 15px var(--font-base)', opacity: .95 }}>วันติดต่อกัน!</div>
+        </div>
+        <div style={{ padding: 20 }}>
+          <div style={{ display: 'flex', gap: 5, justifyContent: 'space-between' }}>
+            {STREAK_POINTS.map((p, i) => {
+              const day = i + 1;
+              const done = day < streakDay;
+              const today = day === streakDay;
+              return (
+                <div key={i} style={{ flex: 1, textAlign: 'center' }}>
+                  <div style={{ height: 42, borderRadius: 11, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                    background: today ? 'var(--color-secondary)' : done ? 'var(--surface-green)' : 'var(--surface-soft)',
+                    color: today ? '#fff' : done ? 'var(--green-700)' : 'var(--text-faint)' }}>
+                    <span style={{ fontSize: 13, lineHeight: 1 }}>{done ? '✓' : '🔥'}</span>
+                    <span style={{ font: 'var(--weight-bold) 9px var(--font-base)', marginTop: 1 }}>{p}</span>
+                  </div>
+                  <div style={{ font: '9px var(--font-base)', color: today ? 'var(--green-700)' : 'var(--text-faint)', marginTop: 3 }}>ว.{day}</div>
+                </div>
+              );
+            })}
+          </div>
+          <div style={{ marginTop: 18, textAlign: 'center' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--surface-green)', color: 'var(--green-700)', padding: '8px 16px', borderRadius: 999, font: '800 16px var(--font-display)' }}>
+              <Star width={18} height={18} fill="var(--color-secondary)" style={{ color: 'var(--color-secondary)' }} /> +{awarded} แต้มวันนี้
+            </div>
+            <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)', marginTop: 8, lineHeight: 1.5 }}>
+              {streakDay < 7 ? `เข้าต่อเนื่องอีก ${7 - streakDay} วัน รับโบนัส 50 แต้ม!` : 'สุดยอด! ครบ 7 วัน รับโบนัสเต็ม 🎉'}
+            </div>
+          </div>
+          <div style={{ marginTop: 18 }}>
+            <Button variant="primary" fullWidth size="lg" onClick={onClose}>เยี่ยมเลย!</Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ComingSoon({ title, onClose }) {
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(15,23,42,.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 320, background: '#fff', borderRadius: 20, padding: '28px 22px', textAlign: 'center' }}>
+        <div style={{ fontSize: 46 }}>🚧</div>
+        <div style={{ font: 'var(--weight-bold) 18px var(--font-display)', color: 'var(--text-heading)', marginTop: 8 }}>{title}</div>
+        <div style={{ font: 'var(--type-body)', color: 'var(--text-muted)', marginTop: 6 }}>ฟีเจอร์นี้กำลังพัฒนา เร็วๆ นี้</div>
+        <div style={{ marginTop: 18 }}>
+          <Button variant="primary" fullWidth onClick={onClose}>เข้าใจแล้ว</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Advertising / campaign banners — DB-driven (Admin manages via `banners` table).
+// Swipeable when multiple campaigns run at once; each links out to a shopping URL.
+function BannerCarousel({ banners }) {
+  if (!banners || banners.length === 0) return null;
+  return (
+    <div style={{ padding: '18px 0 0' }}>
+      <div style={{ display: 'flex', gap: 12, overflowX: 'auto', padding: '0 16px 4px', scrollSnapType: 'x mandatory', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+        {banners.map((b) => (
+          <a
+            key={b.id}
+            href={b.link_url || '#'}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ scrollSnapAlign: 'center', flex: '0 0 86%', height: 132, borderRadius: 20, overflow: 'hidden', display: 'flex', flexDirection: 'column', justifyContent: 'center', textDecoration: 'none', position: 'relative', boxShadow: 'var(--shadow-md)', background: b.image_url ? 'var(--surface-soft)' : (b.bg_color || 'var(--gradient-green)') }}
+          >
+            {b.image_url ? (
+              <img src={b.image_url} alt={b.title || 'โปรโมชัน'} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : (
+              <div style={{ padding: '0 22px', color: '#fff' }}>
+                <div style={{ font: '800 18px var(--font-display)' }}>{b.title}</div>
+                {b.subtitle && <div style={{ font: 'var(--weight-medium) 13px var(--font-base)', opacity: .95, marginTop: 4 }}>{b.subtitle}</div>}
+                {b.link_url && <div style={{ marginTop: 12, display: 'inline-block', background: 'rgba(255,255,255,.92)', color: 'var(--text-heading)', font: 'var(--weight-bold) 12px var(--font-base)', padding: '6px 14px', borderRadius: 999 }}>ดูเลย →</div>}
+              </div>
+            )}
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default function HomeScreen({ go, user, child, goOnboarding, goProfile, checkin, onStreakSeen }) {
   const isGuest = !user || user.segment === 'C';
-  const memberName = user?.mother_name || user?.display_name || 'คุณแม่';
-  const pts = 320;
-  const childKg = child?.weight_kg;
-  const sizeRec = childKg ? recommendSize(childKg) : null;
+  const pts = user?.points ?? 0;
+  const [latestRecord, setLatestRecord] = useState(null);
+  const [showStreak, setShowStreak] = useState(false);
+  const [comingSoon, setComingSoon] = useState(null);
+  const [banners, setBanners] = useState([]);
+
+  useEffect(() => {
+    if (checkin?.awarded != null) setShowStreak(true);
+  }, [checkin]);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from('banners').select('*')
+          .eq('published', true)
+          .order('sort_order', { ascending: true });
+        const now = Date.now();
+        const active = (data || []).filter(b =>
+          (!b.starts_at || new Date(b.starts_at).getTime() <= now) &&
+          (!b.ends_at || new Date(b.ends_at).getTime() >= now));
+        if (alive) setBanners(active);
+      } catch (e) { console.warn('[home] banners fetch failed:', e?.message); }
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  const closeStreak = () => { setShowStreak(false); onStreakSeen && onStreakSeen(); };
+
+  useEffect(() => {
+    if (!child?.id) return;
+    supabase
+      .from('growth_records')
+      .select('weight_kg, height_cm, recorded_at')
+      .eq('child_id', child.id)
+      .order('recorded_at', { ascending: false })
+      .limit(1)
+      .single()
+      .then(({ data }) => { if (data) setLatestRecord(data); });
+  }, [child?.id]);
+
+  const latestKg = latestRecord?.weight_kg ?? child?.weight_kg ?? null;
+  const latestCm = latestRecord?.height_cm ?? child?.height_cm ?? null;
+  const sizeRec = latestKg ? recommendSize(latestKg) : null;
+  const childWithRecord = child ? { ...child, _recordedAt: latestRecord?.recorded_at ?? null } : null;
 
   return (
     <div style={{ background: 'var(--gradient-sky)', minHeight: '100%' }}>
+      {showStreak && checkin && <StreakPopup checkin={checkin} onClose={closeStreak} />}
+      {comingSoon && <ComingSoon title={comingSoon} onClose={() => setComingSoon(null)} />}
       {/* Hero */}
       <div style={{ position: 'relative', background: 'var(--gradient-hero)', padding: '18px 20px 58px', color: '#fff', borderBottomLeftRadius: 28, borderBottomRightRadius: 28 }}>
         <SkyDeco />
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Wordmark dark scale={1} />
+          <img src="/paopao-logo.png" alt="PAO PAO CLUB" style={{ height: 48, objectFit: 'contain' }} />
           <div style={{ display: 'flex', gap: 8 }}>
             <span style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(255,255,255,.18)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Bell width={20} height={20} />
@@ -113,7 +356,7 @@ export default function HomeScreen({ go, user, child, goOnboarding, goProfile })
       <div style={{ padding: '20px 16px 0' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
           {ACTIONS.map(({ id, Icon, label, tone, fg }) => (
-            <button key={id} onClick={() => go(id)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7, padding: 0 }}>
+            <button key={id} onClick={() => id === 'scan' ? setComingSoon('สแกนรับแต้ม') : go(id)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7, padding: 0 }}>
               <span style={{ width: 56, height: 56, borderRadius: 18, background: tone, color: fg, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--shadow-xs)' }}>
                 <Icon width={24} height={24} />
               </span>
@@ -123,60 +366,22 @@ export default function HomeScreen({ go, user, child, goOnboarding, goProfile })
         </div>
       </div>
 
-      {/* Recommended size — member with child data only */}
-      {!isGuest && sizeRec && (
-        <div style={{ padding: '22px 16px 0' }}>
-          <Card tone="soft" interactive onClick={() => go('tracker')} style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <span style={{ width: 52, height: 52, borderRadius: 16, background: 'var(--color-secondary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
-              <Baby width={26} height={26} />
-            </span>
-            <div style={{ flex: 1 }}>
-              <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)' }}>ไซส์ที่แนะนำสำหรับลูกน้อย</div>
-              <div style={{ font: 'var(--weight-bold) 18px var(--font-display)', color: 'var(--text-heading)' }}>Size {sizeRec.code} · {sizeRec.min}–{sizeRec.max} กก.</div>
-            </div>
-            <ChevronRight width={22} height={22} style={{ color: 'var(--text-faint)' }} />
-          </Card>
+      {/* Baby Info Card */}
+      {!isGuest && childWithRecord && (
+        <div style={{ padding: '20px 16px 0' }}>
+          <BabyInfoCard child={childWithRecord} latestKg={latestKg} latestCm={latestCm} go={go} />
         </div>
       )}
 
-      {/* Promo banner */}
-      <div style={{ padding: '18px 16px 0' }}>
-        <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 20, background: 'var(--gradient-green)', padding: '18px 20px', color: '#fff' }}>
-          <div style={{ position: 'relative', maxWidth: '72%' }}>
-            <div style={{ font: '800 18px var(--font-display)' }}>ซื้อ 2 แถม 1</div>
-            <div style={{ font: 'var(--weight-medium) 13px var(--font-base)', opacity: .95, marginTop: 2 }}>เฉพาะสมาชิกคลับ เดือนนี้เท่านั้น</div>
-            <div style={{ marginTop: 12 }}>
-              <Button variant="white" size="sm">ดูโปรโมชั่น</Button>
-            </div>
-          </div>
-          <span style={{ position: 'absolute', right: -6, bottom: -10, fontSize: 76, opacity: .25 }}>🎁</span>
+      {/* Size Recommend Card */}
+      {!isGuest && sizeRec && (
+        <div style={{ padding: '12px 16px 0' }}>
+          <SizeRecommendCard sizeRec={sizeRec} go={go} />
         </div>
-      </div>
+      )}
 
-      {/* Featured rewards */}
-      <div style={{ padding: '22px 0 0' }}>
-        <div style={{ padding: '0 16px' }}>
-          <SectionTitle action="ดูทั้งหมด" onAction={() => go('rewards')}>ของรางวัลแนะนำ</SectionTitle>
-        </div>
-        <div style={{ display: 'flex', gap: 12, overflowX: 'auto', padding: '0 16px 4px', scrollbarWidth: 'none' }}>
-          {FEATURED.map((r, i) => (
-            <Card key={i} padded={false} style={{ width: 150, flex: 'none', overflow: 'hidden' }}>
-              <div style={{ height: 90, background: i % 2 ? 'var(--surface-green)' : 'var(--surface-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-                <r.Icon width={34} height={34} style={{ color: i % 2 ? 'var(--green-600)' : 'var(--blue-500)' }} />
-                {r.tag && <span style={{ position: 'absolute', top: 8, left: 8 }}><Badge variant={r.tag === 'ใหม่!' ? 'accent' : 'solidBlue'} size="sm">{r.tag}</Badge></span>}
-              </div>
-              <div style={{ padding: 12 }}>
-                <div style={{ font: 'var(--weight-semibold) 13px var(--font-base)', color: 'var(--text-body)', lineHeight: 1.3, minHeight: 34 }}>{r.name}</div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 8, color: 'var(--color-secondary)' }}>
-                  <Star width={15} height={15} fill="var(--color-secondary)" />
-                  <span style={{ font: 'var(--weight-bold) 14px var(--font-base)', color: 'var(--text-title)' }}>{r.pts}</span>
-                  <span style={{ font: 'var(--type-caption)', color: 'var(--text-muted)' }}>แต้ม</span>
-                </div>
-              </div>
-            </Card>
-          ))}
-        </div>
-      </div>
+      {/* Advertising / campaign banners (DB-driven, swipeable) */}
+      <BannerCarousel banners={banners} />
       <div style={{ height: 20 }} />
     </div>
   );

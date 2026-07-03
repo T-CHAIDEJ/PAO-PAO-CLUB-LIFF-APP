@@ -1,25 +1,17 @@
-import React, { useState } from 'react';
-import { Scale, Ruler, Circle, Calendar, Plus, X } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Scale, Ruler, Calendar, Plus, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { Card, Badge, Button } from '../components/index.jsx';
 import { SectionTitle } from '../shared/index.jsx';
-import { getWHOData, getWHOValueAtMonth, getStatus, getStatusLabel } from '../data/whoData.js';
+import { getWHOData, getWHOValueAtMonth } from '../data/whoData.js';
+import { getWHOWflData, getWHOWflAtLength } from '../data/whoWflData.js';
+import { supabase } from '../lib/supabase.js';
 
-const GENDER = 'female';
-const BIRTH_DATE = '2025-08-01';
-const TODAY = '2026-06-16';
+// ─── helpers ────────────────────────────────────────────────────────────────
 
-const INITIAL_RECORDS = [
-  { id: 1, date: '2025-08-05', weightKg: 3.3, heightCm: 49.5, headCm: 34.0 },
-  { id: 2, date: '2025-11-10', weightKg: 5.8, heightCm: 60.5, headCm: 39.0 },
-  { id: 3, date: '2026-02-12', weightKg: 7.0, heightCm: 66.0, headCm: 41.5 },
-  { id: 4, date: '2026-05-20', weightKg: 8.3, heightCm: 71.5, headCm: 43.0 },
-];
-
-const THAI_MONTHS = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+const THAI_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 
 function ageInMonths(birthDate, atDate) {
-  const ms = new Date(atDate) - new Date(birthDate);
-  return Math.max(0, ms / (1000 * 60 * 60 * 24 * 30.4375));
+  return Math.max(0, (new Date(atDate) - new Date(birthDate)) / (1000 * 60 * 60 * 24 * 30.4375));
 }
 
 function formatThaiDate(dateStr) {
@@ -27,110 +19,438 @@ function formatThaiDate(dateStr) {
   return `${d.getDate()} ${THAI_MONTHS[d.getMonth()]} ${d.getFullYear() + 543}`;
 }
 
-const STATUS_BADGE = {
-  normal: 'green',
-  low: 'accent',
-  high: 'accent',
-  unknown: 'neutral',
-};
+function formatAgeLabel(months) {
+  const m = Math.round(months);
+  if (m < 1) return 'แรกเกิด';
+  if (m < 12) return `${m} เดือน`;
+  const yr = Math.floor(m / 12), mo = m % 12;
+  return mo === 0 ? `${yr} ปี` : `${yr} ปี ${mo} เดือน`;
+}
 
-const METRICS = [
-  { key: 'weightKg', indicator: 'wfa', label: 'น้ำหนัก', unit: 'กก.', Icon: Scale,  tone: 'var(--blue-100)',  fg: 'var(--blue-600)'  },
-  { key: 'heightCm', indicator: 'lhfa', label: 'ส่วนสูง', unit: 'ซม.', Icon: Ruler,  tone: 'var(--green-100)', fg: 'var(--green-700)' },
-  { key: 'headCm',   indicator: 'hcfa', label: 'รอบศีรษะ', unit: 'ซม.', Icon: Circle, tone: 'var(--blue-100)',  fg: 'var(--blue-600)'  },
+// Piecewise z-score: uses sd2neg(-2SD) and sd2pos(+2SD) as anchors
+function calcZScore(value, who) {
+  if (!who || !who.median) return null;
+  if (value < who.median) {
+    const halfRange = who.median - who.sd2neg;
+    return halfRange > 0 ? -2 * (who.median - value) / halfRange : 0;
+  }
+  const halfRange = who.sd2pos - who.median;
+  return halfRange > 0 ? 2 * (value - who.median) / halfRange : 0;
+}
+
+function getRangeStatus(value, min, max, unit) {
+  if (value < min) return { status: 'below', chipLabel: 'ต่ำกว่าเกณฑ์', deltaText: `ต่ำกว่าเกณฑ์ ${(min - value).toFixed(1)} ${unit}` };
+  if (value > max) return { status: 'above', chipLabel: 'สูงกว่าเกณฑ์', deltaText: `สูงกว่าเกณฑ์ ${(value - max).toFixed(1)} ${unit}` };
+  return { status: 'normal', chipLabel: 'ตามเกณฑ์', deltaText: 'อยู่ในช่วงเกณฑ์ WHO' };
+}
+
+const WH_ZONES = [
+  { key: 'very_low',    zMin: -3,   zMax: -2,   label: 'ผอม',         friendly: 'น้ำหนักต่ำกว่าเกณฑ์เมื่อเทียบกับส่วนสูง' },
+  { key: 'low',         zMin: -2,   zMax: -1.5, label: 'ค่อนข้างผอม', friendly: 'น้ำหนักต่ำกว่าช่วงสมส่วนเล็กน้อย' },
+  { key: 'normal',      zMin: -1.5, zMax:  1.5, label: 'สมส่วน',      friendly: 'น้ำหนักเหมาะสมเมื่อเทียบกับส่วนสูง' },
+  { key: 'high',        zMin:  1.5, zMax:  2,   label: 'เริ่มอ้วน',   friendly: 'น้ำหนักสูงกว่าช่วงสมส่วนเล็กน้อย' },
+  { key: 'very_high',   zMin:  2,   zMax:  3,   label: 'อ้วน',        friendly: 'น้ำหนักสูงกว่าเกณฑ์เมื่อเทียบกับส่วนสูง' },
+];
+const WA_ZONES = [
+  { key: 'very_low',  zMin: -3,   zMax: -2,   label: 'น้ำหนักน้อย',          friendly: 'น้ำหนักต่ำกว่าเกณฑ์ตามวัย' },
+  { key: 'low',       zMin: -2,   zMax: -1.5, label: 'น้ำหนักค่อนข้างน้อย',  friendly: 'น้ำหนักต่ำกว่าค่ากลางเล็กน้อย' },
+  { key: 'normal',    zMin: -1.5, zMax:  1.5, label: 'น้ำหนักตามเกณฑ์',      friendly: 'น้ำหนักอยู่ในช่วงเหมาะสมตามวัย' },
+  { key: 'high',      zMin:  1.5, zMax:  2,   label: 'น้ำหนักค่อนข้างมาก',   friendly: 'น้ำหนักสูงกว่าค่ากลางเล็กน้อย' },
+  { key: 'very_high', zMin:  2,   zMax:  3,   label: 'น้ำหนักมาก',            friendly: 'น้ำหนักสูงกว่าเกณฑ์ตามวัย' },
+];
+const HA_ZONES = [
+  { key: 'very_low',  zMin: -3,   zMax: -2,   label: 'เตี้ย',              friendly: 'ส่วนสูงต่ำกว่าเกณฑ์ตามวัย' },
+  { key: 'low',       zMin: -2,   zMax: -1.5, label: 'ค่อนข้างเตี้ย',      friendly: 'ส่วนสูงต่ำกว่าค่ากลางเล็กน้อย' },
+  { key: 'normal',    zMin: -1.5, zMax:  1.5, label: 'ส่วนสูงตามเกณฑ์',    friendly: 'ส่วนสูงอยู่ในช่วงเหมาะสมตามวัย' },
+  { key: 'high',      zMin:  1.5, zMax:  2,   label: 'ค่อนข้างสูง',         friendly: 'ส่วนสูงสูงกว่าค่ากลางเล็กน้อย' },
+  { key: 'very_high', zMin:  2,   zMax:  3,   label: 'สูง',                 friendly: 'ส่วนสูงสูงกว่าเกณฑ์ตามวัย' },
 ];
 
-function RangeBar({ value, who, status }) {
-  const span = who.sd2pos - who.sd2neg || 1;
-  const pct = Math.max(0, Math.min(100, ((value - who.sd2neg) / span) * 100));
-  const medianPct = Math.max(0, Math.min(100, ((who.median - who.sd2neg) / span) * 100));
-  const fill = status === 'normal' ? 'var(--gradient-green)' : 'var(--red-400)';
+function getZone(z, zones) {
+  const clamped = Math.max(-3, Math.min(3, z ?? 0));
+  return zones.find(zn => clamped >= zn.zMin && clamped < zn.zMax) || zones[2];
+}
+
+const ZONE_COLORS = {
+  very_low:  { bg: 'var(--orange-100, #FFF3E0)', fg: 'var(--orange-700, #E65100)' },
+  low:       { bg: 'var(--yellow-100, #FFFDE7)', fg: 'var(--yellow-800, #F57F17)' },
+  normal:    { bg: 'var(--surface-green, #E8F5E9)', fg: 'var(--green-700, #2E7D32)' },
+  high:      { bg: 'var(--yellow-100, #FFFDE7)', fg: 'var(--yellow-800, #F57F17)' },
+  very_high: { bg: 'var(--orange-100, #FFF3E0)', fg: 'var(--orange-700, #E65100)' },
+};
+
+// ─── RangeIndicator ──────────────────────────────────────────────────────────
+
+function RangeIndicator({ value, min, max, unit }) {
+  const range = max - min;
+  const buffer = range * 0.3;
+  const displayMin = Math.min(min - buffer, value - buffer * 0.5);
+  const displayMax = Math.max(max + buffer, value + buffer * 0.5);
+  const span = displayMax - displayMin || 1;
+
+  const normStart = ((min - displayMin) / span) * 100;
+  const normEnd   = ((max - displayMin) / span) * 100;
+  const valuePct  = Math.max(1, Math.min(99, ((value - displayMin) / span) * 100));
+
+  const { status, chipLabel, deltaText } = getRangeStatus(value, min, max, unit);
+
+  const chipColor = status === 'normal'
+    ? { bg: 'var(--surface-green)', color: 'var(--green-700)' }
+    : { bg: '#FFF3E0', color: '#E65100' };
+
   return (
-    <div style={{ position: 'relative', height: 8, background: 'var(--gray-100)', borderRadius: 'var(--radius-pill)', marginTop: 10 }}>
-      <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${pct}%`, background: fill, borderRadius: 'var(--radius-pill)', transition: 'width var(--dur-slow) var(--ease-out)' }} />
-      <div style={{ position: 'absolute', left: `${medianPct}%`, top: -2, width: 2, height: 12, background: 'var(--blue-300)', borderRadius: 1 }} />
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <span style={{
+          padding: '3px 10px', borderRadius: 999,
+          background: chipColor.bg, color: chipColor.color,
+          font: 'var(--weight-semibold) 11px var(--font-base)',
+        }}>{chipLabel}</span>
+        <span style={{ font: 'var(--type-caption)', color: 'var(--text-faint)' }}>
+          เกณฑ์ WHO: {min}–{max} {unit}
+        </span>
+      </div>
+
+      {/* Track */}
+      <div style={{ position: 'relative', height: 10, background: 'var(--gray-100)', borderRadius: 5, marginBottom: 6 }}>
+        {/* Normal zone highlight */}
+        <div style={{
+          position: 'absolute', top: 0, bottom: 0,
+          left: `${normStart}%`, width: `${normEnd - normStart}%`,
+          background: 'var(--color-secondary)', borderRadius: 5, opacity: 0.35,
+        }} />
+        {/* Value marker */}
+        <div style={{
+          position: 'absolute', top: '50%', transform: 'translateX(-50%) translateY(-50%)',
+          left: `${valuePct}%`,
+          width: 4, height: 18, borderRadius: 2,
+          background: status === 'normal' ? 'var(--green-700)' : '#E65100',
+          boxShadow: '0 0 0 2px #fff',
+          zIndex: 2,
+        }} />
+      </div>
+
+      {/* Min/Max labels */}
+      <div style={{ position: 'relative', height: 14 }}>
+        <span style={{
+          position: 'absolute', left: `${normStart}%`,
+          font: 'var(--weight-medium) 9px var(--font-base)', color: 'var(--text-faint)',
+          transform: 'translateX(-50%)',
+        }}>{min}</span>
+        <span style={{
+          position: 'absolute', left: `${normEnd}%`,
+          font: 'var(--weight-medium) 9px var(--font-base)', color: 'var(--text-faint)',
+          transform: 'translateX(-50%)',
+        }}>{max}</span>
+      </div>
+
+      <div style={{ font: 'var(--type-caption)', color: status === 'normal' ? 'var(--green-700)' : '#E65100', marginTop: 2 }}>
+        {deltaText}
+      </div>
     </div>
   );
 }
 
-function StatusCard({ metric, value, who, status }) {
+// ─── GrowthZoneBar ───────────────────────────────────────────────────────────
+
+const ZONE_SEGS = [
+  { key: 'very_low',  width: 1,   bg: '#FFCC80' },
+  { key: 'low',       width: 0.5, bg: '#FFE082' },
+  { key: 'normal',    width: 3,   bg: '#A5D6A7' },
+  { key: 'high',      width: 0.5, bg: '#FFE082' },
+  { key: 'very_high', width: 1,   bg: '#FFCC80' },
+];
+const TOTAL_UNITS = ZONE_SEGS.reduce((s, z) => s + z.width, 0); // 6
+
+function GrowthZoneBar({ zScore }) {
+  const clamped = Math.max(-3, Math.min(3, zScore ?? 0));
+  // map clamped z (-3..+3) → percentage across bar
+  // bar segments: -3→-2 (1u), -2→-1.5 (0.5u), -1.5→1.5 (3u), 1.5→2 (0.5u), 2→3 (1u)
+  // cumulative edges: 0, 1, 1.5, 4.5, 5, 6
+  const zToUnit = (z) => {
+    if (z <= -2) return (z + 3);           // -3..−2 → 0..1
+    if (z <= -1.5) return 1 + (z + 2) * 1;// -2..−1.5 → 1..1.5
+    if (z <=  1.5) return 1.5 + (z + 1.5) * (3 / 3); // -1.5..1.5 → 1.5..4.5
+    if (z <=  2)   return 4.5 + (z - 1.5) * 1;        // 1.5..2 → 4.5..5
+    return 5 + (z - 2);                                // 2..3 → 5..6
+  };
+  const markerPct = (zToUnit(clamped) / TOTAL_UNITS) * 100;
+
+  return (
+    <div style={{ marginTop: 4 }}>
+      <div style={{ position: 'relative', display: 'flex', borderRadius: 6, overflow: 'visible', height: 10 }}>
+        {ZONE_SEGS.map((seg, i) => (
+          <div key={seg.key} style={{
+            flex: seg.width, height: '100%', background: seg.bg,
+            borderRadius: i === 0 ? '6px 0 0 6px' : i === ZONE_SEGS.length - 1 ? '0 6px 6px 0' : 0,
+          }} />
+        ))}
+        {/* Marker */}
+        <div style={{
+          position: 'absolute', top: '50%', left: `${markerPct}%`,
+          transform: 'translate(-50%, -50%)',
+          width: 4, height: 18, borderRadius: 2,
+          background: 'var(--text-heading)', boxShadow: '0 0 0 2px #fff',
+          zIndex: 2,
+        }} />
+      </div>
+      <div style={{ display: 'flex', marginTop: 3 }}>
+        {ZONE_SEGS.map(seg => (
+          <div key={seg.key} style={{ flex: seg.width, textAlign: 'center', font: '9px var(--font-base)', color: 'var(--text-faint)', lineHeight: 1.2 }}>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Summary metric cards ─────────────────────────────────────────────────────
+
+const METRICS = [
+  { key: 'weightKg', indicator: 'wfa',  label: 'น้ำหนัก',  unit: 'กก.', Icon: Scale,  tone: 'var(--blue-100)',  fg: 'var(--blue-600)'  },
+  { key: 'heightCm', indicator: 'lhfa', label: 'ส่วนสูง',  unit: 'ซม.', Icon: Ruler,  tone: 'var(--green-100)', fg: 'var(--green-700)' },
+];
+
+function MetricSummaryCard({ metric, value, who }) {
   const { label, unit, Icon, tone, fg } = metric;
   return (
     <Card>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
         <span style={{ width: 42, height: 42, borderRadius: 12, background: tone, color: fg, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
           <Icon width={21} height={21} />
         </span>
         <div style={{ flex: 1 }}>
           <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)' }}>{label}</div>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-            <span style={{ font: '800 24px var(--font-display)', color: 'var(--text-heading)' }}>{value.toFixed(1)}</span>
+            <span style={{ font: '800 26px var(--font-display)', color: 'var(--text-heading)' }}>{value.toFixed(1)}</span>
             <span style={{ font: 'var(--weight-semibold) 13px var(--font-base)', color: 'var(--text-muted)' }}>{unit}</span>
           </div>
         </div>
-        <Badge variant={STATUS_BADGE[status]} size="sm">{getStatusLabel(status)}</Badge>
       </div>
-      <RangeBar value={value} who={who} status={status} />
-      <div style={{ font: 'var(--type-caption)', color: 'var(--text-faint)', marginTop: 6 }}>เกณฑ์ WHO: {who.sd2neg}–{who.sd2pos} {unit}</div>
+      <RangeIndicator value={value} min={who.sd2neg} max={who.sd2pos} unit={unit} />
     </Card>
   );
 }
 
-function GrowthChart({ records }) {
+// ─── Tab bar ──────────────────────────────────────────────────────────────────
+
+const CHART_TABS = [
+  { id: 'wa', label: 'น้ำหนักตามอายุ'    },
+  { id: 'ha', label: 'ส่วนสูงตามอายุ'    },
+  { id: 'wh', label: 'น้ำหนักเทียบส่วนสูง' },
+];
+
+function ChartTabBar({ active, onChange }) {
+  return (
+    <div style={{ display: 'flex', background: 'var(--surface-soft)', borderRadius: 'var(--radius-md)', padding: 3, gap: 2 }}>
+      {CHART_TABS.map(t => {
+        const on = active === t.id;
+        return (
+          <button key={t.id} onClick={() => onChange(t.id)} style={{
+            flex: 1, border: 'none', cursor: 'pointer', padding: '7px 2px',
+            borderRadius: 'calc(var(--radius-md) - 2px)',
+            background: on ? '#fff' : 'transparent',
+            boxShadow: on ? 'var(--shadow-card)' : 'none',
+            font: `${on ? 'var(--weight-semibold)' : 'var(--weight-medium)'} 10px var(--font-base)`,
+            color: on ? 'var(--color-primary)' : 'var(--text-muted)',
+            transition: 'all var(--dur-base)',
+            whiteSpace: 'nowrap',
+          }}>{t.label}</button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Growth Interpretation Card ───────────────────────────────────────────────
+
+function InterpretationCard({ title, zone, measurementText, zScore }) {
+  const colors = ZONE_COLORS[zone.key] || ZONE_COLORS.normal;
+  return (
+    <Card>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+        <div style={{ font: 'var(--weight-bold) 15px var(--font-display)', color: 'var(--text-heading)' }}>{title}</div>
+        <span style={{
+          padding: '4px 12px', borderRadius: 999,
+          background: colors.bg, color: colors.fg,
+          font: 'var(--weight-semibold) 12px var(--font-base)',
+        }}>{zone.label}</span>
+      </div>
+
+      <div style={{ font: 'var(--weight-medium) 14px var(--font-base)', color: 'var(--text-body)', lineHeight: 1.5, marginBottom: 6 }}>
+        {zone.friendly}
+      </div>
+      <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)', marginBottom: 10 }}>
+        {measurementText}
+      </div>
+
+      {zScore !== null && <GrowthZoneBar zScore={zScore} />}
+
+      <div style={{ marginTop: 12, padding: '8px 12px', background: 'var(--gray-50)', borderRadius: 'var(--radius-sm)', font: 'var(--type-caption)', color: 'var(--text-faint)', lineHeight: 1.5 }}>
+        ข้อมูลนี้ใช้เพื่อช่วยติดตามแนวโน้มการเจริญเติบโตเบื้องต้น ไม่ใช่การวินิจฉัยทางการแพทย์
+      </div>
+    </Card>
+  );
+}
+
+// ─── Charts ───────────────────────────────────────────────────────────────────
+
+function ChartLegend({ lineColor = 'var(--color-primary)' }) {
+  return (
+    <div style={{ display: 'flex', gap: 14, marginTop: 8, flexWrap: 'wrap' }}>
+      {[
+        { color: lineColor, label: 'ข้อมูลลูก', solid: true },
+        { color: 'var(--gray-300)', label: 'ช่วงเกณฑ์', solid: false },
+        { color: 'var(--blue-300)', label: 'ค่ากลาง',   solid: false },
+      ].map(({ color, label, solid }) => (
+        <span key={label} style={{ display: 'flex', alignItems: 'center', gap: 6, font: 'var(--type-caption)', color: 'var(--text-muted)' }}>
+          <span style={{ width: 16, height: solid ? 2.5 : 1.5, background: color, borderRadius: 1, opacity: solid ? 1 : 0.8 }} />
+          {label}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function buildAgeChart(records, gender, birthDate, indicator, color) {
   const sorted = [...records].sort((a, b) => new Date(a.date) - new Date(b.date));
-  const points = sorted.map(r => ({ month: ageInMonths(BIRTH_DATE, r.date), weightKg: r.weightKg }));
+  const key = indicator === 'wfa' ? 'weightKg' : 'heightCm';
+  const unit = indicator === 'wfa' ? 'กก.' : 'ซม.';
+  const points = sorted.map(r => ({ month: ageInMonths(birthDate, r.date), val: r[key] }));
+  if (!points.length) return null;
 
-  const minMonth = Math.max(0, Math.floor(Math.min(...points.map(p => p.month))) - 1);
-  const maxMonth = Math.ceil(Math.max(...points.map(p => p.month))) + 1;
+  const wfa = getWHOData(gender, indicator);
+  const minM = Math.max(0, Math.floor(Math.min(...points.map(p => p.month))) - 1);
+  const maxM = Math.ceil(Math.max(...points.map(p => p.month))) + 1;
+  const whoSlice = Array.from(new Set([minM, ...wfa.filter(d => d.month > minM && d.month < maxM).map(d => d.month), maxM]))
+    .sort((a, b) => a - b).map(m => ({ month: m, ...getWHOValueAtMonth(gender, indicator, m) }));
 
-  const wfa = getWHOData(GENDER, 'wfa');
-  const monthsForWHO = Array.from(new Set([
-    minMonth,
-    ...wfa.filter(d => d.month > minMonth && d.month < maxMonth).map(d => d.month),
-    maxMonth,
-  ])).sort((a, b) => a - b);
-  const whoSeries = monthsForWHO.map(m => ({ month: m, ...getWHOValueAtMonth(GENDER, 'wfa', m) }));
+  const vMin = Math.min(...points.map(p => p.val), ...whoSlice.map(d => d.sd2neg)) - (indicator === 'wfa' ? 0.5 : 1);
+  const vMax = Math.max(...points.map(p => p.val), ...whoSlice.map(d => d.sd2pos)) + (indicator === 'wfa' ? 0.5 : 1);
 
-  const wMin = Math.min(...points.map(p => p.weightKg), ...whoSeries.map(d => d.sd2neg)) - 0.3;
-  const wMax = Math.max(...points.map(p => p.weightKg), ...whoSeries.map(d => d.sd2pos)) + 0.3;
+  return { points, whoSlice, minM, maxM, vMin, vMax, color, unit };
+}
 
-  const W = 326, H = 170;
-  const margin = { top: 14, right: 14, bottom: 26, left: 8 };
-  const plotW = W - margin.left - margin.right;
-  const plotH = H - margin.top - margin.bottom;
+function AgeChart({ chartData, title }) {
+  if (!chartData) return null;
+  const { points, whoSlice, minM, maxM, vMin, vMax, color } = chartData;
+  const W = 326, H = 170, mg = { top: 14, right: 14, bottom: 26, left: 8 };
+  const pW = W - mg.left - mg.right, pH = H - mg.top - mg.bottom;
+  const xSc = m => mg.left + ((m - minM) / ((maxM - minM) || 1)) * pW;
+  const ySc = v => mg.top + (1 - (v - vMin) / ((vMax - vMin) || 1)) * pH;
 
-  const monthSpan = (maxMonth - minMonth) || 1;
-  const weightSpan = (wMax - wMin) || 1;
-  const xScale = (m) => margin.left + ((m - minMonth) / monthSpan) * plotW;
-  const yScale = (w) => margin.top + (1 - (w - wMin) / weightSpan) * plotH;
-
-  const toPath = (data, key) => data.map((d, i) => `${i === 0 ? 'M' : 'L'} ${xScale(d.month).toFixed(1)} ${yScale(d[key]).toFixed(1)}`).join(' ');
+  const bandTop    = whoSlice.map((d, i) => `${i === 0 ? 'M' : 'L'} ${xSc(d.month).toFixed(1)} ${ySc(d.sd2pos).toFixed(1)}`).join(' ');
+  const bandBottom = [...whoSlice].reverse().map((d, i) => `L ${xSc(d.month).toFixed(1)} ${ySc(d.sd2neg).toFixed(1)}`).join(' ');
+  const band = bandTop + ' ' + bandBottom + ' Z';
 
   return (
     <Card>
-      <SectionTitle>กราฟน้ำหนักเทียบเกณฑ์ WHO</SectionTitle>
+      <SectionTitle>แนวโน้มย้อนหลัง</SectionTitle>
       <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }}>
-        <path d={toPath(whoSeries, 'sd2pos')} fill="none" stroke="var(--gray-300)" strokeWidth="1.5" strokeDasharray="3 4" />
-        <path d={toPath(whoSeries, 'median')} fill="none" stroke="var(--blue-300)" strokeWidth="1.5" strokeDasharray="3 4" />
-        <path d={toPath(whoSeries, 'sd2neg')} fill="none" stroke="var(--gray-300)" strokeWidth="1.5" strokeDasharray="3 4" />
-        <path d={toPath(points, 'weightKg')} fill="none" stroke="var(--color-primary)" strokeWidth="2.5" />
+        {/* WHO band */}
+        <path d={band} fill="var(--blue-100,#E3F2FD)" opacity="0.5" />
+        {/* Median */}
+        <path d={whoSlice.map((d, i) => `${i === 0 ? 'M' : 'L'} ${xSc(d.month).toFixed(1)} ${ySc(d.median).toFixed(1)}`).join(' ')}
+          fill="none" stroke="var(--blue-300)" strokeWidth="1.5" strokeDasharray="4 4" opacity="0.8" />
+        {/* Child line */}
+        <path d={points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${xSc(p.month).toFixed(1)} ${ySc(p.val).toFixed(1)}`).join(' ')}
+          fill="none" stroke={color} strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
         {points.map((p, i) => (
-          <circle key={i} cx={xScale(p.month)} cy={yScale(p.weightKg)} r="3.5" fill="var(--blue-600)" stroke="#fff" strokeWidth="1.5" />
+          <circle key={i} cx={xSc(p.month)} cy={ySc(p.val)} r="4" fill={color} stroke="#fff" strokeWidth="2" />
         ))}
-        <text x={margin.left} y={H - 6} font="var(--weight-medium) 9px var(--font-base)" fill="var(--text-faint)">{Math.round(minMonth)} เดือน</text>
-        <text x={W - margin.right} y={H - 6} textAnchor="end" font="var(--weight-medium) 9px var(--font-base)" fill="var(--text-faint)">{Math.round(maxMonth)} เดือน</text>
+        <text x={mg.left} y={H - 6} fontSize="9" fill="var(--text-faint)">{Math.round(minM)} เดือน</text>
+        <text x={W - mg.right} y={H - 6} textAnchor="end" fontSize="9" fill="var(--text-faint)">{Math.round(maxM)} เดือน</text>
       </svg>
-      <div style={{ display: 'flex', gap: 16, marginTop: 8, flexWrap: 'wrap' }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 6, font: 'var(--type-caption)', color: 'var(--text-muted)' }}>
-          <span style={{ width: 14, height: 2, background: 'var(--color-primary)', borderRadius: 1 }} />น้ำหนักลูก
-        </span>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 6, font: 'var(--type-caption)', color: 'var(--text-muted)' }}>
-          <span style={{ width: 14, height: 2, background: 'var(--gray-300)', borderRadius: 1, backgroundImage: 'repeating-linear-gradient(90deg, var(--gray-400) 0 3px, transparent 3px 6px)' }} />ช่วงเกณฑ์ WHO
-        </span>
-      </div>
+      <ChartLegend lineColor={color} />
     </Card>
   );
 }
+
+function WHChart({ records, gender }) {
+  const sorted = [...records].filter(r => r.heightCm).sort((a, b) => a.heightCm - b.heightCm);
+  const points = sorted.map(r => ({ h: r.heightCm, w: r.weightKg }));
+  if (!points.length) return null;
+
+  const wflData = getWHOWflData(gender);
+  const minH = Math.max(45, Math.floor(Math.min(...points.map(p => p.h))) - 2);
+  const maxH = Math.min(120, Math.ceil(Math.max(...points.map(p => p.h))) + 2);
+  const whoSlice = wflData.filter(d => d.length >= minH && d.length <= maxH);
+  if (!whoSlice.length) return null;
+
+  const wMin = Math.min(...points.map(p => p.w), ...whoSlice.map(d => d.sd2neg)) - 0.5;
+  const wMax = Math.max(...points.map(p => p.w), ...whoSlice.map(d => d.sd2pos)) + 0.5;
+
+  const W = 326, H = 170, mg = { top: 14, right: 14, bottom: 26, left: 8 };
+  const pW = W - mg.left - mg.right, pH = H - mg.top - mg.bottom;
+  const xSc = h => mg.left + ((h - minH) / ((maxH - minH) || 1)) * pW;
+  const ySc = w => mg.top + (1 - (w - wMin) / ((wMax - wMin) || 1)) * pH;
+
+  const bandTop    = whoSlice.map((d, i) => `${i === 0 ? 'M' : 'L'} ${xSc(d.length).toFixed(1)} ${ySc(d.sd2pos).toFixed(1)}`).join(' ');
+  const bandBottom = [...whoSlice].reverse().map((d) => `L ${xSc(d.length).toFixed(1)} ${ySc(d.sd2neg).toFixed(1)}`).join(' ');
+  const band = bandTop + ' ' + bandBottom + ' Z';
+
+  return (
+    <Card>
+      <SectionTitle>แนวโน้มย้อนหลัง</SectionTitle>
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }}>
+        <path d={band} fill="var(--blue-100,#E3F2FD)" opacity="0.5" />
+        <path d={whoSlice.map((d, i) => `${i === 0 ? 'M' : 'L'} ${xSc(d.length).toFixed(1)} ${ySc(d.median).toFixed(1)}`).join(' ')}
+          fill="none" stroke="var(--blue-300)" strokeWidth="1.5" strokeDasharray="4 4" opacity="0.8" />
+        <path d={points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${xSc(p.h).toFixed(1)} ${ySc(p.w).toFixed(1)}`).join(' ')}
+          fill="none" stroke="var(--color-primary)" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
+        {points.map((p, i) => (
+          <circle key={i} cx={xSc(p.h)} cy={ySc(p.w)} r="4" fill="var(--blue-600)" stroke="#fff" strokeWidth="2" />
+        ))}
+        <text x={mg.left} y={H - 6} fontSize="9" fill="var(--text-faint)">{minH} ซม.</text>
+        <text x={W - mg.right} y={H - 6} textAnchor="end" fontSize="9" fill="var(--text-faint)">{maxH} ซม.</text>
+      </svg>
+      <ChartLegend />
+    </Card>
+  );
+}
+
+// ─── History list ─────────────────────────────────────────────────────────────
+
+function HistoryList({ records }) {
+  const [expanded, setExpanded] = useState(false);
+  const sorted = [...records].sort((a, b) => new Date(b.date) - new Date(a.date));
+  const shown = expanded ? sorted : sorted.slice(0, 3);
+
+  return (
+    <div>
+      <SectionTitle>รายการบันทึกย้อนหลัง</SectionTitle>
+      <Card padded={false} style={{ overflow: 'hidden' }}>
+        {shown.map((r, i) => (
+          <div key={r.id} style={{
+            display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px',
+            borderBottom: i < shown.length - 1 ? '1px solid var(--gray-100)' : 'none',
+          }}>
+            <span style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--gray-50)', color: 'var(--blue-500)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
+              <Scale width={18} height={18} />
+            </span>
+            <div style={{ flex: 1 }}>
+              <div style={{ font: 'var(--weight-medium) 14px var(--font-base)', color: 'var(--text-body)' }}>
+                {r.weightKg.toFixed(1)} กก. · {r.heightCm.toFixed(1)} ซม.
+              </div>
+            </div>
+            <span style={{ font: 'var(--type-caption)', color: 'var(--text-faint)' }}>{formatThaiDate(r.date)}</span>
+          </div>
+        ))}
+        {sorted.length > 3 && (
+          <button onClick={() => setExpanded(v => !v)} style={{
+            width: '100%', border: 'none', background: 'var(--gray-50)', padding: '10px 16px',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            font: 'var(--weight-medium) 13px var(--font-base)', color: 'var(--text-muted)', cursor: 'pointer',
+          }}>
+            {expanded ? <><ChevronUp width={16} height={16} />ย่อ</> : <><ChevronDown width={16} height={16} />ดูทั้งหมด {sorted.length} รายการ</>}
+          </button>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+// ─── Add record panel ─────────────────────────────────────────────────────────
 
 function FormField({ label, children }) {
   return (
@@ -147,23 +467,41 @@ const inputStyle = {
   background: '#fff', outline: 'none', boxSizing: 'border-box',
 };
 
-function AddRecordPanel({ onCancel, onSave }) {
-  const [date, setDate] = useState(TODAY);
+function AddRecordPanel({ childId, onCancel, onSaved }) {
+  const today = new Date().toISOString().slice(0, 10);
+  const [date, setDate] = useState(today);
   const [weight, setWeight] = useState('');
   const [height, setHeight] = useState('');
-  const [head, setHead] = useState('');
+  const [thigh, setThigh] = useState('');
+  const [waist, setWaist] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
 
-  const canSave = date && weight && height && head;
+  const canSave = date && weight && height;
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!canSave) return;
-    onSave({
-      id: Date.now(),
-      date,
-      weightKg: parseFloat(weight),
-      heightCm: parseFloat(height),
-      headCm: parseFloat(head),
-    });
+    setSaving(true); setError(null);
+    try {
+      const payload = {
+        child_id: childId, recorded_at: date,
+        weight_kg: parseFloat(weight), height_cm: parseFloat(height),
+        thigh_cm:  thigh  ? parseFloat(thigh)  : null,
+        waist_cm:  waist  ? parseFloat(waist)  : null,
+      };
+      const { data, error: err } = await supabase.from('growth_records').insert(payload).select().single();
+      if (err) throw err;
+      onSaved({
+        id: data.id, date: data.recorded_at,
+        weightKg: data.weight_kg, heightCm: data.height_cm,
+        thighCm: data.thigh_cm, waistCm: data.waist_cm,
+      });
+    } catch (e) {
+      console.error('[AddRecord]', e);
+      setError('บันทึกไม่สำเร็จ กรุณาลองใหม่');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -176,77 +514,198 @@ function AddRecordPanel({ onCancel, onSave }) {
       </div>
       <FormField label="วันที่บันทึก">
         <div style={{ position: 'relative' }}>
-          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={inputStyle} />
+          <input type="date" value={date} onChange={e => setDate(e.target.value)} style={inputStyle} />
           <Calendar width={18} height={18} style={{ position: 'absolute', right: 14, top: 14, color: 'var(--text-faint)', pointerEvents: 'none' }} />
         </div>
       </FormField>
-      <FormField label="น้ำหนัก (กก.)">
-        <input type="number" step="0.1" placeholder="เช่น 8.5" value={weight} onChange={(e) => setWeight(e.target.value)} style={inputStyle} />
+      <FormField label="น้ำหนัก (กก.) *">
+        <input type="number" step="0.1" placeholder="เช่น 8.5" value={weight} onChange={e => setWeight(e.target.value)} style={inputStyle} />
       </FormField>
-      <FormField label="ส่วนสูง (ซม.)">
-        <input type="number" step="0.1" placeholder="เช่น 70.0" value={height} onChange={(e) => setHeight(e.target.value)} style={inputStyle} />
+      <FormField label="ส่วนสูง (ซม.) *">
+        <input type="number" step="0.1" placeholder="เช่น 70.0" value={height} onChange={e => setHeight(e.target.value)} style={inputStyle} />
       </FormField>
-      <FormField label="รอบศีรษะ (ซม.)">
-        <input type="number" step="0.1" placeholder="เช่น 43.0" value={head} onChange={(e) => setHead(e.target.value)} style={inputStyle} />
-      </FormField>
-      <Button variant="primary" fullWidth disabled={!canSave} onClick={handleSave} leftIcon={<Plus width={18} height={18} />}>บันทึก</Button>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <FormField label="รอบขา (ซม.)">
+          <input type="number" step="0.5" placeholder="เช่น 22.0" value={thigh} onChange={e => setThigh(e.target.value)} style={inputStyle} />
+        </FormField>
+        <FormField label="รอบเอว (ซม.)">
+          <input type="number" step="0.5" placeholder="เช่น 44.0" value={waist} onChange={e => setWaist(e.target.value)} style={inputStyle} />
+        </FormField>
+      </div>
+      <div style={{ font: 'var(--type-caption)', color: 'var(--text-faint)', marginBottom: 14 }}>* จำเป็น · ช่องอื่นไม่บังคับ</div>
+      {error && <div style={{ font: 'var(--type-caption)', color: 'var(--red-400)', marginBottom: 12 }}>{error}</div>}
+      <Button variant="primary" fullWidth disabled={!canSave} loading={saving} onClick={handleSave} leftIcon={<Plus width={18} height={18} />}>บันทึก</Button>
     </Card>
   );
 }
 
-function OverviewPanel({ records, onAddNew }) {
+// ─── Overview panel ───────────────────────────────────────────────────────────
+
+function OverviewPanel({ records, gender, birthDate, chartTab, onChartTabChange, onAddNew }) {
   const sorted = [...records].sort((a, b) => new Date(a.date) - new Date(b.date));
   const latest = sorted[sorted.length - 1];
-  const latestAge = ageInMonths(BIRTH_DATE, latest.date);
+  const latestAge = ageInMonths(birthDate, latest.date);
+  const ageLabel = formatAgeLabel(latestAge);
+
+  const whoWA  = getWHOValueAtMonth(gender, 'wfa',  latestAge);
+  const whoHA  = getWHOValueAtMonth(gender, 'lhfa', latestAge);
+
+  // z-scores
+  const zWA  = calcZScore(latest.weightKg, whoWA);
+  const zHA  = calcZScore(latest.heightCm, whoHA);
+
+  // WH z-score — interpolate by exact height using getWHOWflAtLength
+  let zWH = null;
+  if (latest.heightCm >= 45 && latest.heightCm <= 120) {
+    const wflAtH = getWHOWflAtLength(gender, latest.heightCm);
+    if (wflAtH) zWH = calcZScore(latest.weightKg, wflAtH);
+  }
+
+  const waZone  = getZone(zWA,  WA_ZONES);
+  const haZone  = getZone(zHA,  HA_ZONES);
+  const whZone  = zWH !== null ? getZone(zWH, WH_ZONES) : WH_ZONES[2];
+
+  // Chart data
+  const waChart = buildAgeChart(records, gender, birthDate, 'wfa',  'var(--color-primary)');
+  const haChart = buildAgeChart(records, gender, birthDate, 'lhfa', 'var(--color-secondary)');
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {METRICS.map((metric) => {
-          const value = latest[metric.key];
-          const who = getWHOValueAtMonth(GENDER, metric.indicator, latestAge);
-          const status = getStatus(value, who);
-          return <StatusCard key={metric.key} metric={metric} value={value} who={who} status={status} />;
-        })}
+
+      {/* Latest date */}
+      <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)', textAlign: 'right' }}>
+        อัพเดตล่าสุด: {formatThaiDate(latest.date)}
       </div>
 
-      <GrowthChart records={records} />
+      {/* Summary cards */}
+      <MetricSummaryCard metric={METRICS[0]} value={latest.weightKg} who={whoWA} />
+      <MetricSummaryCard metric={METRICS[1]} value={latest.heightCm} who={whoHA} />
 
-      <div>
-        <SectionTitle>รายการบันทึกย้อนหลัง</SectionTitle>
-        <Card padded={false} style={{ overflow: 'hidden' }}>
-          {sorted.slice().reverse().map((r, i, arr) => (
-            <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', borderBottom: i < arr.length - 1 ? '1px solid var(--gray-100)' : 'none' }}>
-              <span style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--gray-50)', color: 'var(--blue-500)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
-                <Scale width={18} height={18} />
-              </span>
-              <div style={{ flex: 1 }}>
-                <div style={{ font: 'var(--weight-medium) 14px var(--font-base)', color: 'var(--text-body)' }}>{r.weightKg.toFixed(1)} กก. · {r.heightCm.toFixed(1)} ซม. · {r.headCm.toFixed(1)} ซม.</div>
-              </div>
-              <span style={{ font: 'var(--type-caption)', color: 'var(--text-faint)' }}>{formatThaiDate(r.date)}</span>
-            </div>
-          ))}
-        </Card>
-      </div>
+      {/* Tab selector */}
+      <ChartTabBar active={chartTab} onChange={onChartTabChange} />
 
+      {/* Interpretation card + Chart */}
+      {chartTab === 'wa' && (
+        <>
+          <InterpretationCard
+            title="น้ำหนักตามอายุ"
+            zone={waZone}
+            measurementText={`${latest.weightKg.toFixed(1)} กก. เมื่ออายุ ${ageLabel}`}
+            zScore={zWA}
+          />
+          <AgeChart chartData={waChart} />
+        </>
+      )}
+      {chartTab === 'ha' && (
+        <>
+          <InterpretationCard
+            title="ส่วนสูงตามอายุ"
+            zone={haZone}
+            measurementText={`${latest.heightCm.toFixed(1)} ซม. เมื่ออายุ ${ageLabel}`}
+            zScore={zHA}
+          />
+          <AgeChart chartData={haChart} />
+        </>
+      )}
+      {chartTab === 'wh' && (
+        <>
+          <InterpretationCard
+            title="น้ำหนักเทียบส่วนสูง"
+            zone={whZone}
+            measurementText={`${latest.weightKg.toFixed(1)} กก. ที่ส่วนสูง ${latest.heightCm.toFixed(1)} ซม.`}
+            zScore={zWH}
+          />
+          <WHChart records={records} gender={gender} />
+        </>
+      )}
+
+      {/* History */}
+      <HistoryList records={records} />
+
+      {/* Add button */}
       <Button variant="primary" fullWidth onClick={onAddNew} leftIcon={<Plus width={18} height={18} />}>บันทึกข้อมูลใหม่</Button>
     </div>
   );
 }
 
-export function GrowthPanel() {
-  const [view, setView] = useState('overview');
-  const [records, setRecords] = useState(INITIAL_RECORDS);
+// ─── GrowthPanel (exported) ───────────────────────────────────────────────────
 
-  const handleSave = (record) => {
-    setRecords(prev => [...prev, record]);
-    setView('overview');
+export function GrowthPanel({ child }) {
+  const [panelView, setPanelView] = useState('overview');
+  const [records, setRecords] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [chartTab, setChartTab] = useState('wa');
+
+  const gender    = child?.gender   || 'female';
+  const birthDate = child?.birthdate || new Date().toISOString().slice(0, 10);
+
+  useEffect(() => {
+    if (!child?.id) { setLoading(false); return; }
+    async function fetchRecords() {
+      setLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('growth_records').select('*')
+          .eq('child_id', child.id).order('recorded_at', { ascending: true });
+        if (error) throw error;
+        setRecords((data || []).map(r => ({
+          id: r.id, date: r.recorded_at,
+          weightKg: r.weight_kg, heightCm: r.height_cm,
+          thighCm: r.thigh_cm, waistCm: r.waist_cm,
+        })));
+      } catch (e) {
+        console.error('[GrowthPanel]', e);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchRecords();
+  }, [child?.id]);
+
+  const handleSaved = (record) => {
+    setRecords(prev => [...prev, record].sort((a, b) => new Date(a.date) - new Date(b.date)));
+    setPanelView('overview');
   };
 
-  if (view === 'add') {
-    return <AddRecordPanel onCancel={() => setView('overview')} onSave={handleSave} />;
+  if (loading) return (
+    <Card style={{ textAlign: 'center', padding: 32 }}>
+      <div style={{ font: 'var(--weight-medium) 15px var(--font-base)', color: 'var(--text-muted)' }}>กำลังโหลดข้อมูล...</div>
+    </Card>
+  );
+
+  if (!child?.id) return (
+    <Card style={{ textAlign: 'center', padding: 32 }}>
+      <div style={{ fontSize: 48, marginBottom: 12 }}>📊</div>
+      <div style={{ font: 'var(--weight-bold) 17px var(--font-display)', color: 'var(--text-heading)' }}>ไม่พบข้อมูลลูก</div>
+      <div style={{ font: 'var(--type-body)', color: 'var(--text-muted)', marginTop: 8 }}>กรุณาลงทะเบียนข้อมูลลูกก่อน</div>
+    </Card>
+  );
+
+  if (panelView === 'add') {
+    return <AddRecordPanel childId={child.id} onCancel={() => setPanelView('overview')} onSaved={handleSaved} />;
   }
-  return <OverviewPanel records={records} onAddNew={() => setView('add')} />;
+
+  if (records.length === 0) return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <Card style={{ textAlign: 'center', padding: 32 }}>
+        <div style={{ fontSize: 48, marginBottom: 12 }}>📈</div>
+        <div style={{ font: 'var(--weight-bold) 17px var(--font-display)', color: 'var(--text-heading)' }}>ยังไม่มีข้อมูลพัฒนาการ</div>
+        <div style={{ font: 'var(--type-body)', color: 'var(--text-muted)', marginTop: 8, lineHeight: 1.6 }}>เริ่มบันทึกน้ำหนักและส่วนสูง<br />เพื่อติดตามพัฒนาการของลูก</div>
+      </Card>
+      <Button variant="primary" fullWidth onClick={() => setPanelView('add')} leftIcon={<Plus width={18} height={18} />}>บันทึกข้อมูลแรก</Button>
+    </div>
+  );
+
+  return (
+    <OverviewPanel
+      records={records}
+      gender={gender}
+      birthDate={birthDate}
+      chartTab={chartTab}
+      onChartTabChange={setChartTab}
+      onAddNew={() => setPanelView('add')}
+    />
+  );
 }
 
 export default GrowthPanel;

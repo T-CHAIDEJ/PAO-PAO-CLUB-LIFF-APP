@@ -26,7 +26,7 @@ function StepWelcome({ onNext }) {
   ];
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '40px 24px 32px', gap: 24 }}>
-      <div style={{ fontSize: 72 }}>🐣</div>
+      <img src="/paopao-logo.png" alt="PAO PAO CLUB" style={{ width: 140, height: 140, objectFit: 'contain' }} />
       <div style={{ textAlign: 'center' }}>
         <div style={{ font: '800 28px var(--font-display)', color: 'var(--text-heading)' }}>PAO PAO CLUB</div>
         <div style={{ font: 'var(--weight-medium) 15px var(--font-base)', color: 'var(--text-muted)', marginTop: 6 }}>แอปคู่ใจคุณแม่มือใหม่</div>
@@ -212,11 +212,16 @@ export default function OnboardingScreen({ lineProfile, initialSegment, onComple
   const handleSubmit = async (formData) => {
     setLoading(true);
     try {
-      const lineUserId = lineProfile?.userId ?? 'dev_user_001';
+      // Use real LINE userId if available, otherwise generate a unique fallback
+      const cachedUid = localStorage.getItem('pp_line_uid');
+      const lineUserId = lineProfile?.userId
+        ?? (cachedUid && cachedUid !== 'dev_user_001' ? cachedUid : null)
+        ?? `anon_${Date.now()}`;
 
       const userPayload = {
         line_user_id: lineUserId,
         display_name: lineProfile?.displayName ?? '',
+        picture_url: lineProfile?.pictureUrl ?? null,
         email: lineProfile?.email ?? null,
         segment,
         mother_name: formData.motherName ?? null,
@@ -231,6 +236,9 @@ export default function OnboardingScreen({ lineProfile, initialSegment, onComple
 
       if (userError) throw userError;
 
+      // Cache the userId so future boots can find this user even if LIFF fails
+      localStorage.setItem('pp_line_uid', userData.line_user_id);
+
       if (segment === 'B' && formData.childName) {
         const childPayload = {
           user_id: userData.id,
@@ -240,8 +248,18 @@ export default function OnboardingScreen({ lineProfile, initialSegment, onComple
           weight_kg: formData.weightKg,
           height_cm: formData.heightCm,
         };
-        const { error: childError } = await supabase.from('children').insert(childPayload);
+        const { data: childData, error: childError } = await supabase
+          .from('children').insert(childPayload).select().single();
         if (childError) throw childError;
+
+        if (childData && formData.weightKg && formData.heightCm) {
+          await supabase.from('growth_records').insert({
+            child_id: childData.id,
+            recorded_at: formData.birthdate,
+            weight_kg: formData.weightKg,
+            height_cm: formData.heightCm,
+          });
+        }
       }
 
       onComplete(userData);

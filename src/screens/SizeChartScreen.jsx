@@ -5,11 +5,12 @@ import { SkyDeco } from '../shared/index.jsx';
 import { recommendSize } from './TrackerScreen.jsx';
 
 const ROWS = [
-  { code: 'S',   range: '4 – 8 กก.',    stage: 'ตัวเล็กแรกเกิด' },
-  { code: 'M',   range: '6 – 11 กก.',   stage: 'วัยคืบคลาน' },
-  { code: 'L',   range: '9 – 14 กก.',   stage: 'วัยหัดเดิน' },
-  { code: 'XL',  range: '12 – 17 กก.',  stage: 'วัยซน' },
-  { code: 'XXL', range: '15 กก.ขึ้นไป', stage: 'เด็กโต' },
+  { code: 'NB',  range: 'แรกเกิด – 5 กก.', stage: 'แรกเกิด' },
+  { code: 'S',   range: '4 – 8 กก.',        stage: 'ตัวเล็กแรกเกิด' },
+  { code: 'M',   range: '7 – 12 กก.',       stage: 'วัยคืบคลาน' },
+  { code: 'L',   range: '9 – 14 กก.',       stage: 'วัยหัดเดิน' },
+  { code: 'XL',  range: '12 – 17 กก.',      stage: 'วัยซน' },
+  { code: 'XXL', range: '15 – 25 กก.',      stage: 'เด็กโต' },
 ];
 
 export default function SizeChartScreen({ go, currentKg = 8.5 }) {

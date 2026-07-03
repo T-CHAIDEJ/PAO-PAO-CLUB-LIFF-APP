@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Star, Medal, TicketPercent, Package, Gift, Plus } from 'lucide-react';
 import { Card, Badge, Button, Tabs } from '../components/index.jsx';
 import { SkyDeco } from '../shared/index.jsx';
+import { supabase } from '../lib/supabase.js';
 
 const CATALOG = [
   { name: 'ส่วนลด 50 บาท',         pts: 200, Icon: TicketPercent, tag: 'ยอดนิยม' },
@@ -10,22 +11,42 @@ const CATALOG = [
   { name: 'ผ้าอ้อม Size M ฟรี 1 แพ็ค', pts: 800, Icon: Gift,    tag: null },
 ];
 
-const HISTORY = [
-  { name: 'แลกส่วนลด 50 บาท', pts: -200, when: '12 มิ.ย.' },
-  { name: 'ซื้อครบ 500 บาท',  pts: +50,  when: '8 มิ.ย.' },
-  { name: 'สแกนโค้ดในแพ็ค',   pts: +20,  when: '5 มิ.ย.' },
-  { name: 'เช็คอินรายวัน',    pts: +5,   when: '5 มิ.ย.' },
-];
-
 const TAB_ITEMS = [
   { label: 'แลกของรางวัล', value: 'catalog' },
   { label: 'ประวัติแต้ม',   value: 'history' },
 ];
 
-const POINTS = 320;
+const THAI_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+function fmtDate(dateStr) {
+  const d = new Date(dateStr);
+  return `${d.getDate()} ${THAI_MONTHS[d.getMonth()]}`;
+}
+function activityLabel(a) {
+  if (a.type === 'daily_login') return `เข้าสู่ระบบต่อเนื่อง (วันที่ ${a.streak_day ?? '-'})`;
+  return a.type;
+}
 
-export default function RewardsScreen() {
+export default function RewardsScreen({ user }) {
   const [tab, setTab] = useState('catalog');
+  const [activities, setActivities] = useState([]);
+
+  const points = user?.points ?? 0;
+  const streak = user?.login_streak ?? 0;
+
+  useEffect(() => {
+    if (!user?.id) return;
+    try {
+      supabase
+        .from('point_activities')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(30)
+        .then(({ data }) => setActivities(data || []));
+    } catch (e) {
+      console.warn('[rewards] activities fetch failed:', e?.message);
+    }
+  }, [user?.id]);
 
   return (
     <div style={{ background: 'var(--gradient-sky)', minHeight: '100%', paddingBottom: 24 }}>
@@ -35,11 +56,18 @@ export default function RewardsScreen() {
           <div style={{ font: 'var(--weight-medium) 13px var(--font-base)', opacity: .9 }}>แต้มสะสมของคุณ</div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 4 }}>
             <Star width={26} height={26} fill="#fff" />
-            <span style={{ font: '800 42px var(--font-display)' }}>{POINTS}</span>
+            <span style={{ font: '800 42px var(--font-display)' }}>{points}</span>
           </div>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 6, background: 'rgba(255,255,255,.18)', padding: '4px 12px', borderRadius: 999 }}>
-            <Medal width={15} height={15} />
-            <span style={{ font: 'var(--weight-semibold) 12px var(--font-base)' }}>สมาชิก Silver</span>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(255,255,255,.18)', padding: '4px 12px', borderRadius: 999 }}>
+              <Medal width={15} height={15} />
+              <span style={{ font: 'var(--weight-semibold) 12px var(--font-base)' }}>สมาชิก Silver</span>
+            </span>
+            {streak > 0 && (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(255,255,255,.18)', padding: '4px 12px', borderRadius: 999 }}>
+                <span style={{ font: 'var(--weight-semibold) 12px var(--font-base)' }}>🔥 เข้าระบบต่อเนื่อง {streak} วัน</span>
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -51,7 +79,7 @@ export default function RewardsScreen() {
       {tab === 'catalog' ? (
         <div style={{ padding: '16px 16px 0', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           {CATALOG.map((r, i) => {
-            const can = POINTS >= r.pts;
+            const can = points >= r.pts;
             return (
               <Card key={i} padded={false} style={{ overflow: 'hidden' }}>
                 <div style={{ height: 84, background: i % 2 ? 'var(--surface-green)' : 'var(--surface-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
@@ -73,20 +101,28 @@ export default function RewardsScreen() {
         </div>
       ) : (
         <div style={{ padding: '16px 16px 0' }}>
-          <Card padded={false} style={{ overflow: 'hidden' }}>
-            {HISTORY.map((h, i, arr) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderBottom: i < arr.length - 1 ? '1px solid var(--gray-100)' : 'none' }}>
-                <span style={{ width: 38, height: 38, borderRadius: 10, background: h.pts > 0 ? 'var(--green-100)' : 'var(--blue-100)', color: h.pts > 0 ? 'var(--green-700)' : 'var(--blue-600)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
-                  {h.pts > 0 ? <Plus width={18} height={18} /> : <Gift width={18} height={18} />}
-                </span>
-                <div style={{ flex: 1 }}>
-                  <div style={{ font: 'var(--weight-medium) 14px var(--font-base)', color: 'var(--text-body)' }}>{h.name}</div>
-                  <div style={{ font: 'var(--type-caption)', color: 'var(--text-faint)' }}>{h.when}</div>
+          {activities.length === 0 ? (
+            <Card style={{ textAlign: 'center', padding: 28 }}>
+              <div style={{ fontSize: 40, marginBottom: 10 }}>⭐</div>
+              <div style={{ font: 'var(--weight-bold) 15px var(--font-display)', color: 'var(--text-heading)' }}>ยังไม่มีประวัติแต้ม</div>
+              <div style={{ font: 'var(--type-body)', color: 'var(--text-muted)', marginTop: 6 }}>เข้าแอปทุกวันเพื่อรับแต้มสะสม</div>
+            </Card>
+          ) : (
+            <Card padded={false} style={{ overflow: 'hidden' }}>
+              {activities.map((h, i, arr) => (
+                <div key={h.id ?? i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderBottom: i < arr.length - 1 ? '1px solid var(--gray-100)' : 'none' }}>
+                  <span style={{ width: 38, height: 38, borderRadius: 10, background: h.points > 0 ? 'var(--green-100)' : 'var(--blue-100)', color: h.points > 0 ? 'var(--green-700)' : 'var(--blue-600)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
+                    {h.points > 0 ? <Plus width={18} height={18} /> : <Gift width={18} height={18} />}
+                  </span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ font: 'var(--weight-medium) 14px var(--font-base)', color: 'var(--text-body)' }}>{activityLabel(h)}</div>
+                    <div style={{ font: 'var(--type-caption)', color: 'var(--text-faint)' }}>{fmtDate(h.created_at)}</div>
+                  </div>
+                  <span style={{ font: 'var(--weight-bold) 15px var(--font-base)', color: h.points > 0 ? 'var(--green-600)' : 'var(--text-muted)' }}>{h.points > 0 ? '+' : ''}{h.points}</span>
                 </div>
-                <span style={{ font: 'var(--weight-bold) 15px var(--font-base)', color: h.pts > 0 ? 'var(--green-600)' : 'var(--text-muted)' }}>{h.pts > 0 ? '+' : ''}{h.pts}</span>
-              </div>
-            ))}
-          </Card>
+              ))}
+            </Card>
+          )}
         </div>
       )}
     </div>
