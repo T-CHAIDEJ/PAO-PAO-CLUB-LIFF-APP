@@ -54,7 +54,7 @@ export default function SizeChartScreen({ go, currentKg = 8.5 }) {
 
         <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
           <Badge variant="green">●</Badge>
-          <span style={{ font: 'var(--type-body-sm)', color: 'var(--text-muted)' }}>แถบสีเขียวคือไซส์ที่แนะนำสำหรับน้องเปา ({currentKg} กก.)</span>
+          <span style={{ font: 'var(--type-body-sm)', color: 'var(--text-muted)' }}>แถบสีเขียวคือไซส์ที่แนะนำสำหรับลูกน้อย ({currentKg} กก.)</span>
         </div>
 
         <div style={{ marginTop: 16 }}>

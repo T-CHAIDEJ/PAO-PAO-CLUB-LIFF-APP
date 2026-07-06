@@ -196,7 +196,7 @@ function DiaperPanel({ go, child }) {
 }
 
 export function DiaperScreen({ go, child }) {
-  const childName = child?.name || 'น้องเปา';
+  const childName = child?.name || 'ลูกน้อย';
   return (
     <div style={{ background: 'var(--gradient-sky)', minHeight: '100%', paddingBottom: 24 }}>
       <div style={{ position: 'relative', background: 'var(--gradient-hero)', padding: '20px 20px 26px', color: '#fff', borderBottomLeftRadius: 28, borderBottomRightRadius: 28 }}>
@@ -232,7 +232,7 @@ function calcAge(birthdate) {
 }
 
 export default function TrackerScreen({ child }) {
-  const childName  = child?.name     || 'น้องเปา';
+  const childName  = child?.name     || 'ลูกน้อย';
   const genderLabel = child?.gender === 'male' ? '👦 ชาย' : child?.gender === 'female' ? '👧 หญิง' : null;
   const birthdateLabel = formatBirthdate(child?.birth_date);
   const ageLabel = calcAge(child?.birth_date);
