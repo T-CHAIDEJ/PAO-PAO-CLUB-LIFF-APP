@@ -257,20 +257,13 @@ export default function OnboardingScreen({ lineProfile, initialSegment, onComple
       // Cache the userId so future boots can find this user even if LIFF fails
       localStorage.setItem('pp_line_uid', userData.line_uid);
 
-      // Also record a permanent audit entry (008_consent is an append-only log,
-      // separate from the is_consented/consented_at summary on 001_users).
-      // Skipped entirely for guests — no consent event ever happened.
-      // Non-fatal if it fails — the summary fields above already persisted.
-      if (segment !== 'C') {
-        try {
-          await supabase.from('008_consent').insert({
-            line_uid: userData.line_uid,
-            is_accepted: true,
-            consent_version: PDPA_VERSION,
-            accepted_at: consent?.at ?? new Date().toISOString(),
-          });
-        } catch (e) { console.warn('[onboarding] consent audit log failed:', e?.message); }
-      }
+      // NOTE: 008_consent is a catalog of consent/policy VERSIONS (e.g. v1, v2
+      // as the PDPA text changes over time) — not a per-user acceptance log.
+      // Per-user acceptance already lives on 001_users (is_consented/
+      // consented_at/consent_version), so there's nothing to write here.
+      // We do still need to confirm with Dev B how the app should look up
+      // "which version is currently active" from 008_consent — for now
+      // PDPA_VERSION is hardcoded. See flagged question.
 
       // is_pregnant/due_date now live on 003_children, so segment A also needs
       // a children row (with a placeholder name — the schema requires `name`
