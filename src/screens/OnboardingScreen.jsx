@@ -218,14 +218,17 @@ export default function OnboardingScreen({ lineProfile, initialSegment, onComple
         ?? (cachedUid && cachedUid !== 'dev_user_001' ? cachedUid : null)
         ?? `anon_${Date.now()}`;
 
-      // NOTE: 001_users has no `segment` column — using `role` as a stand-in
-      // until Dev B confirms the intended field. See flagged questions.
+      // `role` on 001_users is an account privilege tier (guest/member/staff/admin),
+      // NOT our onboarding segment. Segment C ("skip for now") stays a guest;
+      // completing segment A or B makes them a member. Whether the account is
+      // pregnant vs. already has a child is derived from children.is_pregnant,
+      // not stored on the user at all — see ProfileScreen/HomeScreen.
       const userPayload = {
         line_uid: lineUserId,
         display_name: lineProfile?.displayName ?? '',
         picture_url: lineProfile?.pictureUrl ?? null,
         email: lineProfile?.email ?? null,
-        role: segment,
+        role: segment === 'C' ? 'guest' : 'member',
         parent_name: formData.motherName ?? null,
       };
 
@@ -277,7 +280,7 @@ export default function OnboardingScreen({ lineProfile, initialSegment, onComple
       onComplete(userData);
     } catch (err) {
       console.error('[onboarding] save error:', err);
-      onComplete({ line_uid: lineProfile?.userId, role: segment, parent_name: formData.motherName ?? null });
+      onComplete({ line_uid: lineProfile?.userId, role: segment === 'C' ? 'guest' : 'member', parent_name: formData.motherName ?? null });
     } finally {
       setLoading(false);
     }

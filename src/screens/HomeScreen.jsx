@@ -242,7 +242,7 @@ function BannerCarousel({ banners }) {
 }
 
 export default function HomeScreen({ go, user, child, goOnboarding, goProfile, checkin, onStreakSeen }) {
-  const isGuest = !user || user.role === 'C';
+  const isGuest = !user || user.role === 'guest';
   const pts = user?.points ?? 0;
   const [latestRecord, setLatestRecord] = useState(null);
   const [showStreak, setShowStreak] = useState(false);

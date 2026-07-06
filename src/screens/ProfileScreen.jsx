@@ -13,15 +13,21 @@ function calcAge(birthdate) {
   return months === 0 ? `${years} ปี` : `${years} ปี ${months} เดือน`;
 }
 
-const SEGMENT_LABEL = { A: 'คุณแม่ตั้งครรภ์', B: 'คุณแม่มือใหม่', C: 'สมาชิกทั่วไป' };
-
 export default function ProfileScreen({ go, user, child }) {
   const [push,  setPush]  = useState(true);
   const [promo, setPromo] = useState(false);
 
   const name = user?.parent_name || user?.display_name || 'คุณแม่';
   const points = user?.points ?? 0;
-  const segLabel = SEGMENT_LABEL[user?.role] || 'สมาชิก';
+  // `role` on 001_users is guest/member/staff/admin, not our pregnancy/newborn
+  // segment — that lives on children.is_pregnant instead.
+  const segLabel = user?.role === 'guest'
+    ? 'สมาชิกทั่วไป'
+    : child?.is_pregnant
+      ? 'คุณแม่ตั้งครรภ์'
+      : child
+        ? 'คุณแม่มือใหม่'
+        : 'สมาชิก';
   const toGold = Math.max(0, 500 - points);
   const childAge = calcAge(child?.birth_date);
   const childNote = child ? `${child.name}${childAge ? ` · ${childAge}` : ''}` : 'ยังไม่ได้เพิ่มข้อมูล';
