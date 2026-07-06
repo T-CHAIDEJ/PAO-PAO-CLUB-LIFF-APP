@@ -46,7 +46,9 @@ function StepWelcome({ onNext }) {
   );
 }
 
-function StepPDPA({ onNext }) {
+const PDPA_VERSION = 'v1';
+
+function StepPDPA({ onAccept }) {
   const [checked, setChecked] = useState(false);
   return (
     <div style={{ display: 'flex', flexDirection: 'column', padding: '32px 24px', gap: 24 }}>
@@ -70,7 +72,7 @@ function StepPDPA({ onNext }) {
           </span>
         </label>
       </Card>
-      <Button variant="primary" fullWidth disabled={!checked} onClick={onNext}>ยืนยัน</Button>
+      <Button variant="primary" fullWidth disabled={!checked} onClick={() => onAccept({ accepted: true, at: new Date().toISOString() })}>ยืนยัน</Button>
     </div>
   );
 }
@@ -200,9 +202,12 @@ function SegmentForm({ segment, lineProfile, onSubmit, loading }) {
 }
 
 export default function OnboardingScreen({ lineProfile, initialSegment, onComplete }) {
-  const [step, setStep] = useState(initialSegment ? 'form' : 'welcome');
+  // PDPA consent is required regardless of entry point — even the Home-screen
+  // shortcut buttons that pre-pick a segment must still pass through it.
+  const [step, setStep] = useState(initialSegment ? 'pdpa' : 'welcome');
   const [segment, setSegment] = useState(initialSegment ?? null);
   const [loading, setLoading] = useState(false);
+  const [consent, setConsent] = useState(null);
 
   const handlePickSegment = (seg) => {
     setSegment(seg);
@@ -230,6 +235,9 @@ export default function OnboardingScreen({ lineProfile, initialSegment, onComple
         email: lineProfile?.email ?? null,
         role: segment === 'C' ? 'guest' : 'member',
         parent_name: formData.motherName ?? null,
+        is_consented: consent?.accepted ?? true,
+        consented_at: consent?.at ?? new Date().toISOString(),
+        consent_version: PDPA_VERSION,
       };
 
       const { data: userData, error: userError } = await supabase
@@ -242,6 +250,18 @@ export default function OnboardingScreen({ lineProfile, initialSegment, onComple
 
       // Cache the userId so future boots can find this user even if LIFF fails
       localStorage.setItem('pp_line_uid', userData.line_uid);
+
+      // Also record a permanent audit entry (008_consent is an append-only log,
+      // separate from the is_consented/consented_at summary on 001_users).
+      // Non-fatal if it fails — the summary fields above already persisted.
+      try {
+        await supabase.from('008_consent').insert({
+          line_uid: userData.line_uid,
+          is_accepted: consent?.accepted ?? true,
+          consent_version: PDPA_VERSION,
+          accepted_at: consent?.at ?? new Date().toISOString(),
+        });
+      } catch (e) { console.warn('[onboarding] consent audit log failed:', e?.message); }
 
       // is_pregnant/due_date now live on 003_children, so segment A also needs
       // a children row (with a placeholder name — the schema requires `name`
@@ -289,7 +309,16 @@ export default function OnboardingScreen({ lineProfile, initialSegment, onComple
   return (
     <div style={{ width: '100%', height: '100%', overflowY: 'auto', background: 'var(--gradient-sky)' }}>
       {step === 'welcome' && <StepWelcome onNext={() => setStep('pdpa')} />}
-      {step === 'pdpa' && <StepPDPA onNext={() => setStep('segment')} />}
+      {step === 'pdpa' && (
+        <StepPDPA
+          onAccept={(c) => {
+            setConsent(c);
+            // If a segment was already pre-picked (Home-screen shortcut buttons),
+            // skip the segment picker and go straight to the form.
+            setStep(segment ? 'form' : 'segment');
+          }}
+        />
+      )}
       {step === 'segment' && <SegmentPicker onPick={handlePickSegment} />}
       {step === 'form' && (
         <SegmentForm
