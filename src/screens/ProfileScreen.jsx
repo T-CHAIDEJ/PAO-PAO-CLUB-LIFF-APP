@@ -19,11 +19,11 @@ export default function ProfileScreen({ go, user, child }) {
   const [push,  setPush]  = useState(true);
   const [promo, setPromo] = useState(false);
 
-  const name = user?.mother_name || user?.display_name || 'คุณแม่';
+  const name = user?.parent_name || user?.display_name || 'คุณแม่';
   const points = user?.points ?? 0;
-  const segLabel = SEGMENT_LABEL[user?.segment] || 'สมาชิก';
+  const segLabel = SEGMENT_LABEL[user?.role] || 'สมาชิก';
   const toGold = Math.max(0, 500 - points);
-  const childAge = calcAge(child?.birthdate);
+  const childAge = calcAge(child?.birth_date);
   const childNote = child ? `${child.name}${childAge ? ` · ${childAge}` : ''}` : 'ยังไม่ได้เพิ่มข้อมูล';
 
   const LINKS = [

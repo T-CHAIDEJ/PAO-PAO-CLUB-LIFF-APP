@@ -4,17 +4,20 @@ import { Card, Badge } from '../components/index.jsx';
 import { SkyDeco } from '../shared/index.jsx';
 import { supabase } from '../lib/supabase.js';
 
-// Map a DB row (snake_case) → the shape the UI components expect (camelCase)
+// Map a DB row (snake_case) → the shape the UI components expect (camelCase).
+// NOTE: 014_articles dropped category_color/category_bg/read_min — using fixed
+// defaults here so the UI still renders sensibly. Flagged for Dev B: confirm
+// these were intentionally dropped, or if per-article styling should come back.
 function mapArticle(r) {
   return {
     id: r.id,
     title: r.title,
     category: r.category,
-    categoryColor: r.category_color,
-    categoryBg: r.category_bg,
-    readMin: r.read_min,
-    heroImage: r.hero_image,
-    sections: r.sections || [],
+    categoryColor: 'var(--blue-600)',
+    categoryBg: 'var(--blue-100)',
+    readMin: 3,
+    heroImage: r.art_image,
+    sections: r.content || [],
   };
 }
 
@@ -184,10 +187,10 @@ export default function KnowledgeScreen() {
     (async () => {
       try {
         const { data, error } = await supabase
-          .from('articles')
+          .from('014_articles')
           .select('*')
-          .eq('published', true)
-          .order('sort_order', { ascending: true });
+          .eq('is_active', true)
+          .order('art_no', { ascending: true });
         if (error) throw error;
         if (alive) setArticles((data || []).map(mapArticle));
       } catch (e) {

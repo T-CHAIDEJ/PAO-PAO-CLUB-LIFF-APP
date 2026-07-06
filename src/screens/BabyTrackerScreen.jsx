@@ -484,15 +484,15 @@ function AddRecordPanel({ childId, onCancel, onSaved }) {
     setSaving(true); setError(null);
     try {
       const payload = {
-        child_id: childId, recorded_at: date,
+        child_id: childId, recorded_date: date,
         weight_kg: parseFloat(weight), height_cm: parseFloat(height),
         thigh_cm:  thigh  ? parseFloat(thigh)  : null,
         waist_cm:  waist  ? parseFloat(waist)  : null,
       };
-      const { data, error: err } = await supabase.from('growth_records').insert(payload).select().single();
+      const { data, error: err } = await supabase.from('004_growth').insert(payload).select().single();
       if (err) throw err;
       onSaved({
-        id: data.id, date: data.recorded_at,
+        id: data.id, date: data.recorded_date,
         weightKg: data.weight_kg, heightCm: data.height_cm,
         thighCm: data.thigh_cm, waistCm: data.waist_cm,
       });
@@ -637,7 +637,7 @@ export function GrowthPanel({ child }) {
   const [chartTab, setChartTab] = useState('wa');
 
   const gender    = child?.gender   || 'female';
-  const birthDate = child?.birthdate || new Date().toISOString().slice(0, 10);
+  const birthDate = child?.birth_date || new Date().toISOString().slice(0, 10);
 
   useEffect(() => {
     if (!child?.id) { setLoading(false); return; }
@@ -645,11 +645,11 @@ export function GrowthPanel({ child }) {
       setLoading(true);
       try {
         const { data, error } = await supabase
-          .from('growth_records').select('*')
-          .eq('child_id', child.id).order('recorded_at', { ascending: true });
+          .from('004_growth').select('*')
+          .eq('child_id', child.child_id).order('recorded_date', { ascending: true });
         if (error) throw error;
         setRecords((data || []).map(r => ({
-          id: r.id, date: r.recorded_at,
+          id: r.id, date: r.recorded_date,
           weightKg: r.weight_kg, heightCm: r.height_cm,
           thighCm: r.thigh_cm, waistCm: r.waist_cm,
         })));
@@ -682,7 +682,7 @@ export function GrowthPanel({ child }) {
   );
 
   if (panelView === 'add') {
-    return <AddRecordPanel childId={child.id} onCancel={() => setPanelView('overview')} onSaved={handleSaved} />;
+    return <AddRecordPanel childId={child.child_id} onCancel={() => setPanelView('overview')} onSaved={handleSaved} />;
   }
 
   if (records.length === 0) return (

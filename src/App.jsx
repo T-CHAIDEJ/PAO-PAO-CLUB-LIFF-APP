@@ -31,11 +31,11 @@ export default function App() {
   useEffect(() => {
     async function lookupAndGo(userId, profile) {
       const { data: users } = await supabase
-        .from('users').select('*').eq('line_user_id', userId).single();
+        .from('001_users').select('*').eq('line_uid', userId).single();
       if (users) {
         let merged = users;
         try {
-          const chk = await checkinDaily(users.id);
+          const chk = await checkinDaily(users.line_uid);
           if (chk && chk.points != null) merged = { ...users, points: chk.points, login_streak: chk.streak ?? users.login_streak };
           if (chk && chk.awarded != null) setCheckin(chk);
         } catch (e) { /* points are optional — never block boot */ }
@@ -47,18 +47,16 @@ export default function App() {
             if (profile.displayName) patch.display_name = profile.displayName;
             if (profile.pictureUrl) patch.picture_url = profile.pictureUrl;
             if (Object.keys(patch).length) {
-              await supabase.from('users').update(patch).eq('id', users.id);
+              await supabase.from('001_users').update(patch).eq('line_uid', users.line_uid);
               merged = { ...merged, ...patch };
             }
           }
         } catch (e) { /* non-critical */ }
         setUserData(merged);
-        if (users.id) {
-          const { data: children } = await supabase
-            .from('children').select('*').eq('user_id', users.id)
-            .order('birthdate', { ascending: false }).limit(1).single();
-          setChildData(children ?? null);
-        }
+        const { data: children } = await supabase
+          .from('003_children').select('*').eq('line_uid', users.line_uid)
+          .order('birth_date', { ascending: false }).limit(1).single();
+        setChildData(children ?? null);
         setScreen('home');
       } else {
         setScreen('onboarding');
@@ -99,8 +97,8 @@ export default function App() {
   const handleOnboardingComplete = async (data) => {
     let merged = data;
     try {
-      if (data?.id) {
-        const chk = await checkinDaily(data.id);
+      if (data?.line_uid) {
+        const chk = await checkinDaily(data.line_uid);
         if (chk && chk.points != null) merged = { ...data, points: chk.points, login_streak: chk.streak ?? data.login_streak };
         if (chk && chk.awarded != null) setCheckin(chk);
       }
@@ -108,13 +106,13 @@ export default function App() {
     setUserData(merged);
 
     // Load the child that onboarding just created so Home shows it immediately
-    if (data?.id) {
+    if (data?.line_uid) {
       try {
         const { data: children } = await supabase
-          .from('children').select('*').eq('user_id', data.id)
-          .order('birthdate', { ascending: false }).limit(1).single();
+          .from('003_children').select('*').eq('line_uid', data.line_uid)
+          .order('birth_date', { ascending: false }).limit(1).single();
         setChildData(children ?? null);
-      } catch (e) { /* segment A/C have no child */ }
+      } catch (e) { /* segment C has no child */ }
     }
 
     setScreen('home');
@@ -163,7 +161,7 @@ export default function App() {
   if      (screen === 'home')      view = <HomeScreen go={go} user={userData} child={childData} goOnboarding={goOnboarding} goProfile={() => go('profile')} checkin={checkin} onStreakSeen={() => setCheckin(null)} />;
   else if (screen === 'diaper')    view = <DiaperScreen go={go} child={childData} />;
   else if (screen === 'tracker')   view = <TrackerScreen child={childData} />;
-  else if (screen === 'size')      view = <SizeChartScreen go={go} currentKg={childData?.weight_kg ?? 8.5} />;
+  else if (screen === 'size')      view = <SizeChartScreen go={go} currentKg={childData?.birth_weight ?? 8.5} />;
   else if (screen === 'knowledge') view = <KnowledgeScreen go={go} />;
   else if (screen === 'rewards')   view = <RewardsScreen go={go} user={userData} />;
   else if (screen === 'profile')   view = <ProfileScreen go={go} user={userData} child={childData} />;

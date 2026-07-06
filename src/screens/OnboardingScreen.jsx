@@ -218,44 +218,56 @@ export default function OnboardingScreen({ lineProfile, initialSegment, onComple
         ?? (cachedUid && cachedUid !== 'dev_user_001' ? cachedUid : null)
         ?? `anon_${Date.now()}`;
 
+      // NOTE: 001_users has no `segment` column — using `role` as a stand-in
+      // until Dev B confirms the intended field. See flagged questions.
       const userPayload = {
-        line_user_id: lineUserId,
+        line_uid: lineUserId,
         display_name: lineProfile?.displayName ?? '',
         picture_url: lineProfile?.pictureUrl ?? null,
         email: lineProfile?.email ?? null,
-        segment,
-        mother_name: formData.motherName ?? null,
-        edd: formData.edd ?? null,
+        role: segment,
+        parent_name: formData.motherName ?? null,
       };
 
       const { data: userData, error: userError } = await supabase
-        .from('users')
-        .upsert(userPayload, { onConflict: 'line_user_id' })
+        .from('001_users')
+        .upsert(userPayload, { onConflict: 'line_uid' })
         .select()
         .single();
 
       if (userError) throw userError;
 
       // Cache the userId so future boots can find this user even if LIFF fails
-      localStorage.setItem('pp_line_uid', userData.line_user_id);
+      localStorage.setItem('pp_line_uid', userData.line_uid);
 
-      if (segment === 'B' && formData.childName) {
+      // is_pregnant/due_date now live on 003_children, so segment A also needs
+      // a children row (with a placeholder name — the schema requires `name`
+      // NOT NULL even though there's no baby name yet). Flagged for Dev B.
+      if (segment === 'A') {
+        await supabase.from('003_children').insert({
+          line_uid: userData.line_uid,
+          name: 'ลูกในท้อง',
+          is_pregnant: true,
+          due_date: formData.edd ?? null,
+        });
+      } else if (segment === 'B' && formData.childName) {
         const childPayload = {
-          user_id: userData.id,
+          line_uid: userData.line_uid,
           name: formData.childName,
           gender: formData.childGender,
-          birthdate: formData.birthdate,
-          weight_kg: formData.weightKg,
-          height_cm: formData.heightCm,
+          birth_date: formData.birthdate,
+          birth_weight: formData.weightKg,
+          birth_height: formData.heightCm,
+          is_pregnant: false,
         };
         const { data: childData, error: childError } = await supabase
-          .from('children').insert(childPayload).select().single();
+          .from('003_children').insert(childPayload).select().single();
         if (childError) throw childError;
 
         if (childData && formData.weightKg && formData.heightCm) {
-          await supabase.from('growth_records').insert({
-            child_id: childData.id,
-            recorded_at: formData.birthdate,
+          await supabase.from('004_growth').insert({
+            child_id: childData.child_id,
+            recorded_date: formData.birthdate,
             weight_kg: formData.weightKg,
             height_cm: formData.heightCm,
           });
@@ -265,7 +277,7 @@ export default function OnboardingScreen({ lineProfile, initialSegment, onComple
       onComplete(userData);
     } catch (err) {
       console.error('[onboarding] save error:', err);
-      onComplete({ line_user_id: lineProfile?.userId, segment, mother_name: formData.motherName ?? null });
+      onComplete({ line_uid: lineProfile?.userId, role: segment, parent_name: formData.motherName ?? null });
     } finally {
       setLoading(false);
     }

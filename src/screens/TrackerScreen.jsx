@@ -30,13 +30,13 @@ function DiaperPanel({ go, child }) {
   const [loadingWeight, setLoadingWeight] = useState(true);
 
   useEffect(() => {
-    if (!child?.id) { setLoadingWeight(false); return; }
+    if (!child?.child_id) { setLoadingWeight(false); return; }
     async function fetchLatest() {
       const { data } = await supabase
-        .from('growth_records')
-        .select('weight_kg, thigh_cm, waist_cm, recorded_at')
-        .eq('child_id', child.id)
-        .order('recorded_at', { ascending: false })
+        .from('004_growth')
+        .select('weight_kg, thigh_cm, waist_cm, recorded_date')
+        .eq('child_id', child.child_id)
+        .order('recorded_date', { ascending: false })
         .limit(1)
         .single();
       setLatestKg(data?.weight_kg ?? null);
@@ -46,7 +46,9 @@ function DiaperPanel({ go, child }) {
     fetchLatest();
   }, [child?.id]);
 
-  const kg = latestKg ?? child?.weight_kg ?? null;
+  // NOTE: 003_children only has birth_weight (birth-time), not a "current
+  // weight" cache — so there's no sensible fallback if no growth record exists yet.
+  const kg = latestKg;
   const size = kg ? recommendSize(kg) : null;
 
   function calcAge(birthdate) {
@@ -59,7 +61,7 @@ function DiaperPanel({ go, child }) {
     if (years === 0) return `${months} เดือน`;
     return months === 0 ? `${years} ปี` : `${years} ปี ${months} เดือน`;
   }
-  const ageLabel = calcAge(child?.birthdate);
+  const ageLabel = calcAge(child?.birth_date);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -232,8 +234,8 @@ function calcAge(birthdate) {
 export default function TrackerScreen({ child }) {
   const childName  = child?.name     || 'น้องเปา';
   const genderLabel = child?.gender === 'male' ? '👦 ชาย' : child?.gender === 'female' ? '👧 หญิง' : null;
-  const birthdateLabel = formatBirthdate(child?.birthdate);
-  const ageLabel = calcAge(child?.birthdate);
+  const birthdateLabel = formatBirthdate(child?.birth_date);
+  const ageLabel = calcAge(child?.birth_date);
 
   return (
     <div style={{ background: 'var(--gradient-sky)', minHeight: '100%', paddingBottom: 24 }}>

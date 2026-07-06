@@ -25,8 +25,8 @@ const ACTIONS = [
 ];
 
 function GuestHero({ user }) {
-  const suffix = user?.line_user_id
-    ? user.line_user_id.slice(-5).toUpperCase()
+  const suffix = user?.line_uid
+    ? user.line_uid.slice(-5).toUpperCase()
     : Math.random().toString(36).slice(-5).toUpperCase();
   return (
     <div style={{ position: 'relative', marginTop: 4 }}>
@@ -40,7 +40,7 @@ function GuestHero({ user }) {
 }
 
 function MemberHero({ user }) {
-  const name = user?.mother_name || user?.display_name || 'คุณแม่';
+  const name = user?.parent_name || user?.display_name || 'คุณแม่';
   return (
     <div style={{ position: 'relative', marginTop: 18 }}>
       <div style={{ font: 'var(--weight-medium) 14px var(--font-base)', opacity: .9 }}>สวัสดีค่ะ 👶</div>
@@ -74,11 +74,11 @@ function BabyInfoCard({ child, latestKg, latestCm, go }) {
   const statBg = isMale ? 'var(--blue-100)' : isFemale ? '#fce7f3' : 'var(--surface-soft)';
   const statColor = isMale ? 'var(--blue-600)' : isFemale ? '#be185d' : 'var(--text-heading)';
 
-  const childAge = calcAge(child?.birthdate);
+  const childAge = calcAge(child?.birth_date);
 
   const THAI_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
-  const birthdateLabel = child?.birthdate ? (() => {
-    const d = new Date(child.birthdate);
+  const birthdateLabel = child?.birth_date ? (() => {
+    const d = new Date(child.birth_date);
     return `${d.getDate()} ${THAI_MONTHS[d.getMonth()]} ${d.getFullYear() + 543}`;
   })() : null;
 
@@ -223,10 +223,10 @@ function BannerCarousel({ banners }) {
             href={b.link_url || '#'}
             target="_blank"
             rel="noopener noreferrer"
-            style={{ scrollSnapAlign: 'center', flex: '0 0 86%', height: 132, borderRadius: 20, overflow: 'hidden', display: 'flex', flexDirection: 'column', justifyContent: 'center', textDecoration: 'none', position: 'relative', boxShadow: 'var(--shadow-md)', background: b.image_url ? 'var(--surface-soft)' : (b.bg_color || 'var(--gradient-green)') }}
+            style={{ scrollSnapAlign: 'center', flex: '0 0 86%', height: 132, borderRadius: 20, overflow: 'hidden', display: 'flex', flexDirection: 'column', justifyContent: 'center', textDecoration: 'none', position: 'relative', boxShadow: 'var(--shadow-md)', background: b.banner_img ? 'var(--surface-soft)' : 'var(--gradient-green)' }}
           >
-            {b.image_url ? (
-              <img src={b.image_url} alt={b.title || 'โปรโมชัน'} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+            {b.banner_img ? (
+              <img src={b.banner_img} alt={b.title || 'โปรโมชัน'} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
             ) : (
               <div style={{ padding: '0 22px', color: '#fff' }}>
                 <div style={{ font: '800 18px var(--font-display)' }}>{b.title}</div>
@@ -242,7 +242,7 @@ function BannerCarousel({ banners }) {
 }
 
 export default function HomeScreen({ go, user, child, goOnboarding, goProfile, checkin, onStreakSeen }) {
-  const isGuest = !user || user.segment === 'C';
+  const isGuest = !user || user.role === 'C';
   const pts = user?.points ?? 0;
   const [latestRecord, setLatestRecord] = useState(null);
   const [showStreak, setShowStreak] = useState(false);
@@ -258,14 +258,10 @@ export default function HomeScreen({ go, user, child, goOnboarding, goProfile, c
     (async () => {
       try {
         const { data } = await supabase
-          .from('banners').select('*')
-          .eq('published', true)
-          .order('sort_order', { ascending: true });
-        const now = Date.now();
-        const active = (data || []).filter(b =>
-          (!b.starts_at || new Date(b.starts_at).getTime() <= now) &&
-          (!b.ends_at || new Date(b.ends_at).getTime() >= now));
-        if (alive) setBanners(active);
+          .from('015_banners').select('*')
+          .eq('is_active', true)
+          .order('banner_no', { ascending: true });
+        if (alive) setBanners(data || []);
       } catch (e) { console.warn('[home] banners fetch failed:', e?.message); }
     })();
     return () => { alive = false; };
@@ -274,21 +270,24 @@ export default function HomeScreen({ go, user, child, goOnboarding, goProfile, c
   const closeStreak = () => { setShowStreak(false); onStreakSeen && onStreakSeen(); };
 
   useEffect(() => {
-    if (!child?.id) return;
+    if (!child?.child_id) return;
     supabase
-      .from('growth_records')
-      .select('weight_kg, height_cm, recorded_at')
-      .eq('child_id', child.id)
-      .order('recorded_at', { ascending: false })
+      .from('004_growth')
+      .select('weight_kg, height_cm, recorded_date')
+      .eq('child_id', child.child_id)
+      .order('recorded_date', { ascending: false })
       .limit(1)
       .single()
       .then(({ data }) => { if (data) setLatestRecord(data); });
   }, [child?.id]);
 
-  const latestKg = latestRecord?.weight_kg ?? child?.weight_kg ?? null;
-  const latestCm = latestRecord?.height_cm ?? child?.height_cm ?? null;
+  // NOTE: 003_children only stores birth_weight/birth_height (birth-time stats),
+  // not a "current weight" cache like the old schema did — so there's no
+  // sensible fallback here anymore. If no growth record exists yet, this is null.
+  const latestKg = latestRecord?.weight_kg ?? null;
+  const latestCm = latestRecord?.height_cm ?? null;
   const sizeRec = latestKg ? recommendSize(latestKg) : null;
-  const childWithRecord = child ? { ...child, _recordedAt: latestRecord?.recorded_at ?? null } : null;
+  const childWithRecord = child ? { ...child, _recordedAt: latestRecord?.recorded_date ?? null } : null;
 
   return (
     <div style={{ background: 'var(--gradient-sky)', minHeight: '100%' }}>

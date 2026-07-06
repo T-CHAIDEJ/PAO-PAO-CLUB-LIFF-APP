@@ -22,8 +22,8 @@ function fmtDate(dateStr) {
   return `${d.getDate()} ${THAI_MONTHS[d.getMonth()]}`;
 }
 function activityLabel(a) {
-  if (a.type === 'daily_login') return `เข้าสู่ระบบต่อเนื่อง (วันที่ ${a.streak_day ?? '-'})`;
-  return a.type;
+  if (a.source === 'daily_login') return `เข้าสู่ระบบต่อเนื่อง (วันที่ ${a.streak_day ?? '-'})`;
+  return a.source;
 }
 
 export default function RewardsScreen({ user }) {
@@ -34,19 +34,19 @@ export default function RewardsScreen({ user }) {
   const streak = user?.login_streak ?? 0;
 
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.line_uid) return;
     try {
       supabase
-        .from('point_activities')
+        .from('006_points')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('line_uid', user.line_uid)
         .order('created_at', { ascending: false })
         .limit(30)
         .then(({ data }) => setActivities(data || []));
     } catch (e) {
       console.warn('[rewards] activities fetch failed:', e?.message);
     }
-  }, [user?.id]);
+  }, [user?.line_uid]);
 
   return (
     <div style={{ background: 'var(--gradient-sky)', minHeight: '100%', paddingBottom: 24 }}>
