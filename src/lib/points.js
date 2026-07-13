@@ -63,5 +63,11 @@ export async function checkinDaily(lineUid) {
     .from('006_points')
     .insert({ line_uid: lineUid, source: 'daily_login', points: award, balance: newBalance, streak_day: dayIndex + 1 });
 
+  // Non-fatal audit trail — 002_user_logs currently rejects anon inserts
+  // (RLS gap, same as 008_consent was), so this silently no-ops for now.
+  try {
+    await supabase.from('002_user_logs').insert({ line_uid: lineUid, action: 'checkin', new_value: String(newStreak) });
+  } catch (e) { console.warn('[points] checkin log failed:', e?.message); }
+
   return { awarded: award, points: newBalance, streak: newStreak, streakDay: dayIndex + 1 };
 }

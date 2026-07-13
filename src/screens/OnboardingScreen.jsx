@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, Button } from '../components/index.jsx';
 import { supabase } from '../lib/supabase.js';
+import { recommendSize } from './TrackerScreen.jsx';
+import { computeStage, PREGNANCY_STAGE } from '../lib/stage.js';
 
 const inputStyle = {
   width: '100%', height: 46, padding: '0 14px', borderRadius: 'var(--radius-md)',
@@ -46,9 +48,10 @@ function StepWelcome({ onNext }) {
   );
 }
 
-const PDPA_VERSION = 'v1';
+const PDPA_VERSION_FALLBACK = 'v1';
+const PDPA_TEXT_FALLBACK = 'เราจะเก็บข้อมูลของคุณเพื่อให้บริการที่ดีขึ้น ข้อมูลจะไม่ถูกเปิดเผยต่อบุคคลที่สาม และจะถูกจัดเก็บอย่างปลอดภัยตามมาตรฐาน PDPA';
 
-function StepPDPA({ onAccept }) {
+function StepPDPA({ onAccept, pdpaText, version }) {
   const [checked, setChecked] = useState(false);
   return (
     <div style={{ display: 'flex', flexDirection: 'column', padding: '32px 24px', gap: 24 }}>
@@ -57,8 +60,7 @@ function StepPDPA({ onAccept }) {
       </div>
       <Card>
         <p style={{ font: 'var(--type-body)', color: 'var(--text-body)', lineHeight: 1.7 }}>
-          เราจะเก็บข้อมูลของคุณเพื่อให้บริการที่ดีขึ้น ข้อมูลจะไม่ถูกเปิดเผยต่อบุคคลที่สาม
-          และจะถูกจัดเก็บอย่างปลอดภัยตามมาตรฐาน PDPA
+          {pdpaText || PDPA_TEXT_FALLBACK}
         </p>
         <label style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 20, cursor: 'pointer' }}>
           <input
@@ -72,7 +74,7 @@ function StepPDPA({ onAccept }) {
           </span>
         </label>
       </Card>
-      <Button variant="primary" fullWidth disabled={!checked} onClick={() => onAccept({ accepted: true, at: new Date().toISOString() })}>ยืนยัน</Button>
+      <Button variant="primary" fullWidth disabled={!checked} onClick={() => onAccept({ accepted: true, at: new Date().toISOString(), version: version || PDPA_VERSION_FALLBACK })}>ยืนยัน</Button>
     </div>
   );
 }
@@ -208,6 +210,23 @@ export default function OnboardingScreen({ lineProfile, initialSegment, onComple
   const [segment, setSegment] = useState(initialSegment ?? null);
   const [loading, setLoading] = useState(false);
   const [consent, setConsent] = useState(null);
+  const [pdpaDoc, setPdpaDoc] = useState(null);
+
+  // 008_consent is Dev B's catalog of policy versions (is_active flags the
+  // current one). Falls back to the hardcoded text/version if empty/unset —
+  // it's empty as of this writing, so this is untested against real rows.
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from('008_consent').select('consent_version, pdpa_text')
+          .eq('is_active', true).limit(1).single();
+        if (alive && data) setPdpaDoc(data);
+      } catch (e) { /* fall back to hardcoded text/version */ }
+    })();
+    return () => { alive = false; };
+  }, []);
 
   const handlePickSegment = (seg) => {
     setSegment(seg);
@@ -243,7 +262,7 @@ export default function OnboardingScreen({ lineProfile, initialSegment, onComple
         // don't record consent for them — only segments A/B actually accepted it.
         is_consented: segment === 'C' ? false : true,
         consented_at: segment === 'C' ? null : (consent?.at ?? new Date().toISOString()),
-        consent_version: segment === 'C' ? null : PDPA_VERSION,
+        consent_version: segment === 'C' ? null : (consent?.version ?? PDPA_VERSION_FALLBACK),
       };
 
       const { data: userData, error: userError } = await supabase
@@ -259,21 +278,30 @@ export default function OnboardingScreen({ lineProfile, initialSegment, onComple
 
       // NOTE: 008_consent is a catalog of consent/policy VERSIONS (e.g. v1, v2
       // as the PDPA text changes over time) — not a per-user acceptance log.
-      // Per-user acceptance already lives on 001_users (is_consented/
-      // consented_at/consent_version), so there's nothing to write here.
-      // We do still need to confirm with Dev B how the app should look up
-      // "which version is currently active" from 008_consent — for now
-      // PDPA_VERSION is hardcoded. See flagged question.
+      // Per-user acceptance lives on 001_users (is_consented/consented_at/
+      // consent_version) above; we just also mirror it as an audit event.
+      // Non-fatal: 002_user_logs currently rejects anon inserts (RLS gap),
+      // flagged separately — this silently no-ops until that's opened.
+      if (segment !== 'C') {
+        try {
+          await supabase.from('002_user_logs').insert({
+            line_uid: userData.line_uid,
+            action: 'consent_accept',
+            new_value: consent?.version ?? PDPA_VERSION_FALLBACK,
+          });
+        } catch (e) { console.warn('[onboarding] consent log failed:', e?.message); }
+      }
 
-      // is_pregnant/due_date now live on 003_children, so segment A also needs
-      // a children row (with a placeholder name — the schema requires `name`
-      // NOT NULL even though there's no baby name yet). Flagged for Dev B.
+      // is_pregnant/due_date live on 003_children. `name` is nullable now
+      // (Dev B confirmed pregnancies don't need a placeholder name anymore).
+      // `stage` is a best-guess bucket pending Dev B confirming exact values
+      // beyond 'pregnancy' (the one value we've actually seen documented).
       if (segment === 'A') {
         await supabase.from('003_children').insert({
           line_uid: userData.line_uid,
-          name: 'ลูกในท้อง',
           is_pregnant: true,
           due_date: formData.edd ?? null,
+          stage: PREGNANCY_STAGE,
         });
       } else if (segment === 'B' && formData.childName) {
         const childPayload = {
@@ -284,6 +312,7 @@ export default function OnboardingScreen({ lineProfile, initialSegment, onComple
           birth_weight: formData.weightKg,
           birth_height: formData.heightCm,
           is_pregnant: false,
+          stage: computeStage(formData.birthdate),
         };
         const { data: childData, error: childError } = await supabase
           .from('003_children').insert(childPayload).select().single();
@@ -295,6 +324,7 @@ export default function OnboardingScreen({ lineProfile, initialSegment, onComple
             recorded_date: formData.birthdate,
             weight_kg: formData.weightKg,
             height_cm: formData.heightCm,
+            diaper_size: recommendSize(formData.weightKg).code,
           });
         }
       }
@@ -314,6 +344,8 @@ export default function OnboardingScreen({ lineProfile, initialSegment, onComple
       {step === 'segment' && <SegmentPicker onPick={handlePickSegment} />}
       {step === 'pdpa' && (
         <StepPDPA
+          pdpaText={pdpaDoc?.pdpa_text}
+          version={pdpaDoc?.consent_version}
           onAccept={(c) => {
             setConsent(c);
             setStep('form');

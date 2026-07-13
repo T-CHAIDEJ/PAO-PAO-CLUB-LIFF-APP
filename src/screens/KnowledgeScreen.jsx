@@ -177,10 +177,11 @@ function ArticleModal({ article, onClose }) {
 
 // ─── Knowledge Screen ─────────────────────────────────────────────────────────
 
-export default function KnowledgeScreen() {
+export default function KnowledgeScreen({ child }) {
   const [activeArticle, setActiveArticle] = useState(null);
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
+  const stage = child?.stage ?? null;
 
   useEffect(() => {
     let alive = true;
@@ -192,7 +193,11 @@ export default function KnowledgeScreen() {
           .eq('is_active', true)
           .order('art_no', { ascending: true });
         if (error) throw error;
-        if (alive) setArticles((data || []).map(mapArticle));
+        // target_stages: empty/null = show to everyone; otherwise only show
+        // if it includes this child's stage.
+        const filtered = (data || []).filter(a =>
+          !a.target_stages || a.target_stages.length === 0 || (stage && a.target_stages.includes(stage)));
+        if (alive) setArticles(filtered.map(mapArticle));
       } catch (e) {
         console.warn('[knowledge] fetch failed:', e?.message);
       } finally {
@@ -200,7 +205,7 @@ export default function KnowledgeScreen() {
       }
     })();
     return () => { alive = false; };
-  }, []);
+  }, [stage]);
 
   return (
     <div style={{ background: 'var(--gradient-sky)', minHeight: '100%', paddingBottom: 24 }}>

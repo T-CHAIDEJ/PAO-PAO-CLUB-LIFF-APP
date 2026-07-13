@@ -261,11 +261,16 @@ export default function HomeScreen({ go, user, child, goOnboarding, goProfile, c
           .from('015_banners').select('*')
           .eq('is_active', true)
           .order('banner_no', { ascending: true });
-        if (alive) setBanners(data || []);
+        // target_stages: empty/null = show to everyone; otherwise only show
+        // if it includes this child's stage.
+        const stage = child?.stage ?? null;
+        const filtered = (data || []).filter(b =>
+          !b.target_stages || b.target_stages.length === 0 || (stage && b.target_stages.includes(stage)));
+        if (alive) setBanners(filtered);
       } catch (e) { console.warn('[home] banners fetch failed:', e?.message); }
     })();
     return () => { alive = false; };
-  }, []);
+  }, [child?.stage]);
 
   const closeStreak = () => { setShowStreak(false); onStreakSeen && onStreakSeen(); };
 

@@ -4,19 +4,7 @@ import { Card } from '../components/index.jsx';
 import { SkyDeco, SectionTitle } from '../shared/index.jsx';
 import { GrowthPanel } from './BabyTrackerScreen.jsx';
 import { supabase } from '../lib/supabase.js';
-
-const PP_SIZES = [
-  { code: 'NB',  min: 0,  max: 5  },
-  { code: 'S',   min: 4,  max: 8  },
-  { code: 'M',   min: 7,  max: 12 },
-  { code: 'L',   min: 9,  max: 14 },
-  { code: 'XL',  min: 12, max: 17 },
-  { code: 'XXL', min: 15, max: 25 },
-];
-
-export function recommendSize(kg) {
-  return PP_SIZES.find(s => kg >= s.min && kg <= s.max) || PP_SIZES[PP_SIZES.length - 1];
-}
+export { recommendSize } from '../lib/diaperSize.js';
 
 const inputStyle = {
   width: '100%', height: 46, padding: '0 14px', borderRadius: 'var(--radius-md)',

@@ -5,6 +5,7 @@ import { SectionTitle } from '../shared/index.jsx';
 import { getWHOData, getWHOValueAtMonth } from '../data/whoData.js';
 import { getWHOWflData, getWHOWflAtLength } from '../data/whoWflData.js';
 import { supabase } from '../lib/supabase.js';
+import { recommendSize } from '../lib/diaperSize.js';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -488,6 +489,7 @@ function AddRecordPanel({ childId, onCancel, onSaved }) {
         weight_kg: parseFloat(weight), height_cm: parseFloat(height),
         thigh_cm:  thigh  ? parseFloat(thigh)  : null,
         waist_cm:  waist  ? parseFloat(waist)  : null,
+        diaper_size: recommendSize(parseFloat(weight)).code,
       };
       const { data, error: err } = await supabase.from('004_growth').insert(payload).select().single();
       if (err) throw err;
