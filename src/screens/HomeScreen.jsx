@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Baby, Ruler, Gift, ScanLine, Bell, ChevronRight, Star, Package, TicketPercent, UserPlus, UserCircle2, Mars, Venus } from 'lucide-react';
 import { Card, Badge, Button, ProgressBar } from '../components/index.jsx';
 import { Wordmark, SectionTitle } from '../shared/index.jsx';
@@ -211,10 +211,13 @@ function ComingSoon({ title, onClose }) {
 }
 
 // Advertising / campaign banners — DB-driven (Admin manages via `banners` table).
-// Single full-width slide, auto-advances every 3s, with dot indicators —
-// tap a dot to jump, tap the banner itself to open its shopping link.
+// All slides sit side by side in one wide track; we translateX the whole
+// track so it genuinely slides (old one sliding out, new one sliding in),
+// not just swapping content in place. Auto-advances every 3s.
 function BannerCarousel({ banners }) {
   const [index, setIndex] = useState(0);
+  const [trackWidth, setTrackWidth] = useState(0);
+  const trackRef = useRef(null);
   const count = banners?.length ?? 0;
 
   useEffect(() => {
@@ -223,30 +226,44 @@ function BannerCarousel({ banners }) {
     return () => clearInterval(t);
   }, [count]);
 
+  useEffect(() => {
+    if (!trackRef.current) return;
+    const el = trackRef.current;
+    const measure = () => setTrackWidth(el.getBoundingClientRect().width);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [count]);
+
   if (!banners || count === 0) return null;
   const safeIndex = index % count;
-  const b = banners[safeIndex];
 
   return (
     <div style={{ padding: '18px 16px 0' }}>
-      <style>{`@keyframes bannerFade{from{opacity:0}to{opacity:1}}`}</style>
-      <a
-        key={b.id}
-        href={b.link_url || '#'}
-        target="_blank"
-        rel="noopener noreferrer"
-        style={{ display: 'block', height: 132, borderRadius: 20, overflow: 'hidden', textDecoration: 'none', position: 'relative', boxShadow: 'var(--shadow-md)', background: b.banner_img ? 'var(--surface-soft)' : 'var(--gradient-green)', animation: 'bannerFade .35s ease' }}
-      >
-        {b.banner_img ? (
-          <img src={b.banner_img} alt={b.title || 'โปรโมชัน'} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
-        ) : (
-          <div style={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '0 22px', color: '#fff' }}>
-            <div style={{ font: '800 18px var(--font-display)' }}>{b.title}</div>
-            {b.subtitle && <div style={{ font: 'var(--weight-medium) 13px var(--font-base)', opacity: .95, marginTop: 4 }}>{b.subtitle}</div>}
-            {b.link_url && <div style={{ marginTop: 12, display: 'inline-block', background: 'rgba(255,255,255,.92)', color: 'var(--text-heading)', font: 'var(--weight-bold) 12px var(--font-base)', padding: '6px 14px', borderRadius: 999 }}>ดูเลย →</div>}
-          </div>
-        )}
-      </a>
+      <div ref={trackRef} style={{ borderRadius: 20, overflow: 'hidden', boxShadow: 'var(--shadow-md)' }}>
+        <div style={{ display: 'flex', transform: `translateX(${-safeIndex * trackWidth}px)`, transition: 'transform .45s cubic-bezier(.4,0,.2,1)' }}>
+          {banners.map((b) => (
+            <a
+              key={b.id}
+              href={b.link_url || '#'}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ flex: `0 0 ${trackWidth}px`, height: 132, textDecoration: 'none', position: 'relative', background: b.banner_img ? 'var(--surface-soft)' : 'var(--gradient-green)' }}
+            >
+              {b.banner_img ? (
+                <img src={b.banner_img} alt={b.title || 'โปรโมชัน'} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                <div style={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '0 22px', color: '#fff' }}>
+                  <div style={{ font: '800 18px var(--font-display)' }}>{b.title}</div>
+                  {b.subtitle && <div style={{ font: 'var(--weight-medium) 13px var(--font-base)', opacity: .95, marginTop: 4 }}>{b.subtitle}</div>}
+                  {b.link_url && <div style={{ marginTop: 12, display: 'inline-block', background: 'rgba(255,255,255,.92)', color: 'var(--text-heading)', font: 'var(--weight-bold) 12px var(--font-base)', padding: '6px 14px', borderRadius: 999 }}>ดูเลย →</div>}
+                </div>
+              )}
+            </a>
+          ))}
+        </div>
+      </div>
       {count > 1 && (
         <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 10 }}>
           {banners.map((_, i) => (
