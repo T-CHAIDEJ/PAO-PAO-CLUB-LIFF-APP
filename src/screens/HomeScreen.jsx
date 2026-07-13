@@ -217,12 +217,17 @@ function ComingSoon({ title, onClose }) {
 function BannerCarousel({ banners }) {
   const [index, setIndex] = useState(0);
   const [trackWidth, setTrackWidth] = useState(0);
+  const [dragOffset, setDragOffset] = useState(0);
   const trackRef = useRef(null);
+  const dragRef = useRef(null); // { startX, dragging, moved }
   const count = banners?.length ?? 0;
 
   useEffect(() => {
     if (count <= 1) return;
-    const t = setInterval(() => setIndex((i) => (i + 1) % count), 3000);
+    const t = setInterval(() => {
+      if (dragRef.current?.dragging) return;
+      setIndex((i) => (i + 1) % count);
+    }, 3000);
     return () => clearInterval(t);
   }, [count]);
 
@@ -238,11 +243,46 @@ function BannerCarousel({ banners }) {
 
   if (!banners || count === 0) return null;
   const safeIndex = index % count;
+  const isDragging = !!dragRef.current?.dragging;
+
+  const onPointerDown = (e) => {
+    dragRef.current = { startX: e.clientX, dragging: true, moved: false };
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+  };
+  const onPointerMove = (e) => {
+    if (!dragRef.current?.dragging) return;
+    const delta = e.clientX - dragRef.current.startX;
+    if (Math.abs(delta) > 4) dragRef.current.moved = true;
+    setDragOffset(delta);
+  };
+  const endDrag = () => {
+    if (!dragRef.current?.dragging) return;
+    const delta = dragOffset;
+    const threshold = trackWidth * 0.2;
+    if (delta <= -threshold) setIndex((i) => (i + 1) % count);
+    else if (delta >= threshold) setIndex((i) => (i - 1 + count) % count);
+    dragRef.current.dragging = false;
+    setDragOffset(0);
+  };
+  const onClickCapture = (e) => {
+    if (dragRef.current?.moved) {
+      e.preventDefault();
+      dragRef.current.moved = false;
+    }
+  };
 
   return (
     <div style={{ padding: '18px 16px 0' }}>
-      <div ref={trackRef} style={{ borderRadius: 20, overflow: 'hidden', boxShadow: 'var(--shadow-md)' }}>
-        <div style={{ display: 'flex', transform: `translateX(${-safeIndex * trackWidth}px)`, transition: 'transform .45s cubic-bezier(.4,0,.2,1)' }}>
+      <div
+        ref={trackRef}
+        style={{ borderRadius: 20, overflow: 'hidden', boxShadow: 'var(--shadow-md)', touchAction: 'pan-y' }}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+        onClickCapture={onClickCapture}
+      >
+        <div style={{ display: 'flex', transform: `translateX(${-safeIndex * trackWidth + dragOffset}px)`, transition: isDragging ? 'none' : 'transform .45s cubic-bezier(.4,0,.2,1)' }}>
           {banners.map((b) => (
             <a
               key={b.id}
