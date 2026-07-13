@@ -83,21 +83,21 @@ function SegmentPicker({ onPick }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', padding: '32px 24px', gap: 16 }}>
       <div style={{ textAlign: 'center', marginBottom: 8 }}>
-        <div style={{ font: '800 22px var(--font-display)', color: 'var(--text-heading)' }}>คุณอยู่ในช่วงไหน?</div>
-        <div style={{ font: 'var(--type-body)', color: 'var(--text-muted)', marginTop: 6 }}>เพื่อให้เราดูแลคุณได้ตรงจุดขึ้น</div>
+        <div style={{ font: '800 22px var(--font-display)', color: 'var(--text-heading)' }}>เลือกสถานะ</div>
+        <div style={{ font: 'var(--type-body)', color: 'var(--text-muted)', marginTop: 6 }}>เพื่อให้เปาเปาดูแลคุณและลูกน้อยได้ตรงจุดขึ้น</div>
       </div>
       <Card interactive onClick={() => onPick('A')} style={{ display: 'flex', alignItems: 'center', gap: 16, cursor: 'pointer' }}>
         <span style={{ fontSize: 36 }}>🤰</span>
         <div>
-          <div style={{ font: 'var(--weight-bold) 17px var(--font-display)', color: 'var(--text-heading)' }}>กำลังตั้งครรภ์</div>
-          <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)', marginTop: 3 }}>เตรียมพร้อมก่อนลูกมา</div>
+          <div style={{ font: 'var(--weight-bold) 17px var(--font-display)', color: 'var(--text-heading)' }}>เตรียมต้อนรับลูกน้อย</div>
+          <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)', marginTop: 3 }}>ติดตามข้อมูลการตั้งครรภ์และเตรียมความพร้อมสำหรับคุณพ่อคุณแม่</div>
         </div>
       </Card>
       <Card interactive onClick={() => onPick('B')} style={{ display: 'flex', alignItems: 'center', gap: 16, cursor: 'pointer' }}>
         <span style={{ fontSize: 36 }}>👶</span>
         <div>
           <div style={{ font: 'var(--weight-bold) 17px var(--font-display)', color: 'var(--text-heading)' }}>มีลูกแล้ว</div>
-          <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)', marginTop: 3 }}>ติดตามพัฒนาการและไซส์ผ้าอ้อม</div>
+          <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)', marginTop: 3 }}>ติดตามพัฒนาการและการดูแลลูกน้อย</div>
         </div>
       </Card>
       <button
