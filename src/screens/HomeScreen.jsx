@@ -218,18 +218,17 @@ function BannerCarousel({ banners }) {
   const [index, setIndex] = useState(0);
   const [trackWidth, setTrackWidth] = useState(0);
   const [dragOffset, setDragOffset] = useState(0);
+  const [dragging, setDragging] = useState(false);
   const trackRef = useRef(null);
-  const dragRef = useRef(null); // { startX, dragging, moved }
+  const dragRef = useRef(null); // { startX }
+  const movedRef = useRef(false);
   const count = banners?.length ?? 0;
 
   useEffect(() => {
-    if (count <= 1) return;
-    const t = setInterval(() => {
-      if (dragRef.current?.dragging) return;
-      setIndex((i) => (i + 1) % count);
-    }, 3000);
-    return () => clearInterval(t);
-  }, [count]);
+    if (count <= 1 || dragging) return;
+    const t = setTimeout(() => setIndex((i) => (i + 1) % count), 3000);
+    return () => clearTimeout(t);
+  }, [count, index, dragging]);
 
   useEffect(() => {
     if (!trackRef.current) return;
@@ -243,31 +242,33 @@ function BannerCarousel({ banners }) {
 
   if (!banners || count === 0) return null;
   const safeIndex = index % count;
-  const isDragging = !!dragRef.current?.dragging;
 
   const onPointerDown = (e) => {
-    dragRef.current = { startX: e.clientX, dragging: true, moved: false };
+    dragRef.current = { startX: e.clientX };
+    movedRef.current = false;
+    setDragging(true);
     e.currentTarget.setPointerCapture?.(e.pointerId);
   };
   const onPointerMove = (e) => {
-    if (!dragRef.current?.dragging) return;
+    if (!dragRef.current) return;
     const delta = e.clientX - dragRef.current.startX;
-    if (Math.abs(delta) > 4) dragRef.current.moved = true;
+    if (Math.abs(delta) > 4) movedRef.current = true;
     setDragOffset(delta);
   };
   const endDrag = () => {
-    if (!dragRef.current?.dragging) return;
+    if (!dragRef.current) return;
     const delta = dragOffset;
     const threshold = trackWidth * 0.2;
     if (delta <= -threshold) setIndex((i) => (i + 1) % count);
     else if (delta >= threshold) setIndex((i) => (i - 1 + count) % count);
-    dragRef.current.dragging = false;
+    dragRef.current = null;
+    setDragging(false);
     setDragOffset(0);
   };
   const onClickCapture = (e) => {
-    if (dragRef.current?.moved) {
+    if (movedRef.current) {
       e.preventDefault();
-      dragRef.current.moved = false;
+      movedRef.current = false;
     }
   };
 
@@ -282,7 +283,7 @@ function BannerCarousel({ banners }) {
         onPointerCancel={endDrag}
         onClickCapture={onClickCapture}
       >
-        <div style={{ display: 'flex', transform: `translateX(${-safeIndex * trackWidth + dragOffset}px)`, transition: isDragging ? 'none' : 'transform .45s cubic-bezier(.4,0,.2,1)' }}>
+        <div style={{ display: 'flex', transform: `translateX(${-safeIndex * trackWidth + dragOffset}px)`, transition: dragging ? 'none' : 'transform .45s cubic-bezier(.4,0,.2,1)' }}>
           {banners.map((b) => (
             <a
               key={b.id}
