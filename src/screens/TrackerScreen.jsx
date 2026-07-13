@@ -4,7 +4,8 @@ import { Card } from '../components/index.jsx';
 import { SkyDeco, SectionTitle } from '../shared/index.jsx';
 import { GrowthPanel } from './BabyTrackerScreen.jsx';
 import { supabase } from '../lib/supabase.js';
-export { recommendSize } from '../lib/diaperSize.js';
+import { recommendSize } from '../lib/diaperSize.js';
+export { recommendSize };
 
 const inputStyle = {
   width: '100%', height: 46, padding: '0 14px', borderRadius: 'var(--radius-md)',
