@@ -405,7 +405,7 @@ function AgeChart({ chartData, title }) {
   return (
     <Card>
       <SectionTitle>แนวโน้มย้อนหลัง</SectionTitle>
-      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }}>
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }} onClick={() => setSelected(null)}>
         {/* Horizontal gridlines + y-axis labels */}
         {yTicks.map((v, i) => (
           <g key={`y${i}`}>
@@ -427,7 +427,7 @@ function AgeChart({ chartData, title }) {
             cx={xSc(p.month)} cy={ySc(p.val)} r={selected === i ? 6 : 4.5}
             fill={color} stroke="#fff" strokeWidth="2"
             style={{ cursor: 'pointer' }}
-            onClick={() => setSelected(selected === i ? null : i)}
+            onClick={(e) => { e.stopPropagation(); setSelected(selected === i ? null : i); }}
           />
         ))}
         {/* Current-age indicator: vertical line + triangle marker on the x-axis */}
@@ -482,7 +482,7 @@ function WHChart({ records, gender }) {
   return (
     <Card>
       <SectionTitle>แนวโน้มย้อนหลัง</SectionTitle>
-      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }}>
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }} onClick={() => setSelected(null)}>
         {/* Horizontal gridlines + y-axis (weight) labels */}
         {yTicks.map((v, i) => (
           <g key={`y${i}`}>
@@ -501,7 +501,7 @@ function WHChart({ records, gender }) {
             cx={xSc(p.h)} cy={ySc(p.w)} r={selected === i ? 6 : 4.5}
             fill="var(--blue-600)" stroke="#fff" strokeWidth="2"
             style={{ cursor: 'pointer' }}
-            onClick={() => setSelected(selected === i ? null : i)}
+            onClick={(e) => { e.stopPropagation(); setSelected(selected === i ? null : i); }}
           />
         ))}
         {/* x-axis (height) ticks */}
