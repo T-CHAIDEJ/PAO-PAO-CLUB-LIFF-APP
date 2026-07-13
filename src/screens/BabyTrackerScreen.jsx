@@ -313,6 +313,27 @@ function ChartLegend({ lineColor = 'var(--color-primary)' }) {
   );
 }
 
+// Small floating label shown above/below a tapped data point, with a
+// background dark enough to read on top of the WHO band + gridlines.
+function ChartTooltip({ x, y, W, lines }) {
+  const boxW = 112, boxH = 15 * lines.length + 12;
+  let bx = x - boxW / 2;
+  if (bx < 2) bx = 2;
+  if (bx + boxW > W - 2) bx = W - 2 - boxW;
+  let by = y - boxH - 10;
+  if (by < 2) by = y + 10;
+  return (
+    <g pointerEvents="none">
+      <rect x={bx} y={by} width={boxW} height={boxH} rx="6" fill="var(--text-heading)" opacity="0.92" />
+      {lines.map((line, i) => (
+        <text key={i} x={bx + boxW / 2} y={by + 15 + i * 15} textAnchor="middle" fontSize="9.5" fill="#fff" fontWeight={i === 0 ? 700 : 400}>
+          {line}
+        </text>
+      ))}
+    </g>
+  );
+}
+
 // Picks a "nice" round step (1/2/5/10 × a power of 10) for axis gridlines.
 function niceStep(range, targetCount) {
   const rawStep = range / targetCount;
@@ -345,7 +366,7 @@ function buildAgeChart(records, gender, birthDate, indicator, color) {
   const sorted = [...records].sort((a, b) => new Date(a.date) - new Date(b.date));
   const key = indicator === 'wfa' ? 'weightKg' : 'heightCm';
   const unit = indicator === 'wfa' ? 'กก.' : 'ซม.';
-  const points = sorted.map(r => ({ month: ageInMonths(birthDate, r.date), val: r[key] }));
+  const points = sorted.map(r => ({ month: ageInMonths(birthDate, r.date), val: r[key], date: r.date }));
   if (!points.length) return null;
 
   const wfa = getWHOData(gender, indicator);
@@ -362,6 +383,7 @@ function buildAgeChart(records, gender, birthDate, indicator, color) {
 }
 
 function AgeChart({ chartData, title }) {
+  const [selected, setSelected] = useState(null);
   if (!chartData) return null;
   const { points, whoSlice, minM, maxM, vMin, vMax, currentM, color, unit } = chartData;
   const W = 326, H = 190, mg = { top: 14, right: 10, bottom: 30, left: 30 };
@@ -400,7 +422,13 @@ function AgeChart({ chartData, title }) {
         <path d={points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${xSc(p.month).toFixed(1)} ${ySc(p.val).toFixed(1)}`).join(' ')}
           fill="none" stroke={color} strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
         {points.map((p, i) => (
-          <circle key={i} cx={xSc(p.month)} cy={ySc(p.val)} r="4" fill={color} stroke="#fff" strokeWidth="2" />
+          <circle
+            key={i}
+            cx={xSc(p.month)} cy={ySc(p.val)} r={selected === i ? 6 : 4.5}
+            fill={color} stroke="#fff" strokeWidth="2"
+            style={{ cursor: 'pointer' }}
+            onClick={() => setSelected(selected === i ? null : i)}
+          />
         ))}
         {/* Current-age indicator: vertical line + triangle marker on the x-axis */}
         <line x1={currentX} x2={currentX} y1={mg.top} y2={mg.top + pH} stroke="var(--text-heading)" strokeWidth="1.5" />
@@ -410,6 +438,12 @@ function AgeChart({ chartData, title }) {
           <text key={`x${i}`} x={xSc(m)} y={H - 4} textAnchor="middle" fontSize="8.5" fill="var(--text-faint)">{Math.round(m)}</text>
         ))}
         <text x={W - mg.right} y={mg.top - 4} textAnchor="end" fontSize="8.5" fill="var(--text-faint)">เดือน · {unit}</text>
+        {selected != null && (
+          <ChartTooltip
+            x={xSc(points[selected].month)} y={ySc(points[selected].val)} W={W}
+            lines={[formatThaiDate(points[selected].date), `${points[selected].val} ${unit}`]}
+          />
+        )}
       </svg>
       <ChartLegend lineColor={color} />
     </Card>
@@ -417,8 +451,9 @@ function AgeChart({ chartData, title }) {
 }
 
 function WHChart({ records, gender }) {
+  const [selected, setSelected] = useState(null);
   const sorted = [...records].filter(r => r.heightCm).sort((a, b) => a.heightCm - b.heightCm);
-  const points = sorted.map(r => ({ h: r.heightCm, w: r.weightKg }));
+  const points = sorted.map(r => ({ h: r.heightCm, w: r.weightKg, date: r.date }));
   if (!points.length) return null;
 
   const wflData = getWHOWflData(gender);
@@ -430,7 +465,7 @@ function WHChart({ records, gender }) {
   const wMin = Math.min(...points.map(p => p.w), ...whoSlice.map(d => d.sd2neg)) - 0.5;
   const wMax = Math.max(...points.map(p => p.w), ...whoSlice.map(d => d.sd2pos)) + 0.5;
 
-  const W = 326, H = 170, mg = { top: 14, right: 14, bottom: 26, left: 8 };
+  const W = 326, H = 190, mg = { top: 14, right: 10, bottom: 30, left: 30 };
   const pW = W - mg.left - mg.right, pH = H - mg.top - mg.bottom;
   const xSc = h => mg.left + ((h - minH) / ((maxH - minH) || 1)) * pW;
   const ySc = w => mg.top + (1 - (w - wMin) / ((wMax - wMin) || 1)) * pH;
@@ -439,20 +474,47 @@ function WHChart({ records, gender }) {
   const bandBottom = [...whoSlice].reverse().map((d) => `L ${xSc(d.length).toFixed(1)} ${ySc(d.sd2neg).toFixed(1)}`).join(' ');
   const band = bandTop + ' ' + bandBottom + ' Z';
 
+  const yTicks = niceTicks(wMin, wMax, 5);
+  const xStep = niceStep(maxH - minH, 5);
+  const xTicks = [];
+  for (let h = Math.ceil(minH / xStep) * xStep; h <= maxH; h += xStep) xTicks.push(h);
+
   return (
     <Card>
       <SectionTitle>แนวโน้มย้อนหลัง</SectionTitle>
       <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }}>
+        {/* Horizontal gridlines + y-axis (weight) labels */}
+        {yTicks.map((v, i) => (
+          <g key={`y${i}`}>
+            <line x1={mg.left} x2={W - mg.right} y1={ySc(v)} y2={ySc(v)} stroke="var(--gray-200)" strokeWidth="1" />
+            <text x={mg.left - 6} y={ySc(v)} textAnchor="end" dominantBaseline="middle" fontSize="8.5" fill="var(--text-faint)">{v}</text>
+          </g>
+        ))}
         <path d={band} fill="var(--blue-100,#E3F2FD)" opacity="0.5" />
         <path d={whoSlice.map((d, i) => `${i === 0 ? 'M' : 'L'} ${xSc(d.length).toFixed(1)} ${ySc(d.median).toFixed(1)}`).join(' ')}
           fill="none" stroke="var(--blue-300)" strokeWidth="1.5" strokeDasharray="4 4" opacity="0.8" />
         <path d={points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${xSc(p.h).toFixed(1)} ${ySc(p.w).toFixed(1)}`).join(' ')}
           fill="none" stroke="var(--color-primary)" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
         {points.map((p, i) => (
-          <circle key={i} cx={xSc(p.h)} cy={ySc(p.w)} r="4" fill="var(--blue-600)" stroke="#fff" strokeWidth="2" />
+          <circle
+            key={i}
+            cx={xSc(p.h)} cy={ySc(p.w)} r={selected === i ? 6 : 4.5}
+            fill="var(--blue-600)" stroke="#fff" strokeWidth="2"
+            style={{ cursor: 'pointer' }}
+            onClick={() => setSelected(selected === i ? null : i)}
+          />
         ))}
-        <text x={mg.left} y={H - 6} fontSize="9" fill="var(--text-faint)">{minH} ซม.</text>
-        <text x={W - mg.right} y={H - 6} textAnchor="end" fontSize="9" fill="var(--text-faint)">{maxH} ซม.</text>
+        {/* x-axis (height) ticks */}
+        {xTicks.map((h, i) => (
+          <text key={`x${i}`} x={xSc(h)} y={H - 4} textAnchor="middle" fontSize="8.5" fill="var(--text-faint)">{Math.round(h)}</text>
+        ))}
+        <text x={W - mg.right} y={mg.top - 4} textAnchor="end" fontSize="8.5" fill="var(--text-faint)">ซม. · กก.</text>
+        {selected != null && (
+          <ChartTooltip
+            x={xSc(points[selected].h)} y={ySc(points[selected].w)} W={W}
+            lines={[formatThaiDate(points[selected].date), `${points[selected].h} ซม. · ${points[selected].w} กก.`]}
+          />
+        )}
       </svg>
       <ChartLegend />
     </Card>
