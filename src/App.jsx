@@ -160,7 +160,7 @@ export default function App() {
   let view;
   if      (screen === 'home')      view = <HomeScreen go={go} user={userData} child={childData} goOnboarding={goOnboarding} goProfile={() => go('profile')} checkin={checkin} onStreakSeen={() => setCheckin(null)} />;
   else if (screen === 'diaper')    view = <DiaperScreen go={go} child={childData} />;
-  else if (screen === 'tracker')   view = <TrackerScreen child={childData} />;
+  else if (screen === 'tracker')   view = <TrackerScreen child={childData} onChildUpdate={(patch) => setChildData(prev => prev ? { ...prev, ...patch } : prev)} />;
   else if (screen === 'size')      view = <SizeChartScreen go={go} currentKg={childData?.birth_weight ?? 8.5} />;
   else if (screen === 'knowledge') view = <KnowledgeScreen go={go} child={childData} />;
   else if (screen === 'rewards')   view = <RewardsScreen go={go} user={userData} />;

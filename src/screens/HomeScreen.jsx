@@ -92,7 +92,9 @@ function BabyInfoCard({ child, latestKg, latestCm, go }) {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {GenderIcon && (
+          {child?.avatar_url ? (
+            <img src={child.avatar_url} alt={child?.name || 'ลูกน้อย'} style={{ width: 40, height: 40, borderRadius: 12, objectFit: 'cover', flex: 'none' }} />
+          ) : GenderIcon && (
             <span style={{ width: 40, height: 40, borderRadius: 12, background: genderAccent, color: genderSymbolColor, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
               <GenderIcon width={22} height={22} strokeWidth={2.5} />
             </span>

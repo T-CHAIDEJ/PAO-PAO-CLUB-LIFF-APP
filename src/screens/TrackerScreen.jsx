@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { Scale, ChevronRight, Ruler, ShoppingCart } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Scale, ChevronRight, Ruler, ShoppingCart, Baby, Camera } from 'lucide-react';
 import { Card } from '../components/index.jsx';
 import { SkyDeco, SectionTitle } from '../shared/index.jsx';
 import { GrowthPanel } from './BabyTrackerScreen.jsx';
 import { supabase } from '../lib/supabase.js';
 import { recommendSize } from '../lib/diaperSize.js';
+import { uploadChildAvatar } from '../lib/avatar.js';
 export { recommendSize };
 
 const inputStyle = {
@@ -220,7 +221,57 @@ function calcAge(birthdate) {
   return months === 0 ? `${years} ปี` : `${years} ปี ${months} เดือน`;
 }
 
-export default function TrackerScreen({ child }) {
+function ChildAvatarUpload({ child, onChildUpdate }) {
+  const inputRef = useRef(null);
+  const [uploading, setUploading] = useState(false);
+  const [err, setErr] = useState('');
+
+  const handleFile = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !child?.child_id) return;
+    setErr('');
+    setUploading(true);
+    try {
+      const url = await uploadChildAvatar(supabase, child.child_id, file);
+      onChildUpdate && onChildUpdate({ avatar_url: url });
+    } catch (e2) {
+      console.warn('[avatar] upload failed:', e2?.message);
+      setErr('อัปโหลดรูปไม่สำเร็จ ลองใหม่อีกครั้ง');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div>
+      <div style={{ position: 'relative', width: 64, height: 64, flex: 'none' }}>
+        <div style={{ width: 64, height: 64, borderRadius: '50%', overflow: 'hidden', background: 'rgba(255,255,255,.2)', border: '2px solid rgba(255,255,255,.6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {child?.avatar_url
+            ? <img src={child.avatar_url} alt={child?.name || 'ลูกน้อย'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            : <Baby width={28} height={28} style={{ opacity: .85 }} />}
+        </div>
+        <button
+          onClick={() => inputRef.current?.click()}
+          disabled={uploading}
+          aria-label="เปลี่ยนรูปโปรไฟล์ลูก"
+          style={{ position: 'absolute', right: -2, bottom: -2, width: 26, height: 26, borderRadius: '50%', background: 'var(--color-secondary)', border: '2px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff' }}
+        >
+          <Camera width={13} height={13} />
+        </button>
+        <input ref={inputRef} type="file" accept="image/*" capture="environment" onChange={handleFile} style={{ display: 'none' }} />
+        {uploading && (
+          <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: 'rgba(0,0,0,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 9 }}>
+            กำลังอัป...
+          </div>
+        )}
+      </div>
+      {err && <div style={{ font: 'var(--type-caption)', color: '#FFCDD2', marginTop: 4, maxWidth: 100 }}>{err}</div>}
+    </div>
+  );
+}
+
+export default function TrackerScreen({ child, onChildUpdate }) {
   const childName  = child?.name     || 'ลูกน้อย';
   const genderLabel = child?.gender === 'male' ? '👦 ชาย' : child?.gender === 'female' ? '👧 หญิง' : null;
   const birthdateLabel = formatBirthdate(child?.birth_date);
@@ -230,7 +281,9 @@ export default function TrackerScreen({ child }) {
     <div style={{ background: 'var(--gradient-sky)', minHeight: '100%', paddingBottom: 24 }}>
       <div style={{ position: 'relative', background: 'var(--gradient-hero)', padding: '20px 20px 28px', color: '#fff', borderBottomLeftRadius: 28, borderBottomRightRadius: 28 }}>
         <SkyDeco />
-        <div style={{ position: 'relative' }}>
+        <div style={{ position: 'relative', display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+          <ChildAvatarUpload child={child} onChildUpdate={onChildUpdate} />
+          <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ font: 'var(--weight-medium) 13px var(--font-base)', opacity: .8 }}>พัฒนาการ</div>
           <div style={{ font: '800 24px var(--font-display)', marginTop: 2, marginBottom: 10 }}>{childName}</div>
           <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
@@ -252,6 +305,7 @@ export default function TrackerScreen({ child }) {
                 <div style={{ font: '800 13px var(--font-display)' }}>{ageLabel}</div>
               </div>
             )}
+          </div>
           </div>
         </div>
       </div>
