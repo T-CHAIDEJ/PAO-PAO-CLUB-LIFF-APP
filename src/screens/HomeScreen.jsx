@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Baby, Ruler, Gift, ScanLine, Bell, ChevronRight, Star, Package, TicketPercent, UserPlus, UserCircle2, Mars, Venus } from 'lucide-react';
 import { Card, Badge, Button, ProgressBar } from '../components/index.jsx';
-import { SkyDeco, Wordmark, SectionTitle } from '../shared/index.jsx';
+import { Wordmark, SectionTitle } from '../shared/index.jsx';
 import { recommendSize } from './TrackerScreen.jsx';
 import { supabase } from '../lib/supabase.js';
 import { STREAK_POINTS } from '../lib/points.js';
@@ -299,8 +299,14 @@ export default function HomeScreen({ go, user, child, goOnboarding, goProfile, c
       {showStreak && checkin && <StreakPopup checkin={checkin} onClose={closeStreak} />}
       {comingSoon && <ComingSoon title={comingSoon} onClose={() => setComingSoon(null)} />}
       {/* Hero */}
-      <div style={{ position: 'relative', background: 'var(--gradient-hero)', padding: '18px 20px 58px', color: '#fff', borderBottomLeftRadius: 28, borderBottomRightRadius: 28 }}>
-        <SkyDeco />
+      <div style={{
+        position: 'relative',
+        background: 'var(--gradient-hero)',
+        backgroundImage: 'url(/home-hero-bg.png)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'left top',
+        padding: '18px 20px 58px', color: '#fff', borderBottomLeftRadius: 28, borderBottomRightRadius: 28,
+      }}>
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <img src="/paopao-logo.png" alt="PAO PAO CLUB" style={{ height: 48, objectFit: 'contain' }} />
           <div style={{ display: 'flex', gap: 8 }}>
