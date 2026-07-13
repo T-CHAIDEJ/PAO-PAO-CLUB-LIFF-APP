@@ -1,120 +1,59 @@
 import React, { useState, useEffect } from 'react';
-import { X, Clock, ChevronRight, BookOpen, ChevronDown, ChevronUp } from 'lucide-react';
+import { X, Clock, ChevronRight, BookOpen } from 'lucide-react';
 import { Card, Badge } from '../components/index.jsx';
 import { SkyDeco } from '../shared/index.jsx';
 import { supabase } from '../lib/supabase.js';
 
 // Map a DB row (snake_case) → the shape the UI components expect (camelCase).
-// NOTE: 014_articles dropped category_color/category_bg/read_min — using fixed
-// defaults here so the UI still renders sensibly. Flagged for Dev B: confirm
-// these were intentionally dropped, or if per-article styling should come back.
+// 014_articles.content is a plain `text` column (not the old jsonb block-array
+// design) — see ArticleBody below for how that gets rendered.
 function mapArticle(r) {
   return {
     id: r.id,
     title: r.title,
     category: r.category,
-    categoryColor: 'var(--blue-600)',
-    categoryBg: 'var(--blue-100)',
-    readMin: 3,
+    categoryColor: r.category_color || 'var(--blue-600)',
+    categoryBg: r.category_bg || 'var(--blue-100)',
+    readMin: r.read_min ?? 3,
     heroImage: r.art_image,
-    sections: r.content || [],
+    content: r.content || '',
   };
 }
 
 // ─── Article Modal ───────────────────────────────────────────────────────────
 
-function SectionBlock({ section }) {
-  const paraStyle = {
-    font: '15px/1.75 var(--font-base)',
-    color: 'var(--text-body)',
-    margin: 0,
-  };
+// content is plain text: paragraphs separated by blank lines. A paragraph
+// wrapped in **like this** on its own renders as a subheading — a tiny,
+// dependency-free convention (not full Markdown) so admin-authored content
+// can still have some structure without us assuming a specific rich-text format.
+function ArticleBody({ content }) {
+  const paraStyle = { font: '15px/1.75 var(--font-base)', color: 'var(--text-body)', margin: 0 };
+  const paragraphs = content.split(/\n\s*\n/).filter(p => p.trim());
 
-  switch (section.type) {
-    case 'intro':
-      return (
-        <p style={{ ...paraStyle, color: 'var(--text-title)', fontWeight: 500 }}>
-          {section.text}
-        </p>
-      );
-
-    case 'section':
-      return (
-        <div>
-          <h2 style={{ font: 'var(--weight-bold) 17px var(--font-display)', color: 'var(--text-heading)', margin: '0 0 10px' }}>
-            {section.heading}
-          </h2>
-          {section.text.split('\n\n').map((para, i) => (
-            <p key={i} style={{ ...paraStyle, marginBottom: i < section.text.split('\n\n').length - 1 ? 10 : 0 }}>{para}</p>
-          ))}
-        </div>
-      );
-
-    case 'tips':
-      return (
-        <div>
-          <h2 style={{ font: 'var(--weight-bold) 17px var(--font-display)', color: 'var(--text-heading)', margin: '0 0 6px' }}>
-            {section.heading}
-          </h2>
-          {section.intro && <p style={{ ...paraStyle, marginBottom: 12 }}>{section.intro}</p>}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {section.bullets.map((b, i) => (
-              <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                <span style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--blue-100)', color: 'var(--blue-600)', display: 'flex', alignItems: 'center', justifyContent: 'center', font: '700 11px var(--font-base)', flex: 'none', marginTop: 1 }}>{i + 1}</span>
-                <span style={{ ...paraStyle, flex: 1 }}>{b}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      );
-
-    case 'brand':
-      return (
-        <div style={{ background: 'var(--surface-soft)', borderRadius: 'var(--radius-md)', padding: '14px 16px', borderLeft: '3px solid var(--color-primary)' }}>
-          <p style={{ ...paraStyle, color: 'var(--text-title)', fontStyle: 'italic' }}>{section.text}</p>
-        </div>
-      );
-
-    case 'summary':
-      return (
-        <div style={{ background: 'var(--surface-green)', borderRadius: 'var(--radius-md)', padding: '14px 16px' }}>
-          <div style={{ font: 'var(--weight-bold) 15px var(--font-display)', color: 'var(--green-700)', marginBottom: 8 }}>{section.heading}</div>
-          <p style={{ ...paraStyle }}>{section.text}</p>
-        </div>
-      );
-
-    case 'disclaimer':
-      return <DisclaimerBlock section={section} />;
-
-    default:
-      return null;
-  }
-}
-
-function DisclaimerBlock({ section }) {
-  const [open, setOpen] = useState(false);
   return (
-    <div style={{ borderTop: '1px solid var(--border-default)', paddingTop: 16 }}>
-      <div style={{ background: 'var(--gray-50, #f9fafb)', borderRadius: 'var(--radius-md)', padding: '12px 14px' }}>
-        <p style={{ font: '13px/1.6 var(--font-base)', color: 'var(--text-muted)', margin: '0 0 10px' }}>
-          ⚕️ {section.text}
-        </p>
-        <button
-          onClick={() => setOpen(o => !o)}
-          style={{ display: 'flex', alignItems: 'center', gap: 4, border: 'none', background: 'transparent', font: 'var(--weight-medium) 12px var(--font-base)', color: 'var(--blue-600)', cursor: 'pointer', padding: 0 }}
-        >
-          {open ? <ChevronUp width={14} height={14} /> : <ChevronDown width={14} height={14} />}
-          {open ? 'ซ่อนแหล่งอ้างอิง' : 'ดูแหล่งอ้างอิง'}
-        </button>
-        {open && (
-          <ul style={{ margin: '10px 0 0', paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {section.sources.map((s, i) => (
-              <li key={i} style={{ font: '12px/1.5 var(--font-base)', color: 'var(--text-muted)' }}>{s}</li>
+    <>
+      {paragraphs.map((para, i) => {
+        const headingMatch = para.trim().match(/^\*\*(.+)\*\*$/);
+        if (headingMatch) {
+          return (
+            <h2 key={i} style={{ font: 'var(--weight-bold) 17px var(--font-display)', color: 'var(--text-heading)', margin: 0 }}>
+              {headingMatch[1]}
+            </h2>
+          );
+        }
+        const lines = para.split('\n');
+        return (
+          <p key={i} style={paraStyle}>
+            {lines.map((line, j) => (
+              <React.Fragment key={j}>
+                {line}
+                {j < lines.length - 1 && <br />}
+              </React.Fragment>
             ))}
-          </ul>
-        )}
-      </div>
-    </div>
+          </p>
+        );
+      })}
+    </>
   );
 }
 
@@ -165,10 +104,8 @@ function ArticleModal({ article, onClose }) {
             style={{ width: '100%', display: 'block', objectFit: 'cover' }}
           />
         )}
-        <div style={{ padding: '24px 20px 40px', display: 'flex', flexDirection: 'column', gap: 20 }}>
-        {article.sections.map((section, i) => (
-          <SectionBlock key={i} section={section} />
-        ))}
+        <div style={{ padding: '24px 20px 40px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <ArticleBody content={article.content} />
         </div>
       </div>
     </div>
