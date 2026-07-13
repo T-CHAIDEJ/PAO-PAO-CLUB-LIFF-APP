@@ -313,6 +313,34 @@ function ChartLegend({ lineColor = 'var(--color-primary)' }) {
   );
 }
 
+// Picks a "nice" round step (1/2/5/10 × a power of 10) for axis gridlines.
+function niceStep(range, targetCount) {
+  const rawStep = range / targetCount;
+  const mag = Math.pow(10, Math.floor(Math.log10(rawStep || 1)));
+  const norm = rawStep / mag;
+  if (norm < 1.5) return mag;
+  if (norm < 3) return 2 * mag;
+  if (norm < 7) return 5 * mag;
+  return 10 * mag;
+}
+
+function niceTicks(min, max, targetCount) {
+  const step = niceStep(max - min, targetCount);
+  const ticks = [];
+  for (let t = Math.ceil(min / step) * step; t <= max + 1e-6; t += step) {
+    ticks.push(Math.round(t * 100) / 100);
+  }
+  return ticks;
+}
+
+function pickMonthStep(range) {
+  if (range <= 6) return 1;
+  if (range <= 12) return 2;
+  if (range <= 24) return 3;
+  if (range <= 48) return 6;
+  return 12;
+}
+
 function buildAgeChart(records, gender, birthDate, indicator, color) {
   const sorted = [...records].sort((a, b) => new Date(a.date) - new Date(b.date));
   const key = indicator === 'wfa' ? 'weightKg' : 'heightCm';
@@ -328,14 +356,15 @@ function buildAgeChart(records, gender, birthDate, indicator, color) {
 
   const vMin = Math.min(...points.map(p => p.val), ...whoSlice.map(d => d.sd2neg)) - (indicator === 'wfa' ? 0.5 : 1);
   const vMax = Math.max(...points.map(p => p.val), ...whoSlice.map(d => d.sd2pos)) + (indicator === 'wfa' ? 0.5 : 1);
+  const currentM = Math.min(maxM, Math.max(minM, ageInMonths(birthDate, new Date())));
 
-  return { points, whoSlice, minM, maxM, vMin, vMax, color, unit };
+  return { points, whoSlice, minM, maxM, vMin, vMax, currentM, color, unit };
 }
 
 function AgeChart({ chartData, title }) {
   if (!chartData) return null;
-  const { points, whoSlice, minM, maxM, vMin, vMax, color } = chartData;
-  const W = 326, H = 170, mg = { top: 14, right: 14, bottom: 26, left: 8 };
+  const { points, whoSlice, minM, maxM, vMin, vMax, currentM, color, unit } = chartData;
+  const W = 326, H = 190, mg = { top: 14, right: 10, bottom: 30, left: 30 };
   const pW = W - mg.left - mg.right, pH = H - mg.top - mg.bottom;
   const xSc = m => mg.left + ((m - minM) / ((maxM - minM) || 1)) * pW;
   const ySc = v => mg.top + (1 - (v - vMin) / ((vMax - vMin) || 1)) * pH;
@@ -344,10 +373,24 @@ function AgeChart({ chartData, title }) {
   const bandBottom = [...whoSlice].reverse().map((d, i) => `L ${xSc(d.month).toFixed(1)} ${ySc(d.sd2neg).toFixed(1)}`).join(' ');
   const band = bandTop + ' ' + bandBottom + ' Z';
 
+  const yTicks = niceTicks(vMin, vMax, 5);
+  const monthStep = pickMonthStep(maxM - minM);
+  const xTicks = [];
+  for (let m = Math.ceil(minM / monthStep) * monthStep; m <= maxM; m += monthStep) xTicks.push(m);
+
+  const currentX = xSc(currentM);
+
   return (
     <Card>
       <SectionTitle>แนวโน้มย้อนหลัง</SectionTitle>
       <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }}>
+        {/* Horizontal gridlines + y-axis labels */}
+        {yTicks.map((v, i) => (
+          <g key={`y${i}`}>
+            <line x1={mg.left} x2={W - mg.right} y1={ySc(v)} y2={ySc(v)} stroke="var(--gray-200)" strokeWidth="1" />
+            <text x={mg.left - 6} y={ySc(v)} textAnchor="end" dominantBaseline="middle" fontSize="8.5" fill="var(--text-faint)">{v}</text>
+          </g>
+        ))}
         {/* WHO band */}
         <path d={band} fill="var(--blue-100,#E3F2FD)" opacity="0.5" />
         {/* Median */}
@@ -359,8 +402,14 @@ function AgeChart({ chartData, title }) {
         {points.map((p, i) => (
           <circle key={i} cx={xSc(p.month)} cy={ySc(p.val)} r="4" fill={color} stroke="#fff" strokeWidth="2" />
         ))}
-        <text x={mg.left} y={H - 6} fontSize="9" fill="var(--text-faint)">{Math.round(minM)} เดือน</text>
-        <text x={W - mg.right} y={H - 6} textAnchor="end" fontSize="9" fill="var(--text-faint)">{Math.round(maxM)} เดือน</text>
+        {/* Current-age indicator: vertical line + triangle marker on the x-axis */}
+        <line x1={currentX} x2={currentX} y1={mg.top} y2={mg.top + pH} stroke="var(--text-heading)" strokeWidth="1.5" />
+        <path d={`M ${currentX - 5} ${mg.top + pH + 6} L ${currentX + 5} ${mg.top + pH + 6} L ${currentX} ${mg.top + pH} Z`} fill="var(--text-heading)" />
+        {/* x-axis month ticks */}
+        {xTicks.map((m, i) => (
+          <text key={`x${i}`} x={xSc(m)} y={H - 4} textAnchor="middle" fontSize="8.5" fill="var(--text-faint)">{Math.round(m)}</text>
+        ))}
+        <text x={W - mg.right} y={mg.top - 4} textAnchor="end" fontSize="8.5" fill="var(--text-faint)">เดือน · {unit}</text>
       </svg>
       <ChartLegend lineColor={color} />
     </Card>
