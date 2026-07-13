@@ -211,32 +211,54 @@ function ComingSoon({ title, onClose }) {
 }
 
 // Advertising / campaign banners — DB-driven (Admin manages via `banners` table).
-// Swipeable when multiple campaigns run at once; each links out to a shopping URL.
+// Single full-width slide, auto-advances every 3s, with dot indicators —
+// tap a dot to jump, tap the banner itself to open its shopping link.
 function BannerCarousel({ banners }) {
-  if (!banners || banners.length === 0) return null;
+  const [index, setIndex] = useState(0);
+  const count = banners?.length ?? 0;
+
+  useEffect(() => {
+    if (count <= 1) return;
+    const t = setInterval(() => setIndex((i) => (i + 1) % count), 3000);
+    return () => clearInterval(t);
+  }, [count]);
+
+  if (!banners || count === 0) return null;
+  const safeIndex = index % count;
+  const b = banners[safeIndex];
+
   return (
-    <div style={{ padding: '18px 0 0' }}>
-      <div style={{ display: 'flex', gap: 12, overflowX: 'auto', padding: '0 16px 4px', scrollSnapType: 'x mandatory', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
-        {banners.map((b) => (
-          <a
-            key={b.id}
-            href={b.link_url || '#'}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ scrollSnapAlign: 'center', flex: '0 0 86%', height: 132, borderRadius: 20, overflow: 'hidden', display: 'flex', flexDirection: 'column', justifyContent: 'center', textDecoration: 'none', position: 'relative', boxShadow: 'var(--shadow-md)', background: b.banner_img ? 'var(--surface-soft)' : 'var(--gradient-green)' }}
-          >
-            {b.banner_img ? (
-              <img src={b.banner_img} alt={b.title || 'โปรโมชัน'} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
-            ) : (
-              <div style={{ padding: '0 22px', color: '#fff' }}>
-                <div style={{ font: '800 18px var(--font-display)' }}>{b.title}</div>
-                {b.subtitle && <div style={{ font: 'var(--weight-medium) 13px var(--font-base)', opacity: .95, marginTop: 4 }}>{b.subtitle}</div>}
-                {b.link_url && <div style={{ marginTop: 12, display: 'inline-block', background: 'rgba(255,255,255,.92)', color: 'var(--text-heading)', font: 'var(--weight-bold) 12px var(--font-base)', padding: '6px 14px', borderRadius: 999 }}>ดูเลย →</div>}
-              </div>
-            )}
-          </a>
-        ))}
-      </div>
+    <div style={{ padding: '18px 16px 0' }}>
+      <style>{`@keyframes bannerFade{from{opacity:0}to{opacity:1}}`}</style>
+      <a
+        key={b.id}
+        href={b.link_url || '#'}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{ display: 'block', height: 132, borderRadius: 20, overflow: 'hidden', textDecoration: 'none', position: 'relative', boxShadow: 'var(--shadow-md)', background: b.banner_img ? 'var(--surface-soft)' : 'var(--gradient-green)', animation: 'bannerFade .35s ease' }}
+      >
+        {b.banner_img ? (
+          <img src={b.banner_img} alt={b.title || 'โปรโมชัน'} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+        ) : (
+          <div style={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '0 22px', color: '#fff' }}>
+            <div style={{ font: '800 18px var(--font-display)' }}>{b.title}</div>
+            {b.subtitle && <div style={{ font: 'var(--weight-medium) 13px var(--font-base)', opacity: .95, marginTop: 4 }}>{b.subtitle}</div>}
+            {b.link_url && <div style={{ marginTop: 12, display: 'inline-block', background: 'rgba(255,255,255,.92)', color: 'var(--text-heading)', font: 'var(--weight-bold) 12px var(--font-base)', padding: '6px 14px', borderRadius: 999 }}>ดูเลย →</div>}
+          </div>
+        )}
+      </a>
+      {count > 1 && (
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 10 }}>
+          {banners.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setIndex(i)}
+              aria-label={`ไปที่แบนเนอร์ที่ ${i + 1}`}
+              style={{ width: i === safeIndex ? 18 : 6, height: 6, borderRadius: 3, border: 'none', padding: 0, cursor: 'pointer', background: i === safeIndex ? 'var(--color-secondary)' : 'var(--gray-300)', transition: 'all .25s ease' }}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
