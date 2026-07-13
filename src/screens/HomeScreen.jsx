@@ -278,21 +278,21 @@ function BannerCarousel({ banners }) {
     <div style={{ padding: '18px 16px 0' }}>
       <div
         ref={trackRef}
-        style={{ borderRadius: 20, overflow: 'hidden', boxShadow: 'var(--shadow-md)', touchAction: 'pan-y' }}
+        style={{ borderRadius: 20, overflow: 'hidden', boxShadow: 'var(--shadow-md)', touchAction: 'pan-y', aspectRatio: '2 / 1' }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={endDrag}
         onPointerCancel={endDrag}
         onClickCapture={onClickCapture}
       >
-        <div style={{ display: 'flex', transform: `translateX(${-safeIndex * trackWidth + dragOffset}px)`, transition: dragging ? 'none' : 'transform .45s cubic-bezier(.4,0,.2,1)' }}>
+        <div style={{ display: 'flex', height: '100%', transform: `translateX(${-safeIndex * trackWidth + dragOffset}px)`, transition: dragging ? 'none' : 'transform .45s cubic-bezier(.4,0,.2,1)' }}>
           {banners.map((b) => (
             <a
               key={b.id}
               href={b.link_url || '#'}
               target="_blank"
               rel="noopener noreferrer"
-              style={{ flex: `0 0 ${trackWidth}px`, height: 132, textDecoration: 'none', position: 'relative', background: b.banner_img ? 'var(--surface-soft)' : 'var(--gradient-green)' }}
+              style={{ flex: `0 0 ${trackWidth}px`, height: '100%', textDecoration: 'none', position: 'relative', background: b.banner_img ? 'var(--surface-soft)' : 'var(--gradient-green)' }}
             >
               {b.banner_img ? (
                 <img src={b.banner_img} alt={b.title || 'โปรโมชัน'} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
