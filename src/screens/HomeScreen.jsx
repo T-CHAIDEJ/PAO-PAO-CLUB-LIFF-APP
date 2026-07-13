@@ -458,6 +458,9 @@ export default function HomeScreen({ go, user, child, goOnboarding, goProfile, c
         </div>
       </div>
 
+      {/* Advertising / campaign banners (DB-driven, swipeable) */}
+      <BannerCarousel banners={banners} />
+
       {/* Baby Info Card */}
       {!isGuest && childWithRecord && (
         <div style={{ padding: '20px 16px 0' }}>
@@ -472,8 +475,6 @@ export default function HomeScreen({ go, user, child, goOnboarding, goProfile, c
         </div>
       )}
 
-      {/* Advertising / campaign banners (DB-driven, swipeable) */}
-      <BannerCarousel banners={banners} />
       <div style={{ height: 20 }} />
     </div>
   );
