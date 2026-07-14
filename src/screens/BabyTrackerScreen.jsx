@@ -362,16 +362,33 @@ function pickMonthStep(range) {
   return 12;
 }
 
+const MIN_CHART_SPAN_MONTHS = 6;
+
+// One point per calendar month of age — if a parent logs several times in
+// the same month, keep only the latest (most current) one so the trend
+// line doesn't get noisy.
+function aggregateMonthly(points) {
+  const byMonth = new Map();
+  for (const p of points) {
+    const bucket = Math.floor(p.month);
+    const existing = byMonth.get(bucket);
+    if (!existing || new Date(p.date) > new Date(existing.date)) byMonth.set(bucket, p);
+  }
+  return Array.from(byMonth.values()).sort((a, b) => a.month - b.month);
+}
+
 function buildAgeChart(records, gender, birthDate, indicator, color) {
   const sorted = [...records].sort((a, b) => new Date(a.date) - new Date(b.date));
   const key = indicator === 'wfa' ? 'weightKg' : 'heightCm';
   const unit = indicator === 'wfa' ? 'กก.' : 'ซม.';
-  const points = sorted.map(r => ({ month: ageInMonths(birthDate, r.date), val: r[key], date: r.date }));
-  if (!points.length) return null;
+  const rawPoints = sorted.map(r => ({ month: ageInMonths(birthDate, r.date), val: r[key], date: r.date }));
+  if (!rawPoints.length) return null;
+  const points = aggregateMonthly(rawPoints);
 
   const wfa = getWHOData(gender, indicator);
-  const minM = Math.max(0, Math.floor(Math.min(...points.map(p => p.month))) - 1);
-  const maxM = Math.ceil(Math.max(...points.map(p => p.month))) + 1;
+  let minM = Math.max(0, Math.floor(Math.min(...points.map(p => p.month))) - 1);
+  let maxM = Math.ceil(Math.max(...points.map(p => p.month))) + 1;
+  if (maxM - minM < MIN_CHART_SPAN_MONTHS) maxM = minM + MIN_CHART_SPAN_MONTHS;
   const whoSlice = Array.from(new Set([minM, ...wfa.filter(d => d.month > minM && d.month < maxM).map(d => d.month), maxM]))
     .sort((a, b) => a - b).map(m => ({ month: m, ...getWHOValueAtMonth(gender, indicator, m) }));
 
