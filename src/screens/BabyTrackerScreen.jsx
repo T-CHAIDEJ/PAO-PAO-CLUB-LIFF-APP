@@ -479,6 +479,12 @@ function WHChart({ records, gender }) {
   const xTicks = [];
   for (let h = Math.ceil(minH / xStep) * xStep; h <= maxH; h += xStep) xTicks.push(h);
 
+  // "Current" here = height from the most recently recorded entry (by date,
+  // not by height value — points are sorted by height for the trend line).
+  const latestByDate = [...records].sort((a, b) => new Date(b.date) - new Date(a.date))[0];
+  const currentH = Math.min(maxH, Math.max(minH, latestByDate.heightCm));
+  const currentX = xSc(currentH);
+
   return (
     <Card>
       <SectionTitle>แนวโน้มย้อนหลัง</SectionTitle>
@@ -504,6 +510,9 @@ function WHChart({ records, gender }) {
             onClick={(e) => { e.stopPropagation(); setSelected(selected === i ? null : i); }}
           />
         ))}
+        {/* Current-height indicator: vertical line + triangle marker on the x-axis */}
+        <line x1={currentX} x2={currentX} y1={mg.top} y2={mg.top + pH} stroke="var(--text-heading)" strokeWidth="1.5" />
+        <path d={`M ${currentX - 5} ${mg.top + pH + 6} L ${currentX + 5} ${mg.top + pH + 6} L ${currentX} ${mg.top + pH} Z`} fill="var(--text-heading)" />
         {/* x-axis (height) ticks */}
         {xTicks.map((h, i) => (
           <text key={`x${i}`} x={xSc(h)} y={H - 4} textAnchor="middle" fontSize="8.5" fill="var(--text-faint)">{Math.round(h)}</text>
