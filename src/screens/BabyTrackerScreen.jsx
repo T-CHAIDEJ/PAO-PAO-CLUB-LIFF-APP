@@ -467,15 +467,24 @@ function AgeChart({ chartData, title }) {
   );
 }
 
-function WHChart({ records, gender }) {
+const MIN_CHART_SPAN_CM = 10;
+
+function WHChart({ records, gender, birthDate }) {
   const [selected, setSelected] = useState(null);
-  const sorted = [...records].filter(r => r.heightCm).sort((a, b) => a.heightCm - b.heightCm);
+  // Reuse the same "1 record per calendar month of age" selection as the
+  // weight/height-by-age charts, so all 3 charts agree on which records
+  // to plot — just re-projected onto height (x) vs weight (y) here.
+  const withAge = [...records].filter(r => r.heightCm)
+    .map(r => ({ month: ageInMonths(birthDate, r.date), val: r.heightCm, date: r.date, r }));
+  const monthly = aggregateMonthly(withAge).map(p => p.r);
+  const sorted = monthly.sort((a, b) => a.heightCm - b.heightCm);
   const points = sorted.map(r => ({ h: r.heightCm, w: r.weightKg, date: r.date }));
   if (!points.length) return null;
 
   const wflData = getWHOWflData(gender);
-  const minH = Math.max(45, Math.floor(Math.min(...points.map(p => p.h))) - 2);
-  const maxH = Math.min(120, Math.ceil(Math.max(...points.map(p => p.h))) + 2);
+  let minH = Math.max(45, Math.floor(Math.min(...points.map(p => p.h))) - 2);
+  let maxH = Math.min(120, Math.ceil(Math.max(...points.map(p => p.h))) + 2);
+  if (maxH - minH < MIN_CHART_SPAN_CM) maxH = Math.min(120, minH + MIN_CHART_SPAN_CM);
   const whoSlice = wflData.filter(d => d.length >= minH && d.length <= maxH);
   if (!whoSlice.length) return null;
 
@@ -754,7 +763,7 @@ function OverviewPanel({ records, gender, birthDate, chartTab, onChartTabChange,
             measurementText={`${latest.weightKg.toFixed(1)} กก. ที่ส่วนสูง ${latest.heightCm.toFixed(1)} ซม.`}
             zScore={zWH}
           />
-          <WHChart records={records} gender={gender} />
+          <WHChart records={records} gender={gender} birthDate={birthDate} />
         </>
       )}
 
