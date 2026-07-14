@@ -3,6 +3,12 @@ import { supabase } from './supabase.js';
 // 7-day daily-login streak reward table (day 1 → day 7)
 export const STREAK_POINTS = [5, 5, 10, 10, 15, 15, 50];
 
+// All points earned this season expire together at the end of SS1. This is
+// only written onto each ledger row — nothing currently deducts expired
+// points from `balance` automatically (no scheduled job), so the displayed
+// balance won't drop on its own after this date yet.
+const SEASON_EXPIRES_AT = '2026-12-31T23:59:59+07:00';
+
 function todayStr() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -61,7 +67,7 @@ export async function checkinDaily(lineUid) {
     .eq('line_uid', lineUid);
   await supabase
     .from('006_points')
-    .insert({ line_uid: lineUid, source: 'daily_login', points: award, balance: newBalance, streak_day: dayIndex + 1 });
+    .insert({ line_uid: lineUid, source: 'daily_login', points: award, balance: newBalance, streak_day: dayIndex + 1, expired_at: SEASON_EXPIRES_AT });
 
   // Non-fatal audit trail — 002_user_logs currently rejects anon inserts
   // (RLS gap, same as 008_consent was), so this silently no-ops for now.

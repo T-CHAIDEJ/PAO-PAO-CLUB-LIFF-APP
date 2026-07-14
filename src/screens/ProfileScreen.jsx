@@ -28,7 +28,6 @@ export default function ProfileScreen({ go, user, child }) {
       : child
         ? 'คุณแม่มือใหม่'
         : 'สมาชิก';
-  const toGold = Math.max(0, 500 - points);
   const childAge = calcAge(child?.birth_date);
   const childNote = child ? `${child.name}${childAge ? ` · ${childAge}` : ''}` : 'ยังไม่ได้เพิ่มข้อมูล';
 
@@ -60,15 +59,15 @@ export default function ProfileScreen({ go, user, child }) {
         </div>
       </div>
 
-      {/* Tier card overlapping hero */}
+      {/* Points balance card overlapping hero — no Tier, just a running balance */}
       <div style={{ padding: '0 16px', marginTop: -34, position: 'relative' }}>
         <Card style={{ boxShadow: 'var(--shadow-md)', display: 'flex', alignItems: 'center', gap: 14 }}>
           <span style={{ width: 48, height: 48, borderRadius: 14, background: 'var(--gradient-green)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
             <Medal width={24} height={24} />
           </span>
           <div style={{ flex: 1 }}>
-            <div style={{ font: 'var(--weight-bold) 16px var(--font-display)', color: 'var(--text-heading)' }}>สมาชิก Silver</div>
-            <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)' }}>{points} แต้ม · อีก {toGold} แต้มเป็น Gold</div>
+            <div style={{ font: 'var(--weight-bold) 16px var(--font-display)', color: 'var(--text-heading)' }}>แต้มสะสมของฉัน</div>
+            <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)' }}>สะสมไว้แลกของรางวัลได้เลย</div>
           </div>
           <Badge variant="solidGreen">{points}</Badge>
         </Card>

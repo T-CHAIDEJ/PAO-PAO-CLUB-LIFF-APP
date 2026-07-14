@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Star, Medal, TicketPercent, Package, Gift, Plus } from 'lucide-react';
+import { Star, Package, Gift, Plus } from 'lucide-react';
 import { Card, Badge, Button, Tabs } from '../components/index.jsx';
 import { SkyDeco } from '../shared/index.jsx';
 import { supabase } from '../lib/supabase.js';
 
+// No Tier system — points are only for redeeming rewards, expire end of
+// SS1 (31 Dec 2026). Catalog per brand's current scope (2026-07-14).
 const CATALOG = [
-  { name: 'ส่วนลด 50 บาท',         pts: 200, Icon: TicketPercent, tag: 'ยอดนิยม' },
-  { name: 'ส่วนลด 100 บาท',        pts: 400, Icon: TicketPercent, tag: null },
-  { name: 'ผ้าเปียกเปา เปา 1 ห่อ',  pts: 350, Icon: Package,       tag: 'ใหม่!' },
-  { name: 'ผ้าอ้อม Size M ฟรี 1 แพ็ค', pts: 800, Icon: Gift,    tag: null },
+  { name: 'Sampling PaoPao (เลือกไซส์ NB-2XL)', pts: 100, Icon: Package, tag: 'ยอดนิยม' },
+  { name: 'ผ้าอ้อมเปาเปา ไซซ์มินิ (NB-2XL) 1 ชิ้น', pts: 200, Icon: Gift, tag: null },
+  { name: 'ถังเก็บของเล่นลูกน้อย 1 ชิ้น (คละลาย)', pts: 300, Icon: Package, tag: 'ใหม่!' },
 ];
 
 const TAB_ITEMS = [
@@ -59,16 +60,13 @@ export default function RewardsScreen({ user }) {
             <span style={{ font: '800 42px var(--font-display)' }}>{points}</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(255,255,255,.18)', padding: '4px 12px', borderRadius: 999 }}>
-              <Medal width={15} height={15} />
-              <span style={{ font: 'var(--weight-semibold) 12px var(--font-base)' }}>สมาชิก Silver</span>
-            </span>
             {streak > 0 && (
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(255,255,255,.18)', padding: '4px 12px', borderRadius: 999 }}>
                 <span style={{ font: 'var(--weight-semibold) 12px var(--font-base)' }}>🔥 เข้าระบบต่อเนื่อง {streak} วัน</span>
               </span>
             )}
           </div>
+          <div style={{ font: 'var(--type-caption)', opacity: .75, marginTop: 8 }}>แต้มหมดอายุหลังสิ้น SS1 (31 ธ.ค. 2026)</div>
         </div>
       </div>
 
