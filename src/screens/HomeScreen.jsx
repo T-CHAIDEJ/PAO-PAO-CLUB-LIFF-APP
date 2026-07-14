@@ -475,12 +475,12 @@ export default function HomeScreen({ go, user, child, goOnboarding, goProfile, c
         </div>
       )}
 
-      {/* Award banner */}
-      <div style={{ padding: '20px 16px 0' }}>
+      {/* Award banner — full-bleed like the hero, closing the page out the way it opened */}
+      <div style={{ marginTop: 20 }}>
         <img
           src="/award-innovation-2025.jpg"
           alt="ผ้าอ้อมเปาเปาได้รับรางวัลสุดยอดนวัตกรรมด้านการซึมซับ Amarin Baby & Kids Awards 2025"
-          style={{ width: '100%', display: 'block', borderRadius: 20, boxShadow: 'var(--shadow-md)' }}
+          style={{ width: '100%', display: 'block' }}
         />
       </div>
 
