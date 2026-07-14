@@ -2,19 +2,17 @@ import React from 'react';
 import { ChevronLeft, Info } from 'lucide-react';
 import { Card, Badge } from '../components/index.jsx';
 import { SkyDeco } from '../shared/index.jsx';
-import { recommendSize } from './TrackerScreen.jsx';
-
-const ROWS = [
-  { code: 'NB',  range: 'แรกเกิด – 5 กก.', stage: 'แรกเกิด' },
-  { code: 'S',   range: '4 – 8 กก.',        stage: 'ตัวเล็กแรกเกิด' },
-  { code: 'M',   range: '7 – 12 กก.',       stage: 'วัยคืบคลาน' },
-  { code: 'L',   range: '9 – 14 กก.',       stage: 'วัยหัดเดิน' },
-  { code: 'XL',  range: '12 – 17 กก.',      stage: 'วัยซน' },
-  { code: 'XXL', range: '15 – 25 กก.',      stage: 'เด็กโต' },
-];
+import { recommendSize, getSizes } from '../lib/diaperSize.js';
 
 export default function SizeChartScreen({ go, currentKg = 8.5 }) {
   const cur = recommendSize(currentKg).code;
+  // Read on every render (not module scope) — loadDiaperSizes() at App boot
+  // resolves async, so the cache may still be filling in when this mounts.
+  const ROWS = getSizes().map(s => ({
+    code: s.code,
+    range: `${s.min ?? 0} – ${s.max ?? '...'} กก.`,
+    stage: s.description || '—',
+  }));
 
   return (
     <div style={{ background: 'var(--gradient-sky)', minHeight: '100%', paddingBottom: 24 }}>

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { initLiff } from './lib/liff.js';
 import { supabase } from './lib/supabase.js';
 import { checkinDaily } from './lib/points.js';
+import { loadDiaperSizes } from './lib/diaperSize.js';
 import BottomNav from './screens/BottomNav.jsx';
 import HomeScreen from './screens/HomeScreen.jsx';
 import TrackerScreen, { DiaperScreen } from './screens/TrackerScreen.jsx';
@@ -92,6 +93,7 @@ export default function App() {
       setScreen('onboarding');
     }
     boot();
+    loadDiaperSizes(); // fire-and-forget — recommendSize() falls back until this resolves
   }, []);
 
   const handleOnboardingComplete = async (data) => {

@@ -14,10 +14,60 @@ const inputStyle = {
   background: '#fff', outline: 'none', boxSizing: 'border-box',
 };
 
+// 011_shop_links.platform codes → display treatment. Order here also sets
+// display order (DB has no sort_order column of its own).
+const PLATFORM_ORDER = ['SHP', 'TT', 'LiShop', 'LZD'];
+const PLATFORM_META = {
+  SHP: {
+    label: 'Shopee', bg: '#fff3f0', accent: '#EE4D2D',
+    icon: <svg width="28" height="28" viewBox="0 0 28 28" fill="none" style={{ flex: 'none' }}>
+      <rect width="28" height="28" rx="8" fill="#EE4D2D"/>
+      <path d="M14 5C11.5 5 9.5 7 9.5 9.5H8L7 21H21L20 9.5H18.5C18.5 7 16.5 5 14 5ZM14 7C15.4 7 16.5 8.1 16.5 9.5H11.5C11.5 8.1 12.6 7 14 7Z" fill="white"/>
+    </svg>,
+  },
+  TT: {
+    label: 'TikTok Shop', bg: '#f5f5f5', accent: '#010101',
+    icon: <svg width="28" height="28" viewBox="0 0 28 28" fill="none" style={{ flex: 'none' }}>
+      <rect width="28" height="28" rx="8" fill="#010101"/>
+      <path d="M19.5 7h-2.3c.1.6.4 1.2.9 1.6.4.4 1 .7 1.6.8v2.2c-.9 0-1.8-.3-2.5-.8v5.5c0 2.4-2 4.3-4.4 4.3S8.5 18.7 8.5 16.3s2-4.3 4.4-4.3c.2 0 .4 0 .6.1v2.3c-.2-.1-.4-.1-.6-.1-1.2 0-2.1.9-2.1 2.1s.9 2.1 2.1 2.1 2.1-.9 2.1-2.1V7h2.2c.1.7.4 1.3.8 1.8.5.5 1.1.8 1.8.9L19.5 7z" fill="white"/>
+      <path d="M20.5 11.3c-.7-.1-1.3-.4-1.8-.9-.4-.5-.7-1.1-.8-1.8h-.3v9.7c0 1.2-.9 2.1-2.1 2.1s-2.1-.9-2.1-2.1.9-2.1 2.1-2.1c.2 0 .4 0 .6.1V14c-.2 0-.4-.1-.6-.1-2.4 0-4.4 1.9-4.4 4.3s2 4.3 4.4 4.3 4.4-1.9 4.4-4.3v-5.5c.7.5 1.6.8 2.5.8v-2.2h-.2c-.6-.1-1.2-.4-1.7-1z" fill="#69C9D0"/>
+    </svg>,
+  },
+  LiShop: {
+    label: 'LINE MYSHOP', bg: '#f0fdf4', accent: '#06C755',
+    icon: <svg width="28" height="28" viewBox="0 0 28 28" fill="none" style={{ flex: 'none' }}>
+      <rect width="28" height="28" rx="8" fill="#06C755"/>
+      <path d="M14 6C9.6 6 6 9.1 6 12.9c0 2.5 1.6 4.7 4 5.9-.2.6-.6 2.2-.7 2.5-.1.4.2.4.4.3.2-.1 3-2 4.2-2.8.4.1.7.1 1.1.1 4.4 0 8-3.1 8-6.9C22 9.1 18.4 6 14 6z" fill="white"/>
+    </svg>,
+  },
+  LZD: {
+    label: 'Lazada', bg: '#eef1ff', accent: '#0F146D',
+    icon: <svg width="28" height="28" viewBox="0 0 28 28" fill="none" style={{ flex: 'none' }}>
+      <rect width="28" height="28" rx="8" fill="#0F146D"/>
+      <path d="M14 6l7 4v8l-7 4-7-4v-8l7-4z" fill="#FF6A00"/>
+      <path d="M14 6l7 4-7 4-7-4 7-4z" fill="white" opacity=".9"/>
+    </svg>,
+  },
+};
+
 function DiaperPanel({ go, child }) {
   const [latestKg, setLatestKg] = useState(null);
   const [latestMeasurements, setLatestMeasurements] = useState({ thigh: null, waist: null });
   const [loadingWeight, setLoadingWeight] = useState(true);
+  const [shopLinks, setShopLinks] = useState(null); // null = loading, [] = none active
+
+  useEffect(() => {
+    supabase
+      .from('011_shop_links')
+      .select('platform, url')
+      .eq('is_active', true)
+      .is('diaper_id', null) // general links, not tied to a specific size
+      .then(({ data }) => {
+        const sorted = (data || []).slice().sort((a, b) =>
+          PLATFORM_ORDER.indexOf(a.platform) - PLATFORM_ORDER.indexOf(b.platform));
+        setShopLinks(sorted);
+      });
+  }, []);
 
   useEffect(() => {
     if (!child?.child_id) { setLoadingWeight(false); return; }
@@ -146,39 +196,21 @@ function DiaperPanel({ go, child }) {
           </div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {/* Shopee */}
-          <a href="https://s.shopee.co.th/9zsxpbuVdY?share_channel_code=6" target="_blank" rel="noopener noreferrer"
-            style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: '#fff3f0', borderRadius: 'var(--radius-md)', textDecoration: 'none' }}>
-            <svg width="28" height="28" viewBox="0 0 28 28" fill="none" style={{ flex: 'none' }}>
-              <rect width="28" height="28" rx="8" fill="#EE4D2D"/>
-              <path d="M14 5C11.5 5 9.5 7 9.5 9.5H8L7 21H21L20 9.5H18.5C18.5 7 16.5 5 14 5ZM14 7C15.4 7 16.5 8.1 16.5 9.5H11.5C11.5 8.1 12.6 7 14 7Z" fill="white"/>
-            </svg>
-            <span style={{ flex: 1, font: 'var(--weight-semibold) 15px var(--font-base)', color: 'var(--text-heading)' }}>Shopee</span>
-            <span style={{ font: 'var(--weight-bold) 13px var(--font-base)', color: '#EE4D2D', background: '#EE4D2D18', padding: '4px 12px', borderRadius: 20 }}>ซื้อเลย</span>
-          </a>
-
-          {/* TikTok Shop */}
-          <a href="https://vt.tiktok.com/ZS9d7VtLL3atr-VOrD6/" target="_blank" rel="noopener noreferrer"
-            style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: '#f5f5f5', borderRadius: 'var(--radius-md)', textDecoration: 'none' }}>
-            <svg width="28" height="28" viewBox="0 0 28 28" fill="none" style={{ flex: 'none' }}>
-              <rect width="28" height="28" rx="8" fill="#010101"/>
-              <path d="M19.5 7h-2.3c.1.6.4 1.2.9 1.6.4.4 1 .7 1.6.8v2.2c-.9 0-1.8-.3-2.5-.8v5.5c0 2.4-2 4.3-4.4 4.3S8.5 18.7 8.5 16.3s2-4.3 4.4-4.3c.2 0 .4 0 .6.1v2.3c-.2-.1-.4-.1-.6-.1-1.2 0-2.1.9-2.1 2.1s.9 2.1 2.1 2.1 2.1-.9 2.1-2.1V7h2.2c.1.7.4 1.3.8 1.8.5.5 1.1.8 1.8.9L19.5 7z" fill="white"/>
-              <path d="M20.5 11.3c-.7-.1-1.3-.4-1.8-.9-.4-.5-.7-1.1-.8-1.8h-.3v9.7c0 1.2-.9 2.1-2.1 2.1s-2.1-.9-2.1-2.1.9-2.1 2.1-2.1c.2 0 .4 0 .6.1V14c-.2 0-.4-.1-.6-.1-2.4 0-4.4 1.9-4.4 4.3s2 4.3 4.4 4.3 4.4-1.9 4.4-4.3v-5.5c.7.5 1.6.8 2.5.8v-2.2h-.2c-.6-.1-1.2-.4-1.7-1z" fill="#69C9D0"/>
-            </svg>
-            <span style={{ flex: 1, font: 'var(--weight-semibold) 15px var(--font-base)', color: 'var(--text-heading)' }}>TikTok Shop</span>
-            <span style={{ font: 'var(--weight-bold) 13px var(--font-base)', color: '#010101', background: '#01010118', padding: '4px 12px', borderRadius: 20 }}>ซื้อเลย</span>
-          </a>
-
-          {/* LINE MYSHOP */}
-          <a href="https://shop.line.me/@paopaoclub" target="_blank" rel="noopener noreferrer"
-            style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: '#f0fdf4', borderRadius: 'var(--radius-md)', textDecoration: 'none' }}>
-            <svg width="28" height="28" viewBox="0 0 28 28" fill="none" style={{ flex: 'none' }}>
-              <rect width="28" height="28" rx="8" fill="#06C755"/>
-              <path d="M14 6C9.6 6 6 9.1 6 12.9c0 2.5 1.6 4.7 4 5.9-.2.6-.6 2.2-.7 2.5-.1.4.2.4.4.3.2-.1 3-2 4.2-2.8.4.1.7.1 1.1.1 4.4 0 8-3.1 8-6.9C22 9.1 18.4 6 14 6z" fill="white"/>
-            </svg>
-            <span style={{ flex: 1, font: 'var(--weight-semibold) 15px var(--font-base)', color: 'var(--text-heading)' }}>LINE MYSHOP</span>
-            <span style={{ font: 'var(--weight-bold) 13px var(--font-base)', color: '#06C755', background: '#06C75518', padding: '4px 12px', borderRadius: 20 }}>ซื้อเลย</span>
-          </a>
+          {shopLinks === null ? (
+            <div style={{ font: 'var(--type-caption)', color: 'var(--text-faint)', textAlign: 'center', padding: '8px 0' }}>กำลังโหลด...</div>
+          ) : shopLinks.length === 0 ? (
+            <div style={{ font: 'var(--type-caption)', color: 'var(--text-faint)', textAlign: 'center', padding: '8px 0' }}>ยังไม่มีลิงก์ร้านค้าตอนนี้</div>
+          ) : shopLinks.map((link) => {
+            const meta = PLATFORM_META[link.platform] || { label: link.platform, bg: 'var(--surface-soft)', accent: 'var(--color-primary)', icon: <ShoppingCart width={28} height={28} style={{ flex: 'none' }} /> };
+            return (
+              <a key={link.platform} href={link.url} target="_blank" rel="noopener noreferrer"
+                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', background: meta.bg, borderRadius: 'var(--radius-md)', textDecoration: 'none' }}>
+                {meta.icon}
+                <span style={{ flex: 1, font: 'var(--weight-semibold) 15px var(--font-base)', color: 'var(--text-heading)' }}>{meta.label}</span>
+                <span style={{ font: 'var(--weight-bold) 13px var(--font-base)', color: meta.accent, background: `${meta.accent}18`, padding: '4px 12px', borderRadius: 20 }}>ซื้อเลย</span>
+              </a>
+            );
+          })}
         </div>
       </Card>
     </div>
