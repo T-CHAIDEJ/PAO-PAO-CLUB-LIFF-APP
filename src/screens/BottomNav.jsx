@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, Baby, Activity, BookOpen, Gift } from 'lucide-react';
+import { Home, Baby, Activity, BookOpen, Gift, UserCircle2 } from 'lucide-react';
 
 const TABS = [
   { id: 'home',      label: 'หน้าแรก',   Icon: Home },
@@ -7,6 +7,7 @@ const TABS = [
   { id: 'tracker',   label: 'พัฒนาการ',  Icon: Activity },
   { id: 'knowledge', label: 'ความรู้',    Icon: BookOpen },
   { id: 'rewards',   label: 'รางวัล',    Icon: Gift },
+  { id: 'profile',   label: 'โปรไฟล์',   Icon: UserCircle2 },
 ];
 
 export default function BottomNav({ active, onChange }) {

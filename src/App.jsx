@@ -157,7 +157,7 @@ export default function App() {
     );
   }
 
-  const navTab = screen === 'size' ? 'diaper' : screen === 'profile' ? 'home' : screen;
+  const navTab = screen === 'size' ? 'diaper' : screen;
 
   const onChildUpdate = (patch) => setChildData(prev => ({ ...(prev ?? {}), ...patch }));
   const onUserUpdate = (patch) => setUserData(prev => prev ? { ...prev, ...patch } : prev);
