@@ -648,7 +648,7 @@ export default function HomeScreen({ go, user, child, goOnboarding, goProfile, c
             <span style={{ width: 34, height: 34, borderRadius: '50%', background: 'rgba(255,255,255,.18)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Bell width={20} height={20} />
             </span>
-            <ProfileButton onClick={goProfile} picture={user?.picture_url} name={user?.parent_name || user?.display_name} />
+            <ProfileButton onClick={goProfile} />
           </div>
         </div>
         {isGuest
