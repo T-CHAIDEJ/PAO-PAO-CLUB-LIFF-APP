@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Scale, ChevronRight, Ruler, ShoppingCart, Baby, Camera } from 'lucide-react';
 import { Card } from '../components/index.jsx';
-import { SkyDeco, SectionTitle, ProfileButton, ChildSwitcherBar } from '../shared/index.jsx';
+import { SkyDeco, SectionTitle, ProfileButton, ChildTabBar } from '../shared/index.jsx';
 import { GrowthPanel } from './BabyTrackerScreen.jsx';
 import { supabase } from '../lib/supabase.js';
 import { recommendSize } from '../lib/diaperSize.js';
@@ -233,14 +233,6 @@ export function DiaperScreen({ go, child, onChildUpdate, childrenList, activeChi
         <div style={{ position: 'relative', display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
           <ProfileButton onClick={() => go('profile')} />
         </div>
-        {childrenList && childrenList.length > 0 && (
-          <div style={{ position: 'relative', marginBottom: 12 }}>
-            <ChildSwitcherBar
-              childrenList={childrenList} activeChildId={activeChildId} onSwitchChild={onSwitchChild}
-              onAdd={() => setShowAddChild(true)} onEditActive={() => setEditingChild(true)}
-            />
-          </div>
-        )}
         <div style={{ position: 'relative', display: 'flex', gap: 14, alignItems: 'flex-start' }}>
           <ChildAvatarUpload child={child} onChildUpdate={onChildUpdate} />
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -269,6 +261,10 @@ export function DiaperScreen({ go, child, onChildUpdate, childrenList, activeChi
           </div>
         </div>
       </div>
+      <ChildTabBar
+        childrenList={childrenList} activeChildId={activeChildId} onSwitchChild={onSwitchChild}
+        onAdd={() => setShowAddChild(true)} onEdit={() => setEditingChild(true)}
+      />
       <div style={{ padding: '16px 16px 0' }}>
         <DiaperPanel go={go} child={child} />
       </div>
@@ -375,14 +371,6 @@ export default function TrackerScreen({ go, child, onChildUpdate, childrenList, 
             <ProfileButton onClick={() => go('profile')} />
           </div>
         )}
-        {childrenList && childrenList.length > 0 && (
-          <div style={{ position: 'relative', marginBottom: 12 }}>
-            <ChildSwitcherBar
-              childrenList={childrenList} activeChildId={activeChildId} onSwitchChild={onSwitchChild}
-              onAdd={() => setShowAddChild(true)} onEditActive={() => setEditingChild(true)}
-            />
-          </div>
-        )}
         <div style={{ position: 'relative', display: 'flex', gap: 14, alignItems: 'flex-start' }}>
           <ChildAvatarUpload child={child} onChildUpdate={onChildUpdate} />
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -411,6 +399,10 @@ export default function TrackerScreen({ go, child, onChildUpdate, childrenList, 
           </div>
         </div>
       </div>
+      <ChildTabBar
+        childrenList={childrenList} activeChildId={activeChildId} onSwitchChild={onSwitchChild}
+        onAdd={() => setShowAddChild(true)} onEdit={() => setEditingChild(true)}
+      />
       <div style={{ padding: '16px 16px 0' }}>
         <GrowthPanel child={child} />
       </div>

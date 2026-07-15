@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Baby, Ruler, Gift, ScanLine, Bell, ChevronRight, Star, Package, TicketPercent, UserPlus, UserCircle2, Mars, Venus, Flame } from 'lucide-react';
+import { Baby, Ruler, Gift, ScanLine, Bell, ChevronRight, Star, Package, TicketPercent, UserPlus, UserCircle2, Mars, Venus, Flame, Plus, Pencil } from 'lucide-react';
 import { Card, Badge, Button, ProgressBar } from '../components/index.jsx';
-import { Wordmark, SectionTitle, ProfileButton, ChildSwitcherBar } from '../shared/index.jsx';
+import { Wordmark, SectionTitle, ProfileButton } from '../shared/index.jsx';
 import { recommendSize } from './TrackerScreen.jsx';
 import { supabase } from '../lib/supabase.js';
 import { STREAK_POINTS } from '../lib/points.js';
@@ -406,10 +406,95 @@ function BannerCarousel({ banners }) {
   );
 }
 
+function MiniStat({ label, value, unit }) {
+  return (
+    <div style={{ flex: 1, textAlign: 'center' }}>
+      <div style={{ font: '10px var(--font-base)', color: 'var(--text-faint)' }}>{label}</div>
+      {value != null ? (
+        <div style={{ font: 'var(--weight-bold) 14px var(--font-display)', color: 'var(--text-heading)' }}>
+          {value}<span style={{ fontSize: 10, marginLeft: 2, color: 'var(--text-muted)' }}>{unit}</span>
+        </div>
+      ) : (
+        <div style={{ font: '12px var(--font-base)', color: 'var(--text-faint)' }}>—</div>
+      )}
+    </div>
+  );
+}
+
+function ChildMiniCard({ c, active, latestKg, latestCm, onSelect, onEdit }) {
+  const childAge = calcAge(c.birth_date);
+  return (
+    <div
+      onClick={onSelect}
+      style={{
+        position: 'relative', flex: '0 0 152px', textAlign: 'left', cursor: 'pointer',
+        border: active ? '2px solid var(--color-secondary)' : '1px solid var(--border-default)',
+        background: '#fff', borderRadius: 18, padding: 12,
+        boxShadow: active ? 'var(--shadow-md)' : 'var(--shadow-xs)',
+      }}
+    >
+      <button
+        onClick={(e) => { e.stopPropagation(); onEdit(c); }}
+        aria-label="แก้ไขข้อมูลลูก"
+        style={{ position: 'absolute', top: 8, right: 8, width: 22, height: 22, borderRadius: '50%', background: 'var(--surface-soft)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', cursor: 'pointer' }}
+      >
+        <Pencil width={11} height={11} />
+      </button>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingRight: 20 }}>
+        <span style={{ width: 36, height: 36, borderRadius: 10, overflow: 'hidden', background: 'var(--surface-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
+          {c.avatar_url
+            ? <img src={c.avatar_url} alt={c.name || 'ลูก'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            : <span style={{ fontSize: 16 }}>{c.is_pregnant ? '🤰' : '👶'}</span>}
+        </span>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ font: 'var(--weight-bold) 13px var(--font-display)', color: 'var(--text-heading)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {c.name || (c.is_pregnant ? 'ในท้อง' : 'ลูก')}
+          </div>
+          <div style={{ font: '10px var(--font-base)', color: 'var(--text-faint)' }}>{c.is_pregnant ? 'ตั้งครรภ์' : childAge}</div>
+        </div>
+      </div>
+      {!c.is_pregnant && (
+        <div style={{ display: 'flex', gap: 4, marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--gray-100)' }}>
+          <MiniStat label="น้ำหนัก" value={latestKg != null ? latestKg.toFixed(1) : null} unit="กก." />
+          <MiniStat label="ส่วนสูง" value={latestCm != null ? latestCm.toFixed(1) : null} unit="ซม." />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ChildCardsRow({ childrenList, activeChildId, growthByChild, onSwitchChild, onEdit, onAdd }) {
+  if (!childrenList || childrenList.length === 0) return null;
+  return (
+    <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 2 }}>
+      {childrenList.map((c) => (
+        <ChildMiniCard
+          key={c.child_id}
+          c={c}
+          active={c.child_id === activeChildId}
+          latestKg={growthByChild[c.child_id]?.weight_kg ?? null}
+          latestCm={growthByChild[c.child_id]?.height_cm ?? null}
+          onSelect={() => onSwitchChild(c.child_id)}
+          onEdit={onEdit}
+        />
+      ))}
+      <button
+        onClick={onAdd}
+        style={{ flex: '0 0 90px', border: '2px dashed var(--border-default)', background: 'transparent', borderRadius: 18, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: 'pointer', color: 'var(--text-muted)' }}
+      >
+        <span style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--surface-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Plus width={16} height={16} />
+        </span>
+        <span style={{ font: 'var(--weight-medium) 11px var(--font-base)' }}>เพิ่มลูก</span>
+      </button>
+    </div>
+  );
+}
+
 export default function HomeScreen({ go, user, child, goOnboarding, goProfile, checkin, onStreakSeen, onChildUpdate, childrenList, activeChildId, onSwitchChild, onChildrenChange }) {
   const isGuest = !user || user.role === 'guest';
   const pts = user?.points ?? 0;
-  const [latestRecord, setLatestRecord] = useState(null);
+  const [growthByChild, setGrowthByChild] = useState({});
   const [showStreak, setShowStreak] = useState(false);
   const [comingSoon, setComingSoon] = useState(null);
   const [banners, setBanners] = useState([]);
@@ -448,29 +533,34 @@ export default function HomeScreen({ go, user, child, goOnboarding, goProfile, c
   const closeStreak = () => { setShowStreak(false); onStreakSeen && onStreakSeen(); };
 
   useEffect(() => {
-    // Reset immediately on every child switch — otherwise the previous
-    // child's weight/height (and the size recommendation derived from it)
-    // lingers on screen until the new fetch resolves, or forever if the
-    // newly active child has no growth records at all (e.g. a pregnancy).
-    setLatestRecord(null);
-    if (!child?.child_id) return;
+    // Fetches the latest growth record for every child at once (instead of
+    // just the active one) so every card in ChildCardsRow can show its own
+    // weight/height, keyed by child_id — no per-switch refetch needed.
+    const bornIds = (childrenList || []).filter(c => !c.is_pregnant).map(c => c.child_id);
+    if (bornIds.length === 0) { setGrowthByChild({}); return; }
+    let alive = true;
     supabase
       .from('004_growth')
-      .select('weight_kg, height_cm, recorded_date')
-      .eq('child_id', child.child_id)
+      .select('child_id, weight_kg, height_cm, recorded_date')
+      .in('child_id', bornIds)
       .order('recorded_date', { ascending: false })
-      .limit(1)
-      .single()
-      .then(({ data }) => { if (data) setLatestRecord(data); });
-  }, [child?.child_id]);
+      .then(({ data }) => {
+        if (!alive) return;
+        const map = {};
+        (data || []).forEach((r) => { if (!map[r.child_id]) map[r.child_id] = r; });
+        setGrowthByChild(map);
+      });
+    return () => { alive = false; };
+  }, [childrenList]);
 
   // NOTE: 003_children only stores birth_weight/birth_height (birth-time stats),
   // not a "current weight" cache like the old schema did — so there's no
   // sensible fallback here anymore. If no growth record exists yet, this is null.
-  const latestKg = latestRecord?.weight_kg ?? null;
-  const latestCm = latestRecord?.height_cm ?? null;
+  const activeGrowth = growthByChild[activeChildId] ?? null;
+  const latestKg = activeGrowth?.weight_kg ?? null;
+  const latestCm = activeGrowth?.height_cm ?? null;
   const sizeRec = latestKg ? recommendSize(latestKg) : null;
-  const childWithRecord = child ? { ...child, _recordedAt: latestRecord?.recorded_date ?? null } : null;
+  const childWithRecord = child ? { ...child, _recordedAt: activeGrowth?.recorded_date ?? null } : null;
 
   return (
     <div style={{ background: 'var(--gradient-sky)', minHeight: '100%' }}>
@@ -571,17 +661,19 @@ export default function HomeScreen({ go, user, child, goOnboarding, goProfile, c
       {/* Advertising / campaign banners (DB-driven, swipeable) */}
       <BannerCarousel banners={banners} />
 
-      {/* Child switcher — shown whenever there's at least 1 child, so
-          switching who you're looking at works the same way as every
-          other child-specific screen (diaper/tracker/knowledge). */}
+      {/* Child cards — one per child plus an add card, shown whenever
+          there's at least 1 child, so switching who you're looking at
+          works the same way as every other child-specific screen. */}
       {!isGuest && childrenList && childrenList.length > 0 && (
         <div style={{ padding: '18px 16px 0' }}>
-          <ChildSwitcherBar
+          <SectionTitle>ข้อมูลลูกน้อย</SectionTitle>
+          <ChildCardsRow
             childrenList={childrenList}
             activeChildId={activeChildId}
+            growthByChild={growthByChild}
             onSwitchChild={onSwitchChild}
+            onEdit={(c) => setEditingChild({ child: c, startGraduating: false })}
             onAdd={() => setShowAddChild(true)}
-            onEditActive={() => child && setEditingChild({ child, startGraduating: false })}
           />
         </div>
       )}

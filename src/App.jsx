@@ -207,7 +207,7 @@ export default function App() {
   else if (screen === 'diaper')    view = <DiaperScreen go={go} child={childData} onChildUpdate={onChildUpdate} {...childSwitcherProps} />;
   else if (screen === 'tracker')   view = <TrackerScreen go={go} child={childData} onChildUpdate={onChildUpdate} {...childSwitcherProps} />;
   else if (screen === 'size')      view = <SizeChartScreen go={go} currentKg={childData?.birth_weight ?? 8.5} />;
-  else if (screen === 'knowledge') view = <KnowledgeScreen go={go} child={childData} {...childSwitcherProps} />;
+  else if (screen === 'knowledge') view = <KnowledgeScreen go={go} child={childData} />;
   else if (screen === 'rewards')   view = <RewardsScreen go={go} user={userData} onUserUpdate={onUserUpdate} />;
   else if (screen === 'profile')   view = <ProfileScreen go={go} user={userData} child={childData} childrenList={childrenList} onSwitchChild={switchActiveChild} />;
 
