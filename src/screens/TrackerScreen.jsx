@@ -225,13 +225,13 @@ export function DiaperScreen({ go, child, onChildUpdate }) {
 
   return (
     <div style={{ background: 'var(--gradient-sky)', minHeight: '100%', paddingBottom: 24 }}>
-      <div style={{ position: 'relative', background: 'var(--gradient-hero)', padding: '20px 20px 26px', color: '#fff', borderBottomLeftRadius: 28, borderBottomRightRadius: 28 }}>
+      <div style={{ position: 'relative', background: 'var(--gradient-hero)', padding: '20px 20px 28px', color: '#fff', borderBottomLeftRadius: 28, borderBottomRightRadius: 28 }}>
         <SkyDeco />
         <div style={{ position: 'relative', display: 'flex', gap: 14, alignItems: 'flex-start' }}>
           <ChildAvatarUpload child={child} onChildUpdate={onChildUpdate} />
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ font: 'var(--weight-medium) 13px var(--font-base)', opacity: .9 }}>ผ้าอ้อม</div>
-            <div style={{ font: '800 22px var(--font-display)', marginTop: 2, marginBottom: 10 }}>{childName}</div>
+            <div style={{ font: 'var(--weight-medium) 13px var(--font-base)', opacity: .8 }}>ผ้าอ้อม</div>
+            <div style={{ font: '800 24px var(--font-display)', marginTop: 2, marginBottom: 10 }}>{childName}</div>
             <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
               {genderLabel && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
