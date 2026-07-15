@@ -61,9 +61,9 @@ function MemberHero({ user, child }) {
   return (
     <div style={{ position: 'relative', marginTop: 18, display: 'flex', gap: 12, alignItems: 'center' }}>
       <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'rgba(255,255,255,.2)', border: '2px solid rgba(255,255,255,.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none', overflow: 'hidden' }}>
-        {child?.avatar_url
-          ? <img src={child.avatar_url} alt={child?.name || 'ลูกน้อย'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          : <Baby width={26} height={26} style={{ opacity: .9 }} />}
+        {user?.picture_url
+          ? <img src={user.picture_url} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          : <UserCircle2 width={28} height={28} style={{ opacity: .9 }} />}
       </div>
       <div style={{ minWidth: 0 }}>
         <div style={{ font: 'var(--weight-medium) 13px var(--font-base)', opacity: .9 }}>{greetingByTime()}</div>
