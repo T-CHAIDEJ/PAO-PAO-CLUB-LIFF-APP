@@ -509,7 +509,7 @@ function WHChart({ records, gender, birthDate, title }) {
   const band = bandTop + ' ' + bandBottom + ' Z';
 
   const yTicks = niceTicks(wMin, wMax, 5);
-  const xStep = niceStep(maxH - minH, 5);
+  const xStep = niceStep(maxH - minH, 12);
   const xTicks = [];
   for (let h = Math.ceil(minH / xStep) * xStep; h <= maxH; h += xStep) xTicks.push(h);
 
