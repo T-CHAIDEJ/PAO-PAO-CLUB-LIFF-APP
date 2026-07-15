@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Baby, Ruler, Gift, ScanLine, Bell, ChevronRight, Star, Package, TicketPercent, UserPlus, UserCircle2, Mars, Venus } from 'lucide-react';
+import { Baby, Ruler, Gift, ScanLine, Bell, ChevronRight, Star, Package, TicketPercent, UserPlus, UserCircle2, Mars, Venus, Flame } from 'lucide-react';
 import { Card, Badge, Button, ProgressBar } from '../components/index.jsx';
 import { Wordmark, SectionTitle } from '../shared/index.jsx';
 import { recommendSize } from './TrackerScreen.jsx';
@@ -25,6 +25,13 @@ const ACTIONS = [
   { id: 'scan',    Icon: ScanLine,  label: 'สแกนรับแต้ม',  tone: 'var(--green-100)', fg: 'var(--green-700)' },
 ];
 
+function greetingByTime() {
+  const h = new Date().getHours();
+  if (h < 12) return 'สวัสดีตอนเช้าค่ะ';
+  if (h < 17) return 'สวัสดีตอนบ่ายค่ะ';
+  return 'สวัสดีตอนเย็นค่ะ';
+}
+
 function GuestHero({ user }) {
   const suffix = user?.line_uid
     ? user.line_uid.slice(-5).toUpperCase()
@@ -40,12 +47,34 @@ function GuestHero({ user }) {
   );
 }
 
-function MemberHero({ user }) {
+function MemberHero({ user, child }) {
   const name = user?.parent_name || user?.display_name || 'คุณแม่';
+  const streak = user?.login_streak ?? 0;
+  const childAge = calcAge(child?.birth_date);
+
+  const parts = [];
+  parts.push(streak > 0 ? `streak วันที่ ${streak}` : null);
+  if (child?.name) parts.push(childAge ? `${child.name} อายุ ${childAge}` : child.name);
+  else if (childAge) parts.push(`อายุ ${childAge}`);
+  const subLine = parts.filter(Boolean).join(' · ') || null;
+
   return (
-    <div style={{ position: 'relative', marginTop: 18 }}>
-      <div style={{ font: 'var(--weight-medium) 14px var(--font-base)', opacity: .9 }}>สวัสดีค่ะ 👶</div>
-      <div style={{ font: '800 24px var(--font-display)', marginTop: 2 }}>{name}</div>
+    <div style={{ position: 'relative', marginTop: 18, display: 'flex', gap: 12, alignItems: 'center' }}>
+      <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'rgba(255,255,255,.2)', border: '2px solid rgba(255,255,255,.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none', overflow: 'hidden' }}>
+        {child?.avatar_url
+          ? <img src={child.avatar_url} alt={child?.name || 'ลูกน้อย'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          : <Baby width={26} height={26} style={{ opacity: .9 }} />}
+      </div>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ font: 'var(--weight-medium) 13px var(--font-base)', opacity: .9 }}>{greetingByTime()}</div>
+        <div style={{ font: '800 20px var(--font-display)', marginTop: 1 }}>{name}</div>
+        {subLine && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 4, font: 'var(--weight-medium) 11px var(--font-base)', opacity: .9 }}>
+            <Flame width={13} height={13} />
+            <span>{subLine}</span>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -409,7 +438,7 @@ export default function HomeScreen({ go, user, child, goOnboarding, goProfile, c
         </div>
         {isGuest
           ? <GuestHero user={user} />
-          : <MemberHero user={user} />
+          : <MemberHero user={user} child={child} />
         }
       </div>
 
