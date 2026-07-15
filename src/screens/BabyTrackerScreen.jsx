@@ -490,9 +490,12 @@ function WHChart({ records, gender, birthDate, title }) {
   if (!points.length) return null;
 
   const wflData = getWHOWflData(gender);
-  let minH = Math.max(45, Math.floor(Math.min(...points.map(p => p.h))) - 2);
-  let maxH = Math.min(120, Math.ceil(Math.max(...points.map(p => p.h))) + 2);
-  if (maxH - minH < MIN_CHART_SPAN_CM) maxH = Math.min(120, minH + MIN_CHART_SPAN_CM);
+  // Fixed 5cm-stepped axis starting at 45cm (the standard WHO weight-for-
+  // length chart baseline) rather than a data-dependent range, so the
+  // gridlines are always clean round numbers.
+  const minH = 45;
+  let maxH = Math.min(120, Math.ceil((Math.max(...points.map(p => p.h)) + 2) / 5) * 5);
+  if (maxH < minH + MIN_CHART_SPAN_CM) maxH = minH + MIN_CHART_SPAN_CM;
   const whoSlice = wflData.filter(d => d.length >= minH && d.length <= maxH);
   if (!whoSlice.length) return null;
 
@@ -509,9 +512,9 @@ function WHChart({ records, gender, birthDate, title }) {
   const band = bandTop + ' ' + bandBottom + ' Z';
 
   const yTicks = niceTicks(wMin, wMax, 5);
-  const xStep = niceStep(maxH - minH, 12);
+  const xStep = 5;
   const xTicks = [];
-  for (let h = Math.ceil(minH / xStep) * xStep; h <= maxH; h += xStep) xTicks.push(h);
+  for (let h = minH; h <= maxH; h += xStep) xTicks.push(h);
 
   // "Current" here = height from the most recently recorded entry (by date,
   // not by height value — points are sorted by height for the trend line).
