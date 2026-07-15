@@ -429,7 +429,7 @@ function AgeChart({ chartData, title }) {
 
   return (
     <Card>
-      <SectionTitle>แนวโน้มย้อนหลัง</SectionTitle>
+      <SectionTitle>แนวโน้มย้อนหลัง{title ? ` : ${title}` : ''}</SectionTitle>
       <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }} onClick={() => setSelected(null)}>
         {/* Horizontal gridlines + y-axis labels */}
         {yTicks.map((v, i) => (
@@ -477,7 +477,7 @@ function AgeChart({ chartData, title }) {
 
 const MIN_CHART_SPAN_CM = 12;
 
-function WHChart({ records, gender, birthDate }) {
+function WHChart({ records, gender, birthDate, title }) {
   const [selected, setSelected] = useState(null);
   // Reuse the same "1 record per calendar month of age" selection as the
   // weight/height-by-age charts, so all 3 charts agree on which records
@@ -521,7 +521,7 @@ function WHChart({ records, gender, birthDate }) {
 
   return (
     <Card>
-      <SectionTitle>แนวโน้มย้อนหลัง</SectionTitle>
+      <SectionTitle>แนวโน้มย้อนหลัง{title ? ` : ${title}` : ''}</SectionTitle>
       <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }} onClick={() => setSelected(null)}>
         {/* Horizontal gridlines + y-axis (weight) labels */}
         {yTicks.map((v, i) => (
@@ -754,7 +754,7 @@ function OverviewPanel({ records, gender, birthDate, chartTab, onChartTabChange,
             measurementText={`${latest.weightKg.toFixed(1)} กก. เมื่ออายุ ${ageLabel}`}
             zScore={zWA}
           />
-          <AgeChart chartData={waChart} />
+          <AgeChart chartData={waChart} title="น้ำหนักตามอายุ" />
         </>
       )}
       {chartTab === 'ha' && (
@@ -765,7 +765,7 @@ function OverviewPanel({ records, gender, birthDate, chartTab, onChartTabChange,
             measurementText={`${latest.heightCm.toFixed(1)} ซม. เมื่ออายุ ${ageLabel}`}
             zScore={zHA}
           />
-          <AgeChart chartData={haChart} />
+          <AgeChart chartData={haChart} title="ส่วนสูงตามอายุ" />
         </>
       )}
       {chartTab === 'wh' && (
@@ -776,7 +776,7 @@ function OverviewPanel({ records, gender, birthDate, chartTab, onChartTabChange,
             measurementText={`${latest.weightKg.toFixed(1)} กก. ที่ส่วนสูง ${latest.heightCm.toFixed(1)} ซม.`}
             zScore={zWH}
           />
-          <WHChart records={records} gender={gender} birthDate={birthDate} />
+          <WHChart records={records} gender={gender} birthDate={birthDate} title="น้ำหนักเทียบส่วนสูง" />
         </>
       )}
 
