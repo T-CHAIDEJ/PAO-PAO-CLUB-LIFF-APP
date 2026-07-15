@@ -423,14 +423,14 @@ export default function HomeScreen({ go, user, child, goOnboarding, goProfile, c
         backgroundImage: 'url(/home-hero-bg.png)',
         backgroundSize: 'cover',
         backgroundPosition: 'left top',
-        padding: '18px 20px 58px', color: '#fff', borderBottomLeftRadius: 28, borderBottomRightRadius: 28,
+        padding: '12px 20px 42px', color: '#fff', borderBottomLeftRadius: 28, borderBottomRightRadius: 28,
       }}>
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
           <div style={{ display: 'flex', gap: 8 }}>
-            <span style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(255,255,255,.18)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <span style={{ width: 34, height: 34, borderRadius: '50%', background: 'rgba(255,255,255,.18)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Bell width={20} height={20} />
             </span>
-            <button onClick={goProfile} style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(255,255,255,.18)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
+            <button onClick={goProfile} style={{ width: 34, height: 34, borderRadius: '50%', background: 'rgba(255,255,255,.18)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
               <UserCircle2 width={22} height={22} />
             </button>
           </div>
@@ -442,7 +442,7 @@ export default function HomeScreen({ go, user, child, goOnboarding, goProfile, c
       </div>
 
       {/* Points card / Guest CTA card */}
-      <div style={{ padding: '0 16px', marginTop: -42, position: 'relative' }}>
+      <div style={{ padding: '0 16px', marginTop: -30, position: 'relative' }}>
         {isGuest ? (
           <Card style={{ boxShadow: 'var(--shadow-md)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
