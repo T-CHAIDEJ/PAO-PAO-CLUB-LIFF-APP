@@ -69,7 +69,11 @@ const HA_ZONES = [
 
 function getZone(z, zones) {
   const clamped = Math.max(-3, Math.min(3, z ?? 0));
-  return zones.find(zn => clamped >= zn.zMin && clamped < zn.zMax) || zones[2];
+  // zMax is exclusive on every zone, but a clamped value can land exactly on
+  // the outermost boundary (z=3 or z=-3) — matching from the top down by
+  // zMin instead avoids that value falling through to the "|| zones[2]"
+  // (normal) fallback and silently misreporting an extreme outlier as normal.
+  return [...zones].reverse().find(zn => clamped >= zn.zMin) || zones[0];
 }
 
 const ZONE_COLORS = {
@@ -362,7 +366,7 @@ function pickMonthStep(range) {
   return 12;
 }
 
-const MIN_CHART_SPAN_MONTHS = 6;
+const MIN_CHART_SPAN_MONTHS = 12;
 
 // One point per calendar month of age — if a parent logs several times in
 // the same month, keep only the latest (most current) one so the trend
