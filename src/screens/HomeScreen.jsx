@@ -10,7 +10,7 @@ import { computeStage } from '../lib/stage.js';
 import { uploadChildAvatar } from '../lib/avatar.js';
 
 const inputStyle = {
-  width: '100%', height: 46, padding: '0 14px', borderRadius: 'var(--radius-md)',
+  width: '100%', minWidth: 0, maxWidth: '100%', height: 46, padding: '0 14px', borderRadius: 'var(--radius-md)',
   border: '1px solid var(--border-default)', font: 'var(--type-body)', color: 'var(--text-body)',
   background: '#fff', outline: 'none', boxSizing: 'border-box',
 };
@@ -130,6 +130,10 @@ function BabyInfoCard({ child, latestKg, latestCm, go, onBabyArrived }) {
       const d = new Date(child.due_date);
       return `${d.getDate()} ${THAI_MONTHS[d.getMonth()]} ${d.getFullYear() + 543}`;
     })() : null;
+    const daysLeft = child?.due_date
+      ? Math.ceil((new Date(child.due_date).setHours(0, 0, 0, 0) - new Date().setHours(0, 0, 0, 0)) / (1000 * 60 * 60 * 24))
+      : null;
+
     return (
       <Card style={{ boxShadow: 'var(--shadow-md)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -141,9 +145,26 @@ function BabyInfoCard({ child, latestKg, latestCm, go, onBabyArrived }) {
             )}
           </div>
         </div>
+
+        {daysLeft != null && (
+          <div style={{ marginTop: 14, background: 'var(--surface-soft)', borderRadius: 'var(--radius-md)', padding: '14px 16px', textAlign: 'center' }}>
+            {daysLeft > 0 ? (
+              <>
+                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 6 }}>
+                  <span style={{ font: '800 32px var(--font-display)', color: 'var(--color-secondary)' }}>{daysLeft}</span>
+                  <span style={{ font: 'var(--weight-semibold) 14px var(--font-base)', color: 'var(--text-muted)' }}>วัน</span>
+                </div>
+                <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)', marginTop: 2 }}>ก่อนถึงกำหนดคลอด นับถอยหลังรอเจอลูกน้อย 💛</div>
+              </>
+            ) : (
+              <div style={{ font: 'var(--weight-bold) 15px var(--font-display)', color: 'var(--color-secondary)' }}>ถึงกำหนดคลอดแล้ว! เตรียมพร้อมต้อนรับลูกน้อยได้เลย</div>
+            )}
+          </div>
+        )}
+
         <button
           onClick={onBabyArrived}
-          style={{ marginTop: 14, width: '100%', border: 'none', background: 'var(--color-secondary)', color: '#fff', borderRadius: 'var(--radius-md)', padding: '12px 16px', font: 'var(--weight-bold) 14px var(--font-base)', cursor: 'pointer' }}
+          style={{ marginTop: 12, width: '100%', border: 'none', background: 'var(--color-secondary)', color: '#fff', borderRadius: 'var(--radius-md)', padding: '12px 16px', font: 'var(--weight-bold) 14px var(--font-base)', cursor: 'pointer' }}
         >
           ลูกเกิดแล้ว 🎉 กดเพื่อลงทะเบียน
         </button>
@@ -351,7 +372,7 @@ function BabyArrivedModal({ child, onClose, onSaved }) {
             >
               <Camera width={15} height={15} />
             </button>
-            <input ref={photoInputRef} type="file" accept="image/*" capture="environment" onChange={handlePhotoPick} style={{ display: 'none' }} />
+            <input ref={photoInputRef} type="file" accept="image/*" onChange={handlePhotoPick} style={{ display: 'none' }} />
           </div>
         </div>
 

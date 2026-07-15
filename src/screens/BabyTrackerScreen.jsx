@@ -609,7 +609,7 @@ function FormField({ label, children }) {
 }
 
 const inputStyle = {
-  width: '100%', height: 46, padding: '0 14px', borderRadius: 'var(--radius-md)',
+  width: '100%', minWidth: 0, maxWidth: '100%', height: 46, padding: '0 14px', borderRadius: 'var(--radius-md)',
   border: '1px solid var(--border-default)', font: 'var(--type-body)', color: 'var(--text-body)',
   background: '#fff', outline: 'none', boxSizing: 'border-box',
 };

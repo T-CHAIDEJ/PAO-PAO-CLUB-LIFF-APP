@@ -9,7 +9,7 @@ import { uploadChildAvatar } from '../lib/avatar.js';
 export { recommendSize };
 
 const inputStyle = {
-  width: '100%', height: 46, padding: '0 14px', borderRadius: 'var(--radius-md)',
+  width: '100%', minWidth: 0, maxWidth: '100%', height: 46, padding: '0 14px', borderRadius: 'var(--radius-md)',
   border: '1px solid var(--border-default)', font: 'var(--type-body)', color: 'var(--text-body)',
   background: '#fff', outline: 'none', boxSizing: 'border-box',
 };
@@ -318,7 +318,7 @@ function ChildAvatarUpload({ child, onChildUpdate }) {
         >
           <Camera width={13} height={13} />
         </button>
-        <input ref={inputRef} type="file" accept="image/*" capture="environment" onChange={handleFile} style={{ display: 'none' }} />
+        <input ref={inputRef} type="file" accept="image/*" onChange={handleFile} style={{ display: 'none' }} />
         {uploading && (
           <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: 'rgba(0,0,0,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 9 }}>
             กำลังอัป...
