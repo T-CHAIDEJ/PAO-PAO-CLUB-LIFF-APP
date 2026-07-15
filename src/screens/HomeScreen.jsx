@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Baby, Ruler, Gift, ScanLine, Bell, ChevronRight, Star, Package, TicketPercent, UserPlus, UserCircle2, Mars, Venus } from 'lucide-react';
-import { Card, Badge, Button, ProgressBar } from '../components/index.jsx';
+import { Card, Badge, Button } from '../components/index.jsx';
 import { Wordmark, SectionTitle } from '../shared/index.jsx';
 import { recommendSize } from './TrackerScreen.jsx';
 import { supabase } from '../lib/supabase.js';
@@ -434,11 +434,7 @@ export default function HomeScreen({ go, user, child, goOnboarding, goProfile, c
                   <span style={{ font: 'var(--weight-semibold) 14px var(--font-base)', color: 'var(--text-muted)' }}>แต้ม</span>
                 </div>
               </div>
-              <Badge variant="solidGreen">สมาชิก Silver</Badge>
-            </div>
-            <div style={{ marginTop: 14 }}>
-              <ProgressBar value={pts} max={500} tone="green" />
-              <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)', marginTop: 6 }}>อีก {500 - pts} แต้ม เลื่อนขั้นเป็น Gold</div>
+              <Badge variant="solidGreen">สะสมไว้แลกของรางวัล</Badge>
             </div>
           </Card>
         )}
