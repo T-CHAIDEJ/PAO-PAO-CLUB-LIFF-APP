@@ -130,7 +130,7 @@ function ChildMiniCard({ c, active, latestKg, latestCm, onSelect, onEdit }) {
 export function ChildCardsRow({ childrenList, activeChildId, growthByChild, onSwitchChild, onEdit, onAdd }) {
   if (!childrenList || childrenList.length === 0) return null;
   return (
-    <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 2 }}>
+    <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 14, marginBottom: -14, scrollbarWidth: 'thin' }}>
       {childrenList.map((c) => (
         <ChildMiniCard
           key={c.child_id}
