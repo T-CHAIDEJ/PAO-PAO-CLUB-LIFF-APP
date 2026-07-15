@@ -117,7 +117,7 @@ function SegmentPicker({ onPick }) {
   );
 }
 
-function SegmentForm({ segment, lineProfile, onSubmit, loading }) {
+function SegmentForm({ segment, lineProfile, onSubmit, loading, error }) {
   const [motherName, setMotherName] = useState(lineProfile?.displayName ?? '');
   const [edd, setEdd] = useState('');
   const [childName, setChildName] = useState('');
@@ -154,6 +154,11 @@ function SegmentForm({ segment, lineProfile, onSubmit, loading }) {
           <div style={{ font: 'var(--weight-bold) 17px var(--font-display)', color: 'var(--text-heading)' }}>ยินดีต้อนรับ!</div>
           <div style={{ font: 'var(--type-body)', color: 'var(--text-muted)', marginTop: 8, lineHeight: 1.6 }}>คุณสามารถสมัครเป็นสมาชิกเต็มรูปแบบ<br />ได้ในภายหลังที่หน้าโปรไฟล์</div>
         </Card>
+        {error && (
+          <div style={{ font: 'var(--type-caption)', color: '#dc2626', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 'var(--radius-md)', padding: '10px 12px', marginTop: 16 }}>
+            {error}
+          </div>
+        )}
         <div style={{ marginTop: 20 }}>
           <Button variant="primary" fullWidth onClick={handleSubmit} loading={loading}>เข้าสู่แอป</Button>
         </div>
@@ -224,6 +229,11 @@ function SegmentForm({ segment, lineProfile, onSubmit, loading }) {
         </>
       )}
 
+      {error && (
+        <div style={{ font: 'var(--type-caption)', color: '#dc2626', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 'var(--radius-md)', padding: '10px 12px', marginBottom: 8 }}>
+          {error}
+        </div>
+      )}
       <div style={{ marginTop: 8 }}>
         <Button
           variant="primary"
@@ -247,6 +257,7 @@ export default function OnboardingScreen({ lineProfile, initialSegment, onComple
   const [loading, setLoading] = useState(false);
   const [consent, setConsent] = useState(null);
   const [pdpaDoc, setPdpaDoc] = useState(null);
+  const [saveError, setSaveError] = useState(null);
 
   // 008_consent is Dev B's catalog of policy versions (is_active flags the
   // current one). Falls back to the hardcoded text/version if empty/unset —
@@ -275,7 +286,15 @@ export default function OnboardingScreen({ lineProfile, initialSegment, onComple
 
   const handleSubmit = async (formData) => {
     setLoading(true);
+    setSaveError(null);
     try {
+      // Guards against a bad numeric input (e.g. a lone "." or a comma
+      // decimal separator on some mobile keyboards) silently becoming NaN
+      // — which Supabase would otherwise happily accept as a null write.
+      if (segment === 'B' && (!Number.isFinite(formData.weightKg) || !Number.isFinite(formData.heightCm))) {
+        throw new Error('น้ำหนักหรือส่วนสูงไม่ถูกต้อง กรุณาใส่เป็นตัวเลข');
+      }
+
       // Use real LINE userId if available, otherwise generate a unique fallback
       const cachedUid = localStorage.getItem('pp_line_uid');
       const lineUserId = lineProfile?.userId
@@ -373,8 +392,12 @@ export default function OnboardingScreen({ lineProfile, initialSegment, onComple
 
       onComplete(userData);
     } catch (err) {
+      // Never silently proceed to Home on failure — that leaves the user
+      // stuck with a 001_users row but no 003_children row, and once
+      // 001_users exists the app never shows onboarding again, so there'd
+      // be no way back into this form. Surface the error and let them retry.
       console.error('[onboarding] save error:', err);
-      onComplete({ line_uid: lineProfile?.userId, role: segment === 'C' ? 'guest' : 'member', parent_name: formData.motherName ?? null });
+      setSaveError(err?.message?.includes('น้ำหนัก') ? err.message : 'บันทึกไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
     } finally {
       setLoading(false);
     }
@@ -400,6 +423,7 @@ export default function OnboardingScreen({ lineProfile, initialSegment, onComple
           lineProfile={lineProfile}
           onSubmit={handleSubmit}
           loading={loading}
+          error={saveError}
         />
       )}
     </div>

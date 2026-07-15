@@ -305,7 +305,14 @@ function ComingSoon({ title, onClose }) {
 // Lets a pregnant (segment A) user "graduate" to segment B once the baby
 // is born — updates the existing 003_children row (never inserts a new
 // one) and logs an initial 004_growth record, same as segment B signup.
-function BabyArrivedModal({ child, onClose, onSaved }) {
+//
+// Also doubles as a recovery form for members who somehow ended up with
+// no 003_children row at all (e.g. onboarding's child insert failed
+// silently in the past) — when there's no existing child to update,
+// `lineUid` is used to insert a fresh row instead. Once 001_users
+// exists the app never re-shows onboarding, so this is the only way
+// back in for that state.
+function BabyArrivedModal({ child, lineUid, onClose, onSaved }) {
   const [name, setName] = useState('');
   const [gender, setGender] = useState('');
   const [birthdate, setBirthdate] = useState('');
@@ -317,6 +324,7 @@ function BabyArrivedModal({ child, onClose, onSaved }) {
   const [error, setError] = useState(null);
   const photoInputRef = useRef(null);
 
+  const isNewChild = !child?.child_id;
   const canSave = name && gender && birthdate && weightKg && heightCm;
 
   const handlePhotoPick = (e) => {
@@ -328,30 +336,46 @@ function BabyArrivedModal({ child, onClose, onSaved }) {
   };
 
   const handleSave = async () => {
-    if (!canSave || !child?.child_id) return;
+    if (!canSave) return;
+    if (!isNewChild && !child?.child_id) return;
+    if (isNewChild && !lineUid) return;
     setSaving(true); setError(null);
     try {
       const parsedWeight = parseFloat(weightKg);
-      const patch = {
+      const parsedHeight = parseFloat(heightCm);
+      if (!Number.isFinite(parsedWeight) || !Number.isFinite(parsedHeight)) {
+        throw new Error('น้ำหนักหรือส่วนสูงไม่ถูกต้อง กรุณาใส่เป็นตัวเลข');
+      }
+      const fields = {
         name, gender, birth_date: birthdate,
-        birth_weight: parsedWeight, birth_height: parseFloat(heightCm),
+        birth_weight: parsedWeight, birth_height: parsedHeight,
         is_pregnant: false, due_date: null,
         stage: computeStage(birthdate),
       };
-      if (photoFile) {
-        patch.avatar_url = await uploadChildAvatar(supabase, child.child_id, photoFile);
+
+      let childId = child?.child_id;
+      if (isNewChild) {
+        const { data, error: err } = await supabase.from('003_children').insert({ ...fields, line_uid: lineUid }).select().single();
+        if (err) throw err;
+        childId = data.child_id;
+      } else {
+        const { error: err } = await supabase.from('003_children').update(fields).eq('child_id', childId);
+        if (err) throw err;
       }
-      const { error: err } = await supabase.from('003_children').update(patch).eq('child_id', child.child_id);
-      if (err) throw err;
+
+      const patch = { ...fields, child_id: childId };
+      if (photoFile) {
+        patch.avatar_url = await uploadChildAvatar(supabase, childId, photoFile);
+      }
       await supabase.from('004_growth').insert({
-        child_id: child.child_id, recorded_date: birthdate,
-        weight_kg: parsedWeight, height_cm: parseFloat(heightCm),
+        child_id: childId, recorded_date: birthdate,
+        weight_kg: parsedWeight, height_cm: parsedHeight,
         diaper_size: recommendSize(parsedWeight).code,
       });
       onSaved(patch);
     } catch (e) {
       console.warn('[baby-arrived] save failed:', e?.message);
-      setError('บันทึกไม่สำเร็จ ลองใหม่อีกครั้ง');
+      setError(e?.message?.includes('น้ำหนัก') ? e.message : 'บันทึกไม่สำเร็จ ลองใหม่อีกครั้ง');
     } finally {
       setSaving(false);
     }
@@ -360,7 +384,7 @@ function BabyArrivedModal({ child, onClose, onSaved }) {
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(15,23,42,.55)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
       <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 480, maxHeight: '88vh', overflowY: 'auto', background: '#fff', borderRadius: '20px 20px 0 0', padding: '24px 22px 32px' }}>
-        <div style={{ font: '800 20px var(--font-display)', color: 'var(--text-heading)', marginBottom: 4 }}>🎉 ยินดีด้วยค่ะ!</div>
+        <div style={{ font: '800 20px var(--font-display)', color: 'var(--text-heading)', marginBottom: 4 }}>{isNewChild ? '👶 ลงทะเบียนข้อมูลลูก' : '🎉 ยินดีด้วยค่ะ!'}</div>
         <div style={{ font: 'var(--type-body)', color: 'var(--text-muted)', marginBottom: 18 }}>กรอกข้อมูลลูกน้อยเพื่อเริ่มติดตามพัฒนาการ</div>
 
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 18 }}>
@@ -605,6 +629,7 @@ export default function HomeScreen({ go, user, child, goOnboarding, goProfile, c
       {showBabyArrived && (
         <BabyArrivedModal
           child={child}
+          lineUid={user?.line_uid}
           onClose={() => setShowBabyArrived(false)}
           onSaved={(patch) => { onChildUpdate && onChildUpdate(patch); setShowBabyArrived(false); }}
         />
@@ -695,6 +720,23 @@ export default function HomeScreen({ go, user, child, goOnboarding, goProfile, c
       {!isGuest && childWithRecord && (
         <div style={{ padding: '20px 16px 0' }}>
           <BabyInfoCard child={childWithRecord} latestKg={latestKg} latestCm={latestCm} go={go} onBabyArrived={() => setShowBabyArrived(true)} />
+        </div>
+      )}
+
+      {/* Recovery card — a member account with no children row at all
+          (e.g. onboarding's child insert failed) has no other way back
+          into this form, since the app never re-shows onboarding once
+          001_users exists. */}
+      {!isGuest && !child && (
+        <div style={{ padding: '20px 16px 0' }}>
+          <Card style={{ boxShadow: 'var(--shadow-md)', textAlign: 'center' }}>
+            <div style={{ fontSize: 32, marginBottom: 8 }}>👶</div>
+            <div style={{ font: 'var(--weight-bold) 16px var(--font-display)', color: 'var(--text-heading)' }}>ยังไม่มีข้อมูลลูกน้อย</div>
+            <div style={{ font: 'var(--type-body-sm)', color: 'var(--text-muted)', marginTop: 4 }}>กรอกข้อมูลลูกเพื่อเริ่มติดตามพัฒนาการและแนะนำไซส์ผ้าอ้อม</div>
+            <div style={{ marginTop: 14 }}>
+              <Button variant="primary" fullWidth onClick={() => setShowBabyArrived(true)}>ลงทะเบียนข้อมูลลูก</Button>
+            </div>
+          </Card>
         </div>
       )}
 
