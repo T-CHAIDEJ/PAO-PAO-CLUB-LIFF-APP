@@ -10,6 +10,11 @@ const inputStyle = {
   background: '#fff', outline: 'none', boxSizing: 'border-box',
 };
 
+// Safari on iOS can render <input type="date"> with a native calendar
+// control that ignores width:100% and bleeds past its own box — turning
+// off native appearance hands rendering fully to our CSS instead.
+const dateInputStyle = { ...inputStyle, WebkitAppearance: 'none', appearance: 'none' };
+
 function FormField({ label, children }) {
   return (
     <div style={{ marginBottom: 14 }}>
@@ -155,7 +160,7 @@ function SegmentForm({ segment, lineProfile, onSubmit, loading }) {
 
       {segment === 'A' && (
         <FormField label="กำหนดคลอด (EDD)">
-          <input type="date" value={edd} onChange={(e) => setEdd(e.target.value)} style={inputStyle} />
+          <input type="date" value={edd} onChange={(e) => setEdd(e.target.value)} style={dateInputStyle} />
         </FormField>
       )}
 
@@ -175,7 +180,7 @@ function SegmentForm({ segment, lineProfile, onSubmit, loading }) {
             </div>
           </FormField>
           <FormField label="วันเกิดลูก">
-            <input type="date" value={birthdate} onChange={(e) => setBirthdate(e.target.value)} style={inputStyle} />
+            <input type="date" value={birthdate} onChange={(e) => setBirthdate(e.target.value)} style={dateInputStyle} />
           </FormField>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <FormField label="น้ำหนัก (กก.)">

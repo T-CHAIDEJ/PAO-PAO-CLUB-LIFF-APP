@@ -15,6 +15,11 @@ const inputStyle = {
   background: '#fff', outline: 'none', boxSizing: 'border-box',
 };
 
+// Safari on iOS can render <input type="date"> with a native calendar
+// control that ignores width:100% and bleeds past its own box — turning
+// off native appearance hands rendering fully to our CSS instead.
+const dateInputStyle = { ...inputStyle, WebkitAppearance: 'none', appearance: 'none' };
+
 function calcAge(birthdate) {
   if (!birthdate) return null;
   const ms = Date.now() - new Date(birthdate).getTime();
@@ -395,7 +400,7 @@ function BabyArrivedModal({ child, onClose, onSaved }) {
 
         <div style={{ marginBottom: 14 }}>
           <div style={{ font: 'var(--type-label)', color: 'var(--text-title)', marginBottom: 8 }}>วันเกิดลูก</div>
-          <input type="date" value={birthdate} onChange={(e) => setBirthdate(e.target.value)} style={inputStyle} />
+          <input type="date" value={birthdate} onChange={(e) => setBirthdate(e.target.value)} style={dateInputStyle} />
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 8 }}>

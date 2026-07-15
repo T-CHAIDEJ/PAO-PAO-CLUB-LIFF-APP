@@ -614,6 +614,11 @@ const inputStyle = {
   background: '#fff', outline: 'none', boxSizing: 'border-box',
 };
 
+// Safari on iOS can render <input type="date"> with a native calendar
+// control that ignores width:100% and bleeds past its own box — turning
+// off native appearance hands rendering fully to our CSS instead.
+const dateInputStyle = { ...inputStyle, WebkitAppearance: 'none', appearance: 'none' };
+
 function AddRecordPanel({ childId, onCancel, onSaved }) {
   const today = new Date().toISOString().slice(0, 10);
   const [date, setDate] = useState(today);
@@ -662,7 +667,7 @@ function AddRecordPanel({ childId, onCancel, onSaved }) {
       </div>
       <FormField label="วันที่บันทึก">
         <div style={{ position: 'relative' }}>
-          <input type="date" value={date} onChange={e => setDate(e.target.value)} style={inputStyle} />
+          <input type="date" value={date} onChange={e => setDate(e.target.value)} style={dateInputStyle} />
           <Calendar width={18} height={18} style={{ position: 'absolute', right: 14, top: 14, color: 'var(--text-faint)', pointerEvents: 'none' }} />
         </div>
       </FormField>
