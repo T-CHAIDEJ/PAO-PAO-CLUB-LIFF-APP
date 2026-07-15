@@ -59,7 +59,7 @@ function MemberHero({ user, child }) {
   const subLine = parts.filter(Boolean).join(' · ') || null;
 
   return (
-    <div style={{ position: 'relative', marginTop: 18, display: 'flex', gap: 12, alignItems: 'center' }}>
+    <div style={{ position: 'relative', marginTop: 10, display: 'flex', gap: 12, alignItems: 'center' }}>
       <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'rgba(255,255,255,.2)', border: '2px solid rgba(255,255,255,.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none', overflow: 'hidden' }}>
         {user?.picture_url
           ? <img src={user.picture_url} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -425,8 +425,7 @@ export default function HomeScreen({ go, user, child, goOnboarding, goProfile, c
         backgroundPosition: 'left top',
         padding: '18px 20px 58px', color: '#fff', borderBottomLeftRadius: 28, borderBottomRightRadius: 28,
       }}>
-        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <img src="/paopao-logo.png" alt="PAO PAO CLUB" style={{ height: 48, objectFit: 'contain' }} />
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
           <div style={{ display: 'flex', gap: 8 }}>
             <span style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(255,255,255,.18)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Bell width={20} height={20} />
