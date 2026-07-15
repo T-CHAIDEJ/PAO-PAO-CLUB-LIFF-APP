@@ -12,6 +12,19 @@ import RewardsScreen from './screens/RewardsScreen.jsx';
 import ProfileScreen from './screens/ProfileScreen.jsx';
 import OnboardingScreen from './screens/OnboardingScreen.jsx';
 
+const ACTIVE_CHILD_KEY = 'pp_active_child_id';
+
+// Prefers whichever child was last viewed (persisted across sessions);
+// falls back to the most recently added one if that child no longer
+// exists in the list (e.g. viewed on another device).
+function pickDefaultChildId(list) {
+  if (!list.length) return null;
+  let saved = null;
+  try { saved = localStorage.getItem(ACTIVE_CHILD_KEY); } catch (e) { /* ignore */ }
+  if (saved && list.some(c => c.child_id === saved)) return saved;
+  return list[0].child_id;
+}
+
 function LoadingScreen() {
   return (
     <div style={{ width: '100vw', height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--gradient-hero)', gap: 8 }}>
@@ -25,9 +38,15 @@ export default function App() {
   const [screen, setScreen] = useState('loading');
   const [lineProfile, setLineProfile] = useState(null);
   const [userData, setUserData] = useState(null);
-  const [childData, setChildData] = useState(null);
+  const [childrenList, setChildrenList] = useState([]);
+  const [activeChildId, setActiveChildIdState] = useState(null);
   const [checkin, setCheckin] = useState(null);
   const [liffMsg, setLiffMsg] = useState('');
+
+  const applyChildren = (list) => {
+    setChildrenList(list);
+    setActiveChildIdState((prev) => (list.some(c => c.child_id === prev) ? prev : pickDefaultChildId(list)));
+  };
 
   useEffect(() => {
     async function lookupAndGo(userId, profile) {
@@ -56,8 +75,8 @@ export default function App() {
         setUserData(merged);
         const { data: children } = await supabase
           .from('003_children').select('*').eq('line_uid', users.line_uid)
-          .order('birth_date', { ascending: false }).limit(1).single();
-        setChildData(children ?? null);
+          .order('created_at', { ascending: false });
+        applyChildren(children ?? []);
         setScreen('home');
       } else {
         setScreen('onboarding');
@@ -107,13 +126,13 @@ export default function App() {
     } catch (e) { /* points are optional */ }
     setUserData(merged);
 
-    // Load the child that onboarding just created so Home shows it immediately
+    // Load the child(ren) onboarding just created so Home shows them immediately
     if (data?.line_uid) {
       try {
         const { data: children } = await supabase
           .from('003_children').select('*').eq('line_uid', data.line_uid)
-          .order('birth_date', { ascending: false }).limit(1).single();
-        setChildData(children ?? null);
+          .order('created_at', { ascending: false });
+        applyChildren(children ?? []);
       } catch (e) { /* segment C has no child */ }
     }
 
@@ -122,6 +141,30 @@ export default function App() {
 
   const go = (s) => setScreen(s);
   const goOnboarding = (seg) => setScreen(seg ? `onboarding-${seg.toLowerCase()}` : 'onboarding');
+
+  const switchActiveChild = (childId) => {
+    setActiveChildIdState(childId);
+    try { localStorage.setItem(ACTIVE_CHILD_KEY, childId); } catch (e) { /* ignore */ }
+  };
+
+  const refetchChildren = async () => {
+    if (!userData?.line_uid) return;
+    const { data } = await supabase
+      .from('003_children').select('*').eq('line_uid', userData.line_uid)
+      .order('created_at', { ascending: false });
+    applyChildren(data ?? []);
+  };
+
+  // patch applies to the active child unless a specific childId is given
+  // (e.g. editing a child that isn't currently selected).
+  const onChildUpdate = (patch, childId) => {
+    const targetId = childId ?? activeChildId;
+    setChildrenList(prev => prev.map(c => c.child_id === targetId ? { ...c, ...patch } : c));
+  };
+  const onUserUpdate = (patch) => setUserData(prev => prev ? { ...prev, ...patch } : prev);
+
+  const childData = childrenList.find(c => c.child_id === activeChildId) ?? null;
+  const childSwitcherProps = { childrenList, activeChildId, onSwitchChild: switchActiveChild, onChildrenChange: refetchChildren };
 
   // TEMP debug bar — shows LIFF status on-device (remove after LIFF confirmed working)
   const DebugBar = liffMsg ? (
@@ -159,17 +202,14 @@ export default function App() {
 
   const navTab = screen === 'size' ? 'diaper' : screen === 'profile' ? 'home' : screen;
 
-  const onChildUpdate = (patch) => setChildData(prev => ({ ...(prev ?? {}), ...patch }));
-  const onUserUpdate = (patch) => setUserData(prev => prev ? { ...prev, ...patch } : prev);
-
   let view;
-  if      (screen === 'home')      view = <HomeScreen go={go} user={userData} child={childData} goOnboarding={goOnboarding} goProfile={() => go('profile')} checkin={checkin} onStreakSeen={() => setCheckin(null)} onChildUpdate={onChildUpdate} />;
-  else if (screen === 'diaper')    view = <DiaperScreen go={go} child={childData} onChildUpdate={onChildUpdate} />;
-  else if (screen === 'tracker')   view = <TrackerScreen go={go} child={childData} onChildUpdate={onChildUpdate} />;
+  if      (screen === 'home')      view = <HomeScreen go={go} user={userData} child={childData} goOnboarding={goOnboarding} goProfile={() => go('profile')} checkin={checkin} onStreakSeen={() => setCheckin(null)} onChildUpdate={onChildUpdate} {...childSwitcherProps} />;
+  else if (screen === 'diaper')    view = <DiaperScreen go={go} child={childData} onChildUpdate={onChildUpdate} {...childSwitcherProps} />;
+  else if (screen === 'tracker')   view = <TrackerScreen go={go} child={childData} onChildUpdate={onChildUpdate} {...childSwitcherProps} />;
   else if (screen === 'size')      view = <SizeChartScreen go={go} currentKg={childData?.birth_weight ?? 8.5} />;
-  else if (screen === 'knowledge') view = <KnowledgeScreen go={go} child={childData} />;
+  else if (screen === 'knowledge') view = <KnowledgeScreen go={go} child={childData} {...childSwitcherProps} />;
   else if (screen === 'rewards')   view = <RewardsScreen go={go} user={userData} onUserUpdate={onUserUpdate} />;
-  else if (screen === 'profile')   view = <ProfileScreen go={go} user={userData} child={childData} />;
+  else if (screen === 'profile')   view = <ProfileScreen go={go} user={userData} child={childData} childrenList={childrenList} onSwitchChild={switchActiveChild} />;
 
   return (
     <div style={{ width: '100vw', height: '100vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { X, Clock, ChevronRight, BookOpen } from 'lucide-react';
 import { Card, Badge } from '../components/index.jsx';
-import { SkyDeco, ProfileButton } from '../shared/index.jsx';
+import { SkyDeco, ProfileButton, ChildSwitcherBar } from '../shared/index.jsx';
 import { supabase } from '../lib/supabase.js';
+import { AddChildModal, EditChildModal } from './ChildModals.jsx';
 
 // Map a DB row (snake_case) → the shape the UI components expect (camelCase).
 // 014_articles.content is a plain `text` column (not the old jsonb block-array
@@ -114,10 +115,12 @@ function ArticleModal({ article, onClose }) {
 
 // ─── Knowledge Screen ─────────────────────────────────────────────────────────
 
-export default function KnowledgeScreen({ go, child }) {
+export default function KnowledgeScreen({ go, child, childrenList, activeChildId, onSwitchChild, onChildrenChange }) {
   const [activeArticle, setActiveArticle] = useState(null);
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showAddChild, setShowAddChild] = useState(false);
+  const [editingChild, setEditingChild] = useState(false);
   const stage = child?.stage ?? null;
 
   useEffect(() => {
@@ -151,6 +154,14 @@ export default function KnowledgeScreen({ go, child }) {
         {go && (
           <div style={{ position: 'relative', display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
             <ProfileButton onClick={() => go('profile')} />
+          </div>
+        )}
+        {childrenList && childrenList.length > 0 && (
+          <div style={{ position: 'relative', marginBottom: 12 }}>
+            <ChildSwitcherBar
+              childrenList={childrenList} activeChildId={activeChildId} onSwitchChild={onSwitchChild}
+              onAdd={() => setShowAddChild(true)} onEditActive={() => setEditingChild(true)}
+            />
           </div>
         )}
         <div style={{ position: 'relative' }}>
@@ -205,6 +216,20 @@ export default function KnowledgeScreen({ go, child }) {
 
       {activeArticle && (
         <ArticleModal article={activeArticle} onClose={() => setActiveArticle(null)} />
+      )}
+      {showAddChild && (
+        <AddChildModal
+          lineUid={child?.line_uid}
+          onClose={() => setShowAddChild(false)}
+          onSaved={() => { onChildrenChange && onChildrenChange(); setShowAddChild(false); }}
+        />
+      )}
+      {editingChild && (
+        <EditChildModal
+          child={child}
+          onClose={() => setEditingChild(false)}
+          onSaved={() => { onChildrenChange && onChildrenChange(); setEditingChild(false); }}
+        />
       )}
     </div>
   );

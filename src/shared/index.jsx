@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, MoreHorizontal, UserCircle2 } from 'lucide-react';
+import { X, MoreHorizontal, UserCircle2, Plus } from 'lucide-react';
 
 export function SkyDeco() {
   return (
@@ -50,6 +50,43 @@ export function ProfileButton({ onClick }) {
       </span>
       <span style={{ font: 'var(--weight-semibold) 12px var(--font-base)' }}>โปรไฟล์</span>
     </button>
+  );
+}
+
+// Horizontal row of small avatars — one per child — used in every screen
+// that shows child-specific info, so switching which child you're looking
+// at works the same way everywhere. Tapping "+" opens the add-child flow;
+// tapping an existing avatar again (while active) opens edit.
+export function ChildSwitcherBar({ childrenList, activeChildId, onSwitchChild, onAdd, onEditActive }) {
+  if (!childrenList) return null;
+  return (
+    <div style={{ display: 'flex', gap: 12, overflowX: 'auto', padding: '10px 12px', background: 'var(--gradient-hero)', borderRadius: 16 }}>
+      {childrenList.map((c) => {
+        const active = c.child_id === activeChildId;
+        return (
+          <button
+            key={c.child_id}
+            onClick={() => (active ? onEditActive && onEditActive() : onSwitchChild(c.child_id))}
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, border: 'none', background: 'transparent', cursor: 'pointer', flex: 'none', padding: 0 }}
+          >
+            <div style={{ width: 46, height: 46, borderRadius: '50%', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,.2)', border: active ? '2px solid #fff' : '2px solid transparent' }}>
+              {c.avatar_url
+                ? <img src={c.avatar_url} alt={c.name || 'ลูก'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                : <span style={{ fontSize: 18 }}>{c.is_pregnant ? '🤰' : '👶'}</span>}
+            </div>
+            <span style={{ font: `${active ? 'var(--weight-semibold)' : 'var(--weight-medium)'} 10px var(--font-base)`, color: '#fff', opacity: active ? 1 : .7, maxWidth: 54, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {c.name || (c.is_pregnant ? 'ในท้อง' : 'ลูก')}
+            </span>
+          </button>
+        );
+      })}
+      <button onClick={onAdd} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, border: 'none', background: 'transparent', cursor: 'pointer', flex: 'none', padding: 0 }}>
+        <div style={{ width: 46, height: 46, borderRadius: '50%', border: '2px dashed rgba(255,255,255,.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
+          <Plus width={18} height={18} />
+        </div>
+        <span style={{ font: 'var(--weight-medium) 10px var(--font-base)', color: '#fff', opacity: .7 }}>เพิ่มลูก</span>
+      </button>
+    </div>
   );
 }
 

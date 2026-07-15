@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Settings, Medal, Baby, MapPin, ShoppingBag, Headphones, ChevronRight } from 'lucide-react';
+import { Settings, Medal, MapPin, ShoppingBag, Headphones, ChevronRight } from 'lucide-react';
 import { Card, Badge, Avatar, Switch, Button } from '../components/index.jsx';
 import { SkyDeco, SectionTitle } from '../shared/index.jsx';
 
@@ -13,7 +13,7 @@ function calcAge(birthdate) {
   return months === 0 ? `${years} ปี` : `${years} ปี ${months} เดือน`;
 }
 
-export default function ProfileScreen({ go, user, child }) {
+export default function ProfileScreen({ go, user, child, childrenList, onSwitchChild }) {
   const [push,  setPush]  = useState(true);
   const [promo, setPromo] = useState(false);
 
@@ -28,11 +28,13 @@ export default function ProfileScreen({ go, user, child }) {
       : child
         ? 'คุณแม่มือใหม่'
         : 'สมาชิก';
-  const childAge = calcAge(child?.birth_date);
-  const childNote = child ? `${child.name}${childAge ? ` · ${childAge}` : ''}` : 'ยังไม่ได้เพิ่มข้อมูล';
+
+  const goToChild = (childId) => {
+    if (onSwitchChild) onSwitchChild(childId);
+    if (go) go('tracker');
+  };
 
   const LINKS = [
-    { Icon: Baby,        label: 'ข้อมูลลูกน้อย',      note: childNote, onClick: () => go && go('tracker') },
     { Icon: MapPin,      label: 'ที่อยู่จัดส่ง',       note: null },
     { Icon: ShoppingBag, label: 'ประวัติการสั่งซื้อ',  note: null },
     { Icon: Headphones,  label: 'ติดต่อเรา',            note: null },
@@ -70,6 +72,28 @@ export default function ProfileScreen({ go, user, child }) {
             <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)' }}>สะสมไว้แลกของรางวัลได้เลย</div>
           </div>
           <Badge variant="solidGreen">{points}</Badge>
+        </Card>
+      </div>
+
+      {/* Children */}
+      <div style={{ padding: '18px 16px 0' }}>
+        <SectionTitle>ข้อมูลลูกน้อย</SectionTitle>
+        <Card padded={false} style={{ overflow: 'hidden' }}>
+          {(childrenList ?? []).map((c, i, arr) => (
+            <div key={c.child_id} onClick={() => goToChild(c.child_id)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderBottom: i < arr.length - 1 ? '1px solid var(--gray-100)' : 'none', cursor: 'pointer' }}>
+              <span style={{ width: 38, height: 38, borderRadius: '50%', overflow: 'hidden', background: 'var(--surface-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
+                {c.avatar_url
+                  ? <img src={c.avatar_url} alt={c.name || 'ลูก'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : <span style={{ fontSize: 18 }}>{c.is_pregnant ? '🤰' : '👶'}</span>}
+              </span>
+              <span style={{ flex: 1, font: 'var(--weight-medium) 15px var(--font-base)', color: 'var(--text-body)' }}>{c.name || (c.is_pregnant ? 'ลูกน้อยในท้อง' : 'ลูกน้อย')}</span>
+              <span style={{ font: 'var(--type-caption)', color: 'var(--text-faint)' }}>{c.is_pregnant ? 'ตั้งครรภ์' : calcAge(c.birth_date)}</span>
+              <ChevronRight width={19} height={19} style={{ color: 'var(--text-faint)' }} />
+            </div>
+          ))}
+          {(!childrenList || childrenList.length === 0) && (
+            <div style={{ padding: '14px 16px', font: 'var(--type-caption)', color: 'var(--text-faint)' }}>ยังไม่ได้เพิ่มข้อมูลลูก</div>
+          )}
         </Card>
       </div>
 

@@ -1,24 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Baby, Ruler, Gift, ScanLine, Bell, ChevronRight, Star, Package, TicketPercent, UserPlus, UserCircle2, Mars, Venus, Flame, Camera } from 'lucide-react';
+import { Baby, Ruler, Gift, ScanLine, Bell, ChevronRight, Star, Package, TicketPercent, UserPlus, UserCircle2, Mars, Venus, Flame } from 'lucide-react';
 import { Card, Badge, Button, ProgressBar } from '../components/index.jsx';
-import { Wordmark, SectionTitle, ProfileButton } from '../shared/index.jsx';
+import { Wordmark, SectionTitle, ProfileButton, ChildSwitcherBar } from '../shared/index.jsx';
 import { recommendSize } from './TrackerScreen.jsx';
 import { supabase } from '../lib/supabase.js';
 import { STREAK_POINTS } from '../lib/points.js';
 import { fetchRewardsCatalog, nextUnlockedReward } from '../lib/rewards.js';
-import { computeStage } from '../lib/stage.js';
-import { uploadChildAvatar } from '../lib/avatar.js';
-
-const inputStyle = {
-  width: '100%', minWidth: 0, maxWidth: '100%', height: 46, padding: '0 14px', borderRadius: 'var(--radius-md)',
-  border: '1px solid var(--border-default)', font: 'var(--type-body)', color: 'var(--text-body)',
-  background: '#fff', outline: 'none', boxSizing: 'border-box',
-};
-
-// Safari on iOS can render <input type="date"> with a native calendar
-// control that ignores width:100% and bleeds past its own box — turning
-// off native appearance hands rendering fully to our CSS instead.
-const dateInputStyle = { ...inputStyle, WebkitAppearance: 'none', appearance: 'none' };
+import { AddChildModal, EditChildModal } from './ChildModals.jsx';
 
 function calcAge(birthdate) {
   if (!birthdate) return null;
@@ -307,150 +295,6 @@ function ComingSoon({ title, onClose }) {
 // one) and logs an initial 004_growth record, same as segment B signup.
 //
 // Also doubles as a recovery form for members who somehow ended up with
-// no 003_children row at all (e.g. onboarding's child insert failed
-// silently in the past) — when there's no existing child to update,
-// `lineUid` is used to insert a fresh row instead. Once 001_users
-// exists the app never re-shows onboarding, so this is the only way
-// back in for that state.
-function BabyArrivedModal({ child, lineUid, onClose, onSaved }) {
-  const [name, setName] = useState('');
-  const [gender, setGender] = useState('');
-  const [birthdate, setBirthdate] = useState('');
-  const [weightKg, setWeightKg] = useState('');
-  const [heightCm, setHeightCm] = useState('');
-  const [photoFile, setPhotoFile] = useState(null);
-  const [photoPreview, setPhotoPreview] = useState(null);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState(null);
-  const photoInputRef = useRef(null);
-
-  const isNewChild = !child?.child_id;
-  const canSave = name && gender && birthdate && weightKg && heightCm;
-
-  const handlePhotoPick = (e) => {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file) return;
-    setPhotoFile(file);
-    setPhotoPreview(URL.createObjectURL(file));
-  };
-
-  const handleSave = async () => {
-    if (!canSave) return;
-    if (!isNewChild && !child?.child_id) return;
-    if (isNewChild && !lineUid) return;
-    setSaving(true); setError(null);
-    try {
-      const parsedWeight = parseFloat(weightKg);
-      const parsedHeight = parseFloat(heightCm);
-      if (!Number.isFinite(parsedWeight) || !Number.isFinite(parsedHeight)) {
-        throw new Error('น้ำหนักหรือส่วนสูงไม่ถูกต้อง กรุณาใส่เป็นตัวเลข');
-      }
-      const fields = {
-        name, gender, birth_date: birthdate,
-        birth_weight: parsedWeight, birth_height: parsedHeight,
-        is_pregnant: false, due_date: null,
-        stage: computeStage(birthdate),
-      };
-
-      let childId = child?.child_id;
-      if (isNewChild) {
-        const { data, error: err } = await supabase.from('003_children').insert({ ...fields, line_uid: lineUid }).select().single();
-        if (err) throw err;
-        childId = data.child_id;
-      } else {
-        const { error: err } = await supabase.from('003_children').update(fields).eq('child_id', childId);
-        if (err) throw err;
-      }
-
-      const patch = { ...fields, child_id: childId };
-      if (photoFile) {
-        patch.avatar_url = await uploadChildAvatar(supabase, childId, photoFile);
-      }
-      await supabase.from('004_growth').insert({
-        child_id: childId, recorded_date: birthdate,
-        weight_kg: parsedWeight, height_cm: parsedHeight,
-        diaper_size: recommendSize(parsedWeight).code,
-      });
-      onSaved(patch);
-    } catch (e) {
-      console.warn('[baby-arrived] save failed:', e?.message);
-      setError(e?.message?.includes('น้ำหนัก') ? e.message : 'บันทึกไม่สำเร็จ ลองใหม่อีกครั้ง');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(15,23,42,.55)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 480, maxHeight: '88vh', overflowY: 'auto', background: '#fff', borderRadius: '20px 20px 0 0', padding: '24px 22px 32px' }}>
-        <div style={{ font: '800 20px var(--font-display)', color: 'var(--text-heading)', marginBottom: 4 }}>{isNewChild ? '👶 ลงทะเบียนข้อมูลลูก' : '🎉 ยินดีด้วยค่ะ!'}</div>
-        <div style={{ font: 'var(--type-body)', color: 'var(--text-muted)', marginBottom: 18 }}>กรอกข้อมูลลูกน้อยเพื่อเริ่มติดตามพัฒนาการ</div>
-
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 18 }}>
-          <div style={{ position: 'relative', width: 84, height: 84 }}>
-            <div style={{ width: 84, height: 84, borderRadius: '50%', overflow: 'hidden', background: 'var(--surface-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid var(--border-default)' }}>
-              {photoPreview
-                ? <img src={photoPreview} alt="รูปลูกน้อย" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                : <Baby width={36} height={36} style={{ color: 'var(--text-faint)' }} />}
-            </div>
-            <button
-              onClick={() => photoInputRef.current?.click()}
-              aria-label="เลือกรูปโปรไฟล์ลูก"
-              style={{ position: 'absolute', right: -2, bottom: -2, width: 30, height: 30, borderRadius: '50%', background: 'var(--color-secondary)', border: '2px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff' }}
-            >
-              <Camera width={15} height={15} />
-            </button>
-            <input ref={photoInputRef} type="file" accept="image/*" onChange={handlePhotoPick} style={{ display: 'none' }} />
-          </div>
-        </div>
-
-        <div style={{ marginBottom: 14 }}>
-          <div style={{ font: 'var(--type-label)', color: 'var(--text-title)', marginBottom: 8 }}>ชื่อลูกน้อย</div>
-          <input type="text" value={name} onChange={(e) => setName(e.target.value)} style={inputStyle} placeholder="ชื่อเล่น" />
-        </div>
-
-        <div style={{ marginBottom: 14 }}>
-          <div style={{ font: 'var(--type-label)', color: 'var(--text-title)', marginBottom: 8 }}>เพศลูก</div>
-          <div style={{ display: 'flex', gap: 12 }}>
-            {[{ val: 'male', label: '👦 ชาย' }, { val: 'female', label: '👧 หญิง' }].map(({ val, label }) => (
-              <label key={val} style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', border: `2px solid ${gender === val ? 'var(--color-primary)' : 'var(--border-default)'}`, borderRadius: 'var(--radius-md)', cursor: 'pointer', background: gender === val ? 'var(--surface-soft)' : '#fff' }}>
-                <input type="radio" name="baby-arrived-gender" value={val} checked={gender === val} onChange={() => setGender(val)} style={{ accentColor: 'var(--color-primary)' }} />
-                <span style={{ font: 'var(--weight-medium) 14px var(--font-base)', color: 'var(--text-body)' }}>{label}</span>
-              </label>
-            ))}
-          </div>
-        </div>
-
-        <div style={{ marginBottom: 14 }}>
-          <div style={{ font: 'var(--type-label)', color: 'var(--text-title)', marginBottom: 8 }}>วันเกิดลูก</div>
-          <input type="date" value={birthdate} onChange={(e) => setBirthdate(e.target.value)} style={dateInputStyle} />
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 8 }}>
-          <div>
-            <div style={{ font: 'var(--type-label)', color: 'var(--text-title)', marginBottom: 8 }}>น้ำหนัก (กก.)</div>
-            <input type="number" step="0.1" placeholder="เช่น 3.5" value={weightKg} onChange={(e) => setWeightKg(e.target.value)} style={inputStyle} />
-          </div>
-          <div>
-            <div style={{ font: 'var(--type-label)', color: 'var(--text-title)', marginBottom: 8 }}>ส่วนสูง (ซม.)</div>
-            <input type="number" step="0.1" placeholder="เช่น 50.0" value={heightCm} onChange={(e) => setHeightCm(e.target.value)} style={inputStyle} />
-          </div>
-        </div>
-
-        {error && <div style={{ font: 'var(--type-caption)', color: 'var(--red-600, #dc2626)', marginBottom: 8 }}>{error}</div>}
-
-        <div style={{ marginTop: 12 }}>
-          <Button variant="primary" fullWidth disabled={!canSave} loading={saving} onClick={handleSave}>บันทึกและเริ่มติดตาม</Button>
-        </div>
-        <button onClick={onClose} style={{ marginTop: 10, width: '100%', border: 'none', background: 'transparent', font: 'var(--weight-medium) 14px var(--font-base)', color: 'var(--text-muted)', cursor: 'pointer', padding: '6px 0' }}>
-          ยังก่อน
-        </button>
-      </div>
-    </div>
-  );
-}
-
 // Advertising / campaign banners — DB-driven (Admin manages via `banners` table).
 // All slides sit side by side in one wide track; we translateX the whole
 // track so it genuinely slides (old one sliding out, new one sliding in),
@@ -562,7 +406,7 @@ function BannerCarousel({ banners }) {
   );
 }
 
-export default function HomeScreen({ go, user, child, goOnboarding, goProfile, checkin, onStreakSeen, onChildUpdate }) {
+export default function HomeScreen({ go, user, child, goOnboarding, goProfile, checkin, onStreakSeen, onChildUpdate, childrenList, activeChildId, onSwitchChild, onChildrenChange }) {
   const isGuest = !user || user.role === 'guest';
   const pts = user?.points ?? 0;
   const [latestRecord, setLatestRecord] = useState(null);
@@ -570,7 +414,8 @@ export default function HomeScreen({ go, user, child, goOnboarding, goProfile, c
   const [comingSoon, setComingSoon] = useState(null);
   const [banners, setBanners] = useState([]);
   const [rewardsCatalog, setRewardsCatalog] = useState(null);
-  const [showBabyArrived, setShowBabyArrived] = useState(false);
+  const [showAddChild, setShowAddChild] = useState(false);
+  const [editingChild, setEditingChild] = useState(null); // { startGraduating }
 
   useEffect(() => {
     if (checkin?.awarded != null) setShowStreak(true);
@@ -603,6 +448,11 @@ export default function HomeScreen({ go, user, child, goOnboarding, goProfile, c
   const closeStreak = () => { setShowStreak(false); onStreakSeen && onStreakSeen(); };
 
   useEffect(() => {
+    // Reset immediately on every child switch — otherwise the previous
+    // child's weight/height (and the size recommendation derived from it)
+    // lingers on screen until the new fetch resolves, or forever if the
+    // newly active child has no growth records at all (e.g. a pregnancy).
+    setLatestRecord(null);
     if (!child?.child_id) return;
     supabase
       .from('004_growth')
@@ -612,7 +462,7 @@ export default function HomeScreen({ go, user, child, goOnboarding, goProfile, c
       .limit(1)
       .single()
       .then(({ data }) => { if (data) setLatestRecord(data); });
-  }, [child?.id]);
+  }, [child?.child_id]);
 
   // NOTE: 003_children only stores birth_weight/birth_height (birth-time stats),
   // not a "current weight" cache like the old schema did — so there's no
@@ -626,12 +476,19 @@ export default function HomeScreen({ go, user, child, goOnboarding, goProfile, c
     <div style={{ background: 'var(--gradient-sky)', minHeight: '100%' }}>
       {showStreak && checkin && <StreakPopup checkin={checkin} onClose={closeStreak} />}
       {comingSoon && <ComingSoon title={comingSoon} onClose={() => setComingSoon(null)} />}
-      {showBabyArrived && (
-        <BabyArrivedModal
-          child={child}
+      {showAddChild && (
+        <AddChildModal
           lineUid={user?.line_uid}
-          onClose={() => setShowBabyArrived(false)}
-          onSaved={(patch) => { onChildUpdate && onChildUpdate(patch); setShowBabyArrived(false); }}
+          onClose={() => setShowAddChild(false)}
+          onSaved={() => { onChildrenChange && onChildrenChange(); setShowAddChild(false); }}
+        />
+      )}
+      {editingChild && (
+        <EditChildModal
+          child={editingChild.child}
+          startGraduating={editingChild.startGraduating}
+          onClose={() => setEditingChild(null)}
+          onSaved={() => { onChildrenChange && onChildrenChange(); setEditingChild(null); }}
         />
       )}
       {/* Hero */}
@@ -714,25 +571,39 @@ export default function HomeScreen({ go, user, child, goOnboarding, goProfile, c
       {/* Advertising / campaign banners (DB-driven, swipeable) */}
       <BannerCarousel banners={banners} />
 
-      {/* Baby Info Card */}
-      {!isGuest && childWithRecord && (
-        <div style={{ padding: '20px 16px 0' }}>
-          <BabyInfoCard child={childWithRecord} latestKg={latestKg} latestCm={latestCm} go={go} onBabyArrived={() => setShowBabyArrived(true)} />
+      {/* Child switcher — shown whenever there's at least 1 child, so
+          switching who you're looking at works the same way as every
+          other child-specific screen (diaper/tracker/knowledge). */}
+      {!isGuest && childrenList && childrenList.length > 0 && (
+        <div style={{ padding: '18px 16px 0' }}>
+          <ChildSwitcherBar
+            childrenList={childrenList}
+            activeChildId={activeChildId}
+            onSwitchChild={onSwitchChild}
+            onAdd={() => setShowAddChild(true)}
+            onEditActive={() => child && setEditingChild({ child, startGraduating: false })}
+          />
         </div>
       )}
 
-      {/* Recovery card — a member account with no children row at all
-          (e.g. onboarding's child insert failed) has no other way back
-          into this form, since the app never re-shows onboarding once
-          001_users exists. */}
-      {!isGuest && !child && (
+      {/* Baby Info Card */}
+      {!isGuest && childWithRecord && (
+        <div style={{ padding: '14px 16px 0' }}>
+          <BabyInfoCard child={childWithRecord} latestKg={latestKg} latestCm={latestCm} go={go} onBabyArrived={() => child && setEditingChild({ child, startGraduating: true })} />
+        </div>
+      )}
+
+      {/* Recovery card — a member account with no children at all has no
+          other way back into this form, since the app never re-shows
+          onboarding once 001_users exists. */}
+      {!isGuest && (!childrenList || childrenList.length === 0) && (
         <div style={{ padding: '20px 16px 0' }}>
           <Card style={{ boxShadow: 'var(--shadow-md)', textAlign: 'center' }}>
             <div style={{ fontSize: 32, marginBottom: 8 }}>👶</div>
             <div style={{ font: 'var(--weight-bold) 16px var(--font-display)', color: 'var(--text-heading)' }}>ยังไม่มีข้อมูลลูกน้อย</div>
             <div style={{ font: 'var(--type-body-sm)', color: 'var(--text-muted)', marginTop: 4 }}>กรอกข้อมูลลูกเพื่อเริ่มติดตามพัฒนาการและแนะนำไซส์ผ้าอ้อม</div>
             <div style={{ marginTop: 14 }}>
-              <Button variant="primary" fullWidth onClick={() => setShowBabyArrived(true)}>ลงทะเบียนข้อมูลลูก</Button>
+              <Button variant="primary" fullWidth onClick={() => setShowAddChild(true)}>ลงทะเบียนข้อมูลลูก</Button>
             </div>
           </Card>
         </div>

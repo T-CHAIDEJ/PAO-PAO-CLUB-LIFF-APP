@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Scale, ChevronRight, Ruler, ShoppingCart, Baby, Camera } from 'lucide-react';
 import { Card } from '../components/index.jsx';
-import { SkyDeco, SectionTitle, ProfileButton } from '../shared/index.jsx';
+import { SkyDeco, SectionTitle, ProfileButton, ChildSwitcherBar } from '../shared/index.jsx';
 import { GrowthPanel } from './BabyTrackerScreen.jsx';
 import { supabase } from '../lib/supabase.js';
 import { recommendSize } from '../lib/diaperSize.js';
 import { uploadChildAvatar } from '../lib/avatar.js';
+import { AddChildModal, EditChildModal } from './ChildModals.jsx';
 export { recommendSize };
 
 const inputStyle = {
@@ -217,11 +218,13 @@ function DiaperPanel({ go, child }) {
   );
 }
 
-export function DiaperScreen({ go, child, onChildUpdate }) {
+export function DiaperScreen({ go, child, onChildUpdate, childrenList, activeChildId, onSwitchChild, onChildrenChange }) {
   const childName = child?.name || 'ลูกน้อย';
   const genderLabel = child?.gender === 'male' ? '👦 ชาย' : child?.gender === 'female' ? '👧 หญิง' : null;
   const birthdateLabel = formatBirthdate(child?.birth_date);
   const ageLabel = calcAge(child?.birth_date);
+  const [showAddChild, setShowAddChild] = useState(false);
+  const [editingChild, setEditingChild] = useState(false);
 
   return (
     <div style={{ background: 'var(--gradient-sky)', minHeight: '100%', paddingBottom: 24 }}>
@@ -230,6 +233,14 @@ export function DiaperScreen({ go, child, onChildUpdate }) {
         <div style={{ position: 'relative', display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
           <ProfileButton onClick={() => go('profile')} />
         </div>
+        {childrenList && childrenList.length > 0 && (
+          <div style={{ position: 'relative', marginBottom: 12 }}>
+            <ChildSwitcherBar
+              childrenList={childrenList} activeChildId={activeChildId} onSwitchChild={onSwitchChild}
+              onAdd={() => setShowAddChild(true)} onEditActive={() => setEditingChild(true)}
+            />
+          </div>
+        )}
         <div style={{ position: 'relative', display: 'flex', gap: 14, alignItems: 'flex-start' }}>
           <ChildAvatarUpload child={child} onChildUpdate={onChildUpdate} />
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -261,6 +272,20 @@ export function DiaperScreen({ go, child, onChildUpdate }) {
       <div style={{ padding: '16px 16px 0' }}>
         <DiaperPanel go={go} child={child} />
       </div>
+      {showAddChild && (
+        <AddChildModal
+          lineUid={child?.line_uid}
+          onClose={() => setShowAddChild(false)}
+          onSaved={() => { onChildrenChange && onChildrenChange(); setShowAddChild(false); }}
+        />
+      )}
+      {editingChild && (
+        <EditChildModal
+          child={child}
+          onClose={() => setEditingChild(false)}
+          onSaved={() => { onChildrenChange && onChildrenChange(); setEditingChild(false); }}
+        />
+      )}
     </div>
   );
 }
@@ -333,11 +358,13 @@ function ChildAvatarUpload({ child, onChildUpdate }) {
   );
 }
 
-export default function TrackerScreen({ go, child, onChildUpdate }) {
+export default function TrackerScreen({ go, child, onChildUpdate, childrenList, activeChildId, onSwitchChild, onChildrenChange }) {
   const childName  = child?.name     || 'ลูกน้อย';
   const genderLabel = child?.gender === 'male' ? '👦 ชาย' : child?.gender === 'female' ? '👧 หญิง' : null;
   const birthdateLabel = formatBirthdate(child?.birth_date);
   const ageLabel = calcAge(child?.birth_date);
+  const [showAddChild, setShowAddChild] = useState(false);
+  const [editingChild, setEditingChild] = useState(false);
 
   return (
     <div style={{ background: 'var(--gradient-sky)', minHeight: '100%', paddingBottom: 24 }}>
@@ -346,6 +373,14 @@ export default function TrackerScreen({ go, child, onChildUpdate }) {
         {go && (
           <div style={{ position: 'relative', display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
             <ProfileButton onClick={() => go('profile')} />
+          </div>
+        )}
+        {childrenList && childrenList.length > 0 && (
+          <div style={{ position: 'relative', marginBottom: 12 }}>
+            <ChildSwitcherBar
+              childrenList={childrenList} activeChildId={activeChildId} onSwitchChild={onSwitchChild}
+              onAdd={() => setShowAddChild(true)} onEditActive={() => setEditingChild(true)}
+            />
           </div>
         )}
         <div style={{ position: 'relative', display: 'flex', gap: 14, alignItems: 'flex-start' }}>
@@ -379,6 +414,20 @@ export default function TrackerScreen({ go, child, onChildUpdate }) {
       <div style={{ padding: '16px 16px 0' }}>
         <GrowthPanel child={child} />
       </div>
+      {showAddChild && (
+        <AddChildModal
+          lineUid={child?.line_uid}
+          onClose={() => setShowAddChild(false)}
+          onSaved={() => { onChildrenChange && onChildrenChange(); setShowAddChild(false); }}
+        />
+      )}
+      {editingChild && (
+        <EditChildModal
+          child={child}
+          onClose={() => setEditingChild(false)}
+          onSaved={() => { onChildrenChange && onChildrenChange(); setEditingChild(false); }}
+        />
+      )}
     </div>
   );
 }
