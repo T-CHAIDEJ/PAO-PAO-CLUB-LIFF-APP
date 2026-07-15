@@ -45,26 +45,30 @@ function getRangeStatus(value, min, max, unit) {
   return { status: 'normal', chipLabel: 'ตามเกณฑ์', deltaText: 'อยู่ในช่วงเกณฑ์ WHO' };
 }
 
+// Zone labels use the same "ตามเกณฑ์/สูงกว่าเกณฑ์/ต่ำกว่าเกณฑ์" vocabulary as
+// the range indicator chip above (getRangeStatus) across all 3 tabs — used
+// to say "ผอม/อ้วน" or "เตี้ย/สูง" per metric, which read as 3 unrelated
+// scales instead of one consistent one.
 const WH_ZONES = [
-  { key: 'very_low',    zMin: -3,   zMax: -2,   label: 'ผอม',         friendly: 'น้ำหนักต่ำกว่าเกณฑ์เมื่อเทียบกับส่วนสูง' },
-  { key: 'low',         zMin: -2,   zMax: -1.5, label: 'ค่อนข้างผอม', friendly: 'น้ำหนักต่ำกว่าช่วงสมส่วนเล็กน้อย' },
-  { key: 'normal',      zMin: -1.5, zMax:  1.5, label: 'สมส่วน',      friendly: 'น้ำหนักเหมาะสมเมื่อเทียบกับส่วนสูง' },
-  { key: 'high',        zMin:  1.5, zMax:  2,   label: 'เริ่มอ้วน',   friendly: 'น้ำหนักสูงกว่าช่วงสมส่วนเล็กน้อย' },
-  { key: 'very_high',   zMin:  2,   zMax:  3,   label: 'อ้วน',        friendly: 'น้ำหนักสูงกว่าเกณฑ์เมื่อเทียบกับส่วนสูง' },
+  { key: 'very_low',    zMin: -3,   zMax: -2,   label: 'ต่ำกว่าเกณฑ์มาก',     friendly: 'น้ำหนักต่ำกว่าเกณฑ์เมื่อเทียบกับส่วนสูง' },
+  { key: 'low',         zMin: -2,   zMax: -1.5, label: 'ต่ำกว่าเกณฑ์เล็กน้อย', friendly: 'น้ำหนักต่ำกว่าช่วงสมส่วนเล็กน้อย' },
+  { key: 'normal',      zMin: -1.5, zMax:  1.5, label: 'ตามเกณฑ์',            friendly: 'น้ำหนักเหมาะสมเมื่อเทียบกับส่วนสูง' },
+  { key: 'high',        zMin:  1.5, zMax:  2,   label: 'สูงกว่าเกณฑ์เล็กน้อย', friendly: 'น้ำหนักสูงกว่าช่วงสมส่วนเล็กน้อย' },
+  { key: 'very_high',   zMin:  2,   zMax:  3,   label: 'สูงกว่าเกณฑ์มาก',     friendly: 'น้ำหนักสูงกว่าเกณฑ์เมื่อเทียบกับส่วนสูง' },
 ];
 const WA_ZONES = [
-  { key: 'very_low',  zMin: -3,   zMax: -2,   label: 'น้ำหนักน้อย',          friendly: 'น้ำหนักต่ำกว่าเกณฑ์ตามวัย' },
-  { key: 'low',       zMin: -2,   zMax: -1.5, label: 'น้ำหนักค่อนข้างน้อย',  friendly: 'น้ำหนักต่ำกว่าค่ากลางเล็กน้อย' },
-  { key: 'normal',    zMin: -1.5, zMax:  1.5, label: 'น้ำหนักตามเกณฑ์',      friendly: 'น้ำหนักอยู่ในช่วงเหมาะสมตามวัย' },
-  { key: 'high',      zMin:  1.5, zMax:  2,   label: 'น้ำหนักค่อนข้างมาก',   friendly: 'น้ำหนักสูงกว่าค่ากลางเล็กน้อย' },
-  { key: 'very_high', zMin:  2,   zMax:  3,   label: 'น้ำหนักมาก',            friendly: 'น้ำหนักสูงกว่าเกณฑ์ตามวัย' },
+  { key: 'very_low',  zMin: -3,   zMax: -2,   label: 'ต่ำกว่าเกณฑ์มาก',     friendly: 'น้ำหนักต่ำกว่าเกณฑ์ตามวัย' },
+  { key: 'low',       zMin: -2,   zMax: -1.5, label: 'ต่ำกว่าเกณฑ์เล็กน้อย', friendly: 'น้ำหนักต่ำกว่าค่ากลางเล็กน้อย' },
+  { key: 'normal',    zMin: -1.5, zMax:  1.5, label: 'ตามเกณฑ์',            friendly: 'น้ำหนักอยู่ในช่วงเหมาะสมตามวัย' },
+  { key: 'high',      zMin:  1.5, zMax:  2,   label: 'สูงกว่าเกณฑ์เล็กน้อย', friendly: 'น้ำหนักสูงกว่าค่ากลางเล็กน้อย' },
+  { key: 'very_high', zMin:  2,   zMax:  3,   label: 'สูงกว่าเกณฑ์มาก',     friendly: 'น้ำหนักสูงกว่าเกณฑ์ตามวัย' },
 ];
 const HA_ZONES = [
-  { key: 'very_low',  zMin: -3,   zMax: -2,   label: 'เตี้ย',              friendly: 'ส่วนสูงต่ำกว่าเกณฑ์ตามวัย' },
-  { key: 'low',       zMin: -2,   zMax: -1.5, label: 'ค่อนข้างเตี้ย',      friendly: 'ส่วนสูงต่ำกว่าค่ากลางเล็กน้อย' },
-  { key: 'normal',    zMin: -1.5, zMax:  1.5, label: 'ส่วนสูงตามเกณฑ์',    friendly: 'ส่วนสูงอยู่ในช่วงเหมาะสมตามวัย' },
-  { key: 'high',      zMin:  1.5, zMax:  2,   label: 'ค่อนข้างสูง',         friendly: 'ส่วนสูงสูงกว่าค่ากลางเล็กน้อย' },
-  { key: 'very_high', zMin:  2,   zMax:  3,   label: 'สูง',                 friendly: 'ส่วนสูงสูงกว่าเกณฑ์ตามวัย' },
+  { key: 'very_low',  zMin: -3,   zMax: -2,   label: 'ต่ำกว่าเกณฑ์มาก',     friendly: 'ส่วนสูงต่ำกว่าเกณฑ์ตามวัย' },
+  { key: 'low',       zMin: -2,   zMax: -1.5, label: 'ต่ำกว่าเกณฑ์เล็กน้อย', friendly: 'ส่วนสูงต่ำกว่าค่ากลางเล็กน้อย' },
+  { key: 'normal',    zMin: -1.5, zMax:  1.5, label: 'ตามเกณฑ์',            friendly: 'ส่วนสูงอยู่ในช่วงเหมาะสมตามวัย' },
+  { key: 'high',      zMin:  1.5, zMax:  2,   label: 'สูงกว่าเกณฑ์เล็กน้อย', friendly: 'ส่วนสูงสูงกว่าค่ากลางเล็กน้อย' },
+  { key: 'very_high', zMin:  2,   zMax:  3,   label: 'สูงกว่าเกณฑ์มาก',     friendly: 'ส่วนสูงสูงกว่าเกณฑ์ตามวัย' },
 ];
 
 function getZone(z, zones) {
