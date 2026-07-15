@@ -1,18 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Star, Package, Gift, Plus } from 'lucide-react';
+import { Star, Gift, Plus } from 'lucide-react';
 import { Card, Badge, Button, Tabs } from '../components/index.jsx';
 import { SkyDeco } from '../shared/index.jsx';
 import { supabase } from '../lib/supabase.js';
+import { fetchRewardsCatalog } from '../lib/rewards.js';
 
-// No Tier system — points are only for redeeming rewards, expire end of
-// SS1 (31 Dec 2026). Used until 007_rewards loads (or if it's empty/
-// unreachable) — 007_rewards has no "tag" column, so DB-sourced items
-// never show a badge, only these hardcoded ones do.
-const CATALOG_FALLBACK = [
-  { name: 'Sampling PaoPao (เลือกไซส์ NB-2XL)', pts: 100, Icon: Package, tag: 'ยอดนิยม', stock: null },
-  { name: 'ผ้าอ้อมเปาเปา ไซซ์มินิ (NB-2XL) 1 ชิ้น', pts: 200, Icon: Gift, tag: null, stock: null },
-  { name: 'ถังเก็บของเล่นลูกน้อย 1 ชิ้น (คละลาย)', pts: 300, Icon: Package, tag: 'ใหม่!', stock: null },
-];
+// 007_rewards has no "tag"/icon columns — these only decorate the 3
+// hardcoded fallback ids (see lib/rewards.js); real DB rewards just
+// won't show a badge.
+const TAG_BY_ID = { sampling: 'ยอดนิยม', 'toy-bin': 'ใหม่!' };
 
 const TAB_ITEMS = [
   { label: 'แลกของรางวัล', value: 'catalog' },
@@ -32,26 +28,16 @@ function activityLabel(a) {
 export default function RewardsScreen({ user }) {
   const [tab, setTab] = useState('catalog');
   const [activities, setActivities] = useState([]);
-  const [dbCatalog, setDbCatalog] = useState(null); // null = still loading
+  const [rawCatalog, setRawCatalog] = useState(null); // null = still loading
 
   const points = user?.points ?? 0;
   const streak = user?.login_streak ?? 0;
 
   useEffect(() => {
-    supabase
-      .from('007_rewards')
-      .select('id, name, points_required, stock')
-      .eq('is_active', true)
-      .order('points_required', { ascending: true })
-      .then(({ data, error }) => {
-        if (error) { console.warn('[rewards] catalog fetch failed:', error.message); setDbCatalog([]); return; }
-        setDbCatalog(data || []);
-      });
+    fetchRewardsCatalog().then(setRawCatalog);
   }, []);
 
-  const catalog = dbCatalog && dbCatalog.length
-    ? dbCatalog.map(r => ({ id: r.id, name: r.name, pts: r.points_required, stock: r.stock, Icon: Gift, tag: null }))
-    : CATALOG_FALLBACK;
+  const catalog = (rawCatalog ?? []).map(r => ({ ...r, Icon: Gift, tag: TAG_BY_ID[r.id] ?? null }));
 
   useEffect(() => {
     if (!user?.line_uid) return;

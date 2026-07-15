@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Baby, Ruler, Gift, ScanLine, Bell, ChevronRight, Star, Package, TicketPercent, UserPlus, UserCircle2, Mars, Venus } from 'lucide-react';
-import { Card, Badge, Button } from '../components/index.jsx';
+import { Card, Badge, Button, ProgressBar } from '../components/index.jsx';
 import { Wordmark, SectionTitle } from '../shared/index.jsx';
 import { recommendSize } from './TrackerScreen.jsx';
 import { supabase } from '../lib/supabase.js';
 import { STREAK_POINTS } from '../lib/points.js';
+import { fetchRewardsCatalog, nextUnlockedReward } from '../lib/rewards.js';
 
 function calcAge(birthdate) {
   if (!birthdate) return null;
@@ -330,10 +331,16 @@ export default function HomeScreen({ go, user, child, goOnboarding, goProfile, c
   const [showStreak, setShowStreak] = useState(false);
   const [comingSoon, setComingSoon] = useState(null);
   const [banners, setBanners] = useState([]);
+  const [rewardsCatalog, setRewardsCatalog] = useState(null);
 
   useEffect(() => {
     if (checkin?.awarded != null) setShowStreak(true);
   }, [checkin]);
+
+  useEffect(() => {
+    fetchRewardsCatalog().then(setRewardsCatalog);
+  }, []);
+  const nextReward = rewardsCatalog ? nextUnlockedReward(rewardsCatalog, pts) : null;
 
   useEffect(() => {
     let alive = true;
@@ -436,6 +443,12 @@ export default function HomeScreen({ go, user, child, goOnboarding, goProfile, c
               </div>
               <Badge variant="solidGreen">สะสมไว้แลกของรางวัล</Badge>
             </div>
+            {nextReward && (
+              <div style={{ marginTop: 14 }}>
+                <ProgressBar value={pts} max={nextReward.pts} tone="green" />
+                <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)', marginTop: 6 }}>อีก {nextReward.pts - pts} แต้ม แลก "{nextReward.name}" ได้เลย</div>
+              </div>
+            )}
           </Card>
         )}
       </div>
