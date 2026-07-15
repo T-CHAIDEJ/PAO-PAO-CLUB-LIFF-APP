@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Scale, ChevronRight, Ruler, ShoppingCart, Baby, Camera } from 'lucide-react';
 import { Card } from '../components/index.jsx';
-import { SkyDeco, SectionTitle, ProfileButton, ChildTabBar } from '../shared/index.jsx';
+import { SkyDeco, SectionTitle, ProfileButton, ChildCardsRow } from '../shared/index.jsx';
 import { GrowthPanel } from './BabyTrackerScreen.jsx';
 import { supabase } from '../lib/supabase.js';
 import { recommendSize } from '../lib/diaperSize.js';
@@ -218,13 +218,39 @@ function DiaperPanel({ go, child }) {
   );
 }
 
+// Fetches the latest growth record for every child at once (keyed by
+// child_id) so a ChildCardsRow can show each card's own weight/height
+// without a per-switch refetch — same approach as HomeScreen.
+function useGrowthByChild(childrenList) {
+  const [growthByChild, setGrowthByChild] = useState({});
+  useEffect(() => {
+    const bornIds = (childrenList || []).filter(c => !c.is_pregnant).map(c => c.child_id);
+    if (bornIds.length === 0) { setGrowthByChild({}); return; }
+    let alive = true;
+    supabase
+      .from('004_growth')
+      .select('child_id, weight_kg, height_cm, recorded_date')
+      .in('child_id', bornIds)
+      .order('recorded_date', { ascending: false })
+      .then(({ data }) => {
+        if (!alive) return;
+        const map = {};
+        (data || []).forEach((r) => { if (!map[r.child_id]) map[r.child_id] = r; });
+        setGrowthByChild(map);
+      });
+    return () => { alive = false; };
+  }, [childrenList]);
+  return growthByChild;
+}
+
 export function DiaperScreen({ go, child, onChildUpdate, childrenList, activeChildId, onSwitchChild, onChildrenChange }) {
   const childName = child?.name || 'ลูกน้อย';
   const genderLabel = child?.gender === 'male' ? '👦 ชาย' : child?.gender === 'female' ? '👧 หญิง' : null;
   const birthdateLabel = formatBirthdate(child?.birth_date);
   const ageLabel = calcAge(child?.birth_date);
   const [showAddChild, setShowAddChild] = useState(false);
-  const [editingChild, setEditingChild] = useState(false);
+  const [editingChild, setEditingChild] = useState(null);
+  const growthByChild = useGrowthByChild(childrenList);
 
   return (
     <div style={{ background: 'var(--gradient-sky)', minHeight: '100%', paddingBottom: 24 }}>
@@ -261,10 +287,15 @@ export function DiaperScreen({ go, child, onChildUpdate, childrenList, activeChi
           </div>
         </div>
       </div>
-      <ChildTabBar
-        childrenList={childrenList} activeChildId={activeChildId} onSwitchChild={onSwitchChild}
-        onAdd={() => setShowAddChild(true)} onEdit={() => setEditingChild(true)}
-      />
+      {childrenList && childrenList.length > 0 && (
+        <div style={{ padding: '16px 16px 0' }}>
+          <SectionTitle>ข้อมูลลูกน้อย</SectionTitle>
+          <ChildCardsRow
+            childrenList={childrenList} activeChildId={activeChildId} growthByChild={growthByChild}
+            onSwitchChild={onSwitchChild} onEdit={(c) => setEditingChild(c)} onAdd={() => setShowAddChild(true)}
+          />
+        </div>
+      )}
       <div style={{ padding: '16px 16px 0' }}>
         <DiaperPanel go={go} child={child} />
       </div>
@@ -277,9 +308,9 @@ export function DiaperScreen({ go, child, onChildUpdate, childrenList, activeChi
       )}
       {editingChild && (
         <EditChildModal
-          child={child}
-          onClose={() => setEditingChild(false)}
-          onSaved={() => { onChildrenChange && onChildrenChange(); setEditingChild(false); }}
+          child={editingChild}
+          onClose={() => setEditingChild(null)}
+          onSaved={() => { onChildrenChange && onChildrenChange(); setEditingChild(null); }}
         />
       )}
     </div>
@@ -360,7 +391,8 @@ export default function TrackerScreen({ go, child, onChildUpdate, childrenList, 
   const birthdateLabel = formatBirthdate(child?.birth_date);
   const ageLabel = calcAge(child?.birth_date);
   const [showAddChild, setShowAddChild] = useState(false);
-  const [editingChild, setEditingChild] = useState(false);
+  const [editingChild, setEditingChild] = useState(null);
+  const growthByChild = useGrowthByChild(childrenList);
 
   return (
     <div style={{ background: 'var(--gradient-sky)', minHeight: '100%', paddingBottom: 24 }}>
@@ -399,10 +431,15 @@ export default function TrackerScreen({ go, child, onChildUpdate, childrenList, 
           </div>
         </div>
       </div>
-      <ChildTabBar
-        childrenList={childrenList} activeChildId={activeChildId} onSwitchChild={onSwitchChild}
-        onAdd={() => setShowAddChild(true)} onEdit={() => setEditingChild(true)}
-      />
+      {childrenList && childrenList.length > 0 && (
+        <div style={{ padding: '16px 16px 0' }}>
+          <SectionTitle>ข้อมูลลูกน้อย</SectionTitle>
+          <ChildCardsRow
+            childrenList={childrenList} activeChildId={activeChildId} growthByChild={growthByChild}
+            onSwitchChild={onSwitchChild} onEdit={(c) => setEditingChild(c)} onAdd={() => setShowAddChild(true)}
+          />
+        </div>
+      )}
       <div style={{ padding: '16px 16px 0' }}>
         <GrowthPanel child={child} />
       </div>
@@ -415,9 +452,9 @@ export default function TrackerScreen({ go, child, onChildUpdate, childrenList, 
       )}
       {editingChild && (
         <EditChildModal
-          child={child}
-          onClose={() => setEditingChild(false)}
-          onSaved={() => { onChildrenChange && onChildrenChange(); setEditingChild(false); }}
+          child={editingChild}
+          onClose={() => setEditingChild(null)}
+          onSaved={() => { onChildrenChange && onChildrenChange(); setEditingChild(null); }}
         />
       )}
     </div>

@@ -53,49 +53,103 @@ export function ProfileButton({ onClick }) {
   );
 }
 
-// Compact pill tab bar — one tab per child — meant to sit half-overlapping
-// the bottom edge of a hero card (negative margin-top applied by the
-// caller), rather than crammed inside the hero itself. Active tab shows an
-// edit (pencil) button next to it; "+" at the end opens the add-child flow.
-export function ChildTabBar({ childrenList, activeChildId, onSwitchChild, onAdd, onEdit }) {
+function calcChildAge(birthdate) {
+  if (!birthdate) return null;
+  const ms = Date.now() - new Date(birthdate).getTime();
+  const totalMonths = Math.floor(ms / (1000 * 60 * 60 * 24 * 30.4375));
+  const years = Math.floor(totalMonths / 12);
+  const months = totalMonths % 12;
+  if (totalMonths < 1) return 'แรกเกิด';
+  if (years === 0) return `${months} เดือน`;
+  return months === 0 ? `${years} ปี` : `${years} ปี ${months} เดือน`;
+}
+
+function ChildMiniStat({ label, value, unit }) {
+  return (
+    <div style={{ flex: 1, textAlign: 'center' }}>
+      <div style={{ font: '10px var(--font-base)', color: 'var(--text-faint)' }}>{label}</div>
+      {value != null ? (
+        <div style={{ font: 'var(--weight-bold) 14px var(--font-display)', color: 'var(--text-heading)' }}>
+          {value}<span style={{ fontSize: 10, marginLeft: 2, color: 'var(--text-muted)' }}>{unit}</span>
+        </div>
+      ) : (
+        <div style={{ font: '12px var(--font-base)', color: 'var(--text-faint)' }}>—</div>
+      )}
+    </div>
+  );
+}
+
+function ChildMiniCard({ c, active, latestKg, latestCm, onSelect, onEdit }) {
+  const childAge = calcChildAge(c.birth_date);
+  return (
+    <div
+      onClick={onSelect}
+      style={{
+        position: 'relative', flex: '0 0 152px', textAlign: 'left', cursor: 'pointer',
+        border: active ? '2px solid var(--color-secondary)' : '1px solid var(--border-default)',
+        background: '#fff', borderRadius: 18, padding: 12,
+        boxShadow: active ? 'var(--shadow-md)' : 'var(--shadow-xs)',
+      }}
+    >
+      <button
+        onClick={(e) => { e.stopPropagation(); onEdit(c); }}
+        aria-label="แก้ไขข้อมูลลูก"
+        style={{ position: 'absolute', top: 8, right: 8, width: 22, height: 22, borderRadius: '50%', background: 'var(--surface-soft)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', cursor: 'pointer' }}
+      >
+        <Pencil width={11} height={11} />
+      </button>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingRight: 20 }}>
+        <span style={{ width: 36, height: 36, borderRadius: 10, overflow: 'hidden', background: 'var(--surface-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
+          {c.avatar_url
+            ? <img src={c.avatar_url} alt={c.name || 'ลูก'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            : <span style={{ fontSize: 16 }}>{c.is_pregnant ? '🤰' : '👶'}</span>}
+        </span>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ font: 'var(--weight-bold) 13px var(--font-display)', color: 'var(--text-heading)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {c.name || (c.is_pregnant ? 'ในท้อง' : 'ลูก')}
+          </div>
+          <div style={{ font: '10px var(--font-base)', color: 'var(--text-faint)' }}>{c.is_pregnant ? 'ตั้งครรภ์' : childAge}</div>
+        </div>
+      </div>
+      {!c.is_pregnant && (
+        <div style={{ display: 'flex', gap: 4, marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--gray-100)' }}>
+          <ChildMiniStat label="น้ำหนัก" value={latestKg != null ? latestKg.toFixed(1) : null} unit="กก." />
+          <ChildMiniStat label="ส่วนสูง" value={latestCm != null ? latestCm.toFixed(1) : null} unit="ซม." />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Horizontal row of full child info cards — one per child, plus an add-child
+// card at the end — used everywhere a child-aware screen needs to show and
+// switch between children. Each card carries its own edit (pencil) button.
+// `growthByChild` is a map of child_id -> {weight_kg, height_cm} (born
+// children only) so every card can show its own latest stats without a
+// per-switch refetch.
+export function ChildCardsRow({ childrenList, activeChildId, growthByChild, onSwitchChild, onEdit, onAdd }) {
   if (!childrenList || childrenList.length === 0) return null;
   return (
-    <div style={{ position: 'relative', zIndex: 2, margin: '-16px 16px 14px', display: 'flex', alignItems: 'center', gap: 4, overflowX: 'auto', background: '#fff', borderRadius: 999, padding: 5, boxShadow: 'var(--shadow-md)' }}>
-      {childrenList.map((c) => {
-        const active = c.child_id === activeChildId;
-        return (
-          <div key={c.child_id} style={{ display: 'flex', alignItems: 'center', flex: 'none' }}>
-            <button
-              onClick={() => onSwitchChild(c.child_id)}
-              style={{
-                border: 'none', cursor: 'pointer', borderRadius: 999, padding: '7px 14px',
-                font: `${active ? 'var(--weight-bold)' : 'var(--weight-medium)'} 12px var(--font-base)`,
-                background: active ? 'var(--gradient-hero)' : 'transparent',
-                color: active ? '#fff' : 'var(--text-muted)',
-                display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap',
-              }}
-            >
-              <span>{c.is_pregnant ? '🤰' : '👶'}</span>
-              {c.name || (c.is_pregnant ? 'ในท้อง' : 'ลูก')}
-            </button>
-            {active && onEdit && (
-              <button
-                onClick={() => onEdit(c)}
-                aria-label="แก้ไขข้อมูลลูก"
-                style={{ border: 'none', background: 'transparent', color: 'var(--text-faint)', display: 'flex', cursor: 'pointer', padding: 4, flex: 'none' }}
-              >
-                <Pencil width={13} height={13} />
-              </button>
-            )}
-          </div>
-        );
-      })}
+    <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 2 }}>
+      {childrenList.map((c) => (
+        <ChildMiniCard
+          key={c.child_id}
+          c={c}
+          active={c.child_id === activeChildId}
+          latestKg={growthByChild?.[c.child_id]?.weight_kg ?? null}
+          latestCm={growthByChild?.[c.child_id]?.height_cm ?? null}
+          onSelect={() => onSwitchChild(c.child_id)}
+          onEdit={onEdit}
+        />
+      ))}
       <button
         onClick={onAdd}
-        aria-label="เพิ่มลูก"
-        style={{ flex: 'none', border: 'none', background: 'var(--surface-soft)', borderRadius: '50%', width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-muted)', marginLeft: 2 }}
+        style={{ flex: '0 0 90px', border: '2px dashed var(--border-default)', background: 'transparent', borderRadius: 18, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: 'pointer', color: 'var(--text-muted)' }}
       >
-        <Plus width={14} height={14} />
+        <span style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--surface-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Plus width={16} height={16} />
+        </span>
+        <span style={{ font: 'var(--weight-medium) 11px var(--font-base)' }}>เพิ่มลูก</span>
       </button>
     </div>
   );
