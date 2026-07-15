@@ -475,7 +475,7 @@ function AgeChart({ chartData, title }) {
   );
 }
 
-const MIN_CHART_SPAN_CM = 10;
+const MIN_CHART_SPAN_CM = 12;
 
 function WHChart({ records, gender, birthDate }) {
   const [selected, setSelected] = useState(null);
