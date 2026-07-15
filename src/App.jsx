@@ -162,7 +162,7 @@ export default function App() {
   const onChildUpdate = (patch) => setChildData(prev => prev ? { ...prev, ...patch } : prev);
 
   let view;
-  if      (screen === 'home')      view = <HomeScreen go={go} user={userData} child={childData} goOnboarding={goOnboarding} goProfile={() => go('profile')} checkin={checkin} onStreakSeen={() => setCheckin(null)} />;
+  if      (screen === 'home')      view = <HomeScreen go={go} user={userData} child={childData} goOnboarding={goOnboarding} goProfile={() => go('profile')} checkin={checkin} onStreakSeen={() => setCheckin(null)} onChildUpdate={onChildUpdate} />;
   else if (screen === 'diaper')    view = <DiaperScreen go={go} child={childData} onChildUpdate={onChildUpdate} />;
   else if (screen === 'tracker')   view = <TrackerScreen child={childData} onChildUpdate={onChildUpdate} />;
   else if (screen === 'size')      view = <SizeChartScreen go={go} currentKg={childData?.birth_weight ?? 8.5} />;

@@ -6,6 +6,13 @@ import { recommendSize } from './TrackerScreen.jsx';
 import { supabase } from '../lib/supabase.js';
 import { STREAK_POINTS } from '../lib/points.js';
 import { fetchRewardsCatalog, nextUnlockedReward } from '../lib/rewards.js';
+import { computeStage } from '../lib/stage.js';
+
+const inputStyle = {
+  width: '100%', height: 46, padding: '0 14px', borderRadius: 'var(--radius-md)',
+  border: '1px solid var(--border-default)', font: 'var(--type-body)', color: 'var(--text-body)',
+  background: '#fff', outline: 'none', boxSizing: 'border-box',
+};
 
 function calcAge(birthdate) {
   if (!birthdate) return null;
@@ -95,7 +102,7 @@ function StatBox({ label, value, unit, bg, valueColor }) {
   );
 }
 
-function BabyInfoCard({ child, latestKg, latestCm, go }) {
+function BabyInfoCard({ child, latestKg, latestCm, go, onBabyArrived }) {
   const isMale = child?.gender === 'male';
   const isFemale = child?.gender === 'female';
   const GenderIcon = isMale ? Mars : isFemale ? Venus : null;
@@ -116,6 +123,32 @@ function BabyInfoCard({ child, latestKg, latestCm, go }) {
     ? Math.floor((Date.now() - new Date(child._recordedAt).getTime()) / (1000 * 60 * 60 * 24))
     : null;
   const needsNudge = daysSince !== null && daysSince >= 14;
+
+  if (child?.is_pregnant) {
+    const dueDateLabel = child?.due_date ? (() => {
+      const d = new Date(child.due_date);
+      return `${d.getDate()} ${THAI_MONTHS[d.getMonth()]} ${d.getFullYear() + 543}`;
+    })() : null;
+    return (
+      <Card style={{ boxShadow: 'var(--shadow-md)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--surface-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none', fontSize: 20 }}>🤰</span>
+          <div>
+            <div style={{ font: 'var(--weight-bold) 17px var(--font-display)', color: 'var(--text-heading)' }}>{child?.name || 'ลูกน้อยในท้อง'}</div>
+            {dueDateLabel && (
+              <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)', marginTop: 2 }}>กำหนดคลอด {dueDateLabel}</div>
+            )}
+          </div>
+        </div>
+        <button
+          onClick={onBabyArrived}
+          style={{ marginTop: 14, width: '100%', border: 'none', background: 'var(--color-secondary)', color: '#fff', borderRadius: 'var(--radius-md)', padding: '12px 16px', font: 'var(--weight-bold) 14px var(--font-base)', cursor: 'pointer' }}
+        >
+          ลูกเกิดแล้ว 🎉 กดเพื่อลงทะเบียน
+        </button>
+      </Card>
+    );
+  }
 
   return (
     <Card interactive onClick={() => go('tracker')} style={{ boxShadow: 'var(--shadow-md)' }}>
@@ -242,6 +275,99 @@ function ComingSoon({ title, onClose }) {
   );
 }
 
+// Lets a pregnant (segment A) user "graduate" to segment B once the baby
+// is born — updates the existing 003_children row (never inserts a new
+// one) and logs an initial 004_growth record, same as segment B signup.
+function BabyArrivedModal({ child, onClose, onSaved }) {
+  const [name, setName] = useState('');
+  const [gender, setGender] = useState('');
+  const [birthdate, setBirthdate] = useState('');
+  const [weightKg, setWeightKg] = useState('');
+  const [heightCm, setHeightCm] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  const canSave = name && gender && birthdate && weightKg && heightCm;
+
+  const handleSave = async () => {
+    if (!canSave || !child?.child_id) return;
+    setSaving(true); setError(null);
+    try {
+      const parsedWeight = parseFloat(weightKg);
+      const patch = {
+        name, gender, birth_date: birthdate,
+        birth_weight: parsedWeight, birth_height: parseFloat(heightCm),
+        is_pregnant: false, due_date: null,
+        stage: computeStage(birthdate),
+      };
+      const { error: err } = await supabase.from('003_children').update(patch).eq('child_id', child.child_id);
+      if (err) throw err;
+      await supabase.from('004_growth').insert({
+        child_id: child.child_id, recorded_date: birthdate,
+        weight_kg: parsedWeight, height_cm: parseFloat(heightCm),
+        diaper_size: recommendSize(parsedWeight).code,
+      });
+      onSaved(patch);
+    } catch (e) {
+      console.warn('[baby-arrived] save failed:', e?.message);
+      setError('บันทึกไม่สำเร็จ ลองใหม่อีกครั้ง');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(15,23,42,.55)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 480, maxHeight: '88vh', overflowY: 'auto', background: '#fff', borderRadius: '20px 20px 0 0', padding: '24px 22px 32px' }}>
+        <div style={{ font: '800 20px var(--font-display)', color: 'var(--text-heading)', marginBottom: 4 }}>🎉 ยินดีด้วยค่ะ!</div>
+        <div style={{ font: 'var(--type-body)', color: 'var(--text-muted)', marginBottom: 18 }}>กรอกข้อมูลลูกน้อยเพื่อเริ่มติดตามพัฒนาการ</div>
+
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ font: 'var(--type-label)', color: 'var(--text-title)', marginBottom: 8 }}>ชื่อลูกน้อย</div>
+          <input type="text" value={name} onChange={(e) => setName(e.target.value)} style={inputStyle} placeholder="ชื่อเล่น" />
+        </div>
+
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ font: 'var(--type-label)', color: 'var(--text-title)', marginBottom: 8 }}>เพศลูก</div>
+          <div style={{ display: 'flex', gap: 12 }}>
+            {[{ val: 'male', label: '👦 ชาย' }, { val: 'female', label: '👧 หญิง' }].map(({ val, label }) => (
+              <label key={val} style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', border: `2px solid ${gender === val ? 'var(--color-primary)' : 'var(--border-default)'}`, borderRadius: 'var(--radius-md)', cursor: 'pointer', background: gender === val ? 'var(--surface-soft)' : '#fff' }}>
+                <input type="radio" name="baby-arrived-gender" value={val} checked={gender === val} onChange={() => setGender(val)} style={{ accentColor: 'var(--color-primary)' }} />
+                <span style={{ font: 'var(--weight-medium) 14px var(--font-base)', color: 'var(--text-body)' }}>{label}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ font: 'var(--type-label)', color: 'var(--text-title)', marginBottom: 8 }}>วันเกิดลูก</div>
+          <input type="date" value={birthdate} onChange={(e) => setBirthdate(e.target.value)} style={inputStyle} />
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 8 }}>
+          <div>
+            <div style={{ font: 'var(--type-label)', color: 'var(--text-title)', marginBottom: 8 }}>น้ำหนัก (กก.)</div>
+            <input type="number" step="0.1" placeholder="เช่น 3.5" value={weightKg} onChange={(e) => setWeightKg(e.target.value)} style={inputStyle} />
+          </div>
+          <div>
+            <div style={{ font: 'var(--type-label)', color: 'var(--text-title)', marginBottom: 8 }}>ส่วนสูง (ซม.)</div>
+            <input type="number" step="0.1" placeholder="เช่น 50.0" value={heightCm} onChange={(e) => setHeightCm(e.target.value)} style={inputStyle} />
+          </div>
+        </div>
+
+        {error && <div style={{ font: 'var(--type-caption)', color: 'var(--red-600, #dc2626)', marginBottom: 8 }}>{error}</div>}
+
+        <div style={{ marginTop: 12 }}>
+          <Button variant="primary" fullWidth disabled={!canSave} loading={saving} onClick={handleSave}>บันทึกและเริ่มติดตาม</Button>
+        </div>
+        <button onClick={onClose} style={{ marginTop: 10, width: '100%', border: 'none', background: 'transparent', font: 'var(--weight-medium) 14px var(--font-base)', color: 'var(--text-muted)', cursor: 'pointer', padding: '6px 0' }}>
+          ยังก่อน
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // Advertising / campaign banners — DB-driven (Admin manages via `banners` table).
 // All slides sit side by side in one wide track; we translateX the whole
 // track so it genuinely slides (old one sliding out, new one sliding in),
@@ -353,7 +479,7 @@ function BannerCarousel({ banners }) {
   );
 }
 
-export default function HomeScreen({ go, user, child, goOnboarding, goProfile, checkin, onStreakSeen }) {
+export default function HomeScreen({ go, user, child, goOnboarding, goProfile, checkin, onStreakSeen, onChildUpdate }) {
   const isGuest = !user || user.role === 'guest';
   const pts = user?.points ?? 0;
   const [latestRecord, setLatestRecord] = useState(null);
@@ -361,6 +487,7 @@ export default function HomeScreen({ go, user, child, goOnboarding, goProfile, c
   const [comingSoon, setComingSoon] = useState(null);
   const [banners, setBanners] = useState([]);
   const [rewardsCatalog, setRewardsCatalog] = useState(null);
+  const [showBabyArrived, setShowBabyArrived] = useState(false);
 
   useEffect(() => {
     if (checkin?.awarded != null) setShowStreak(true);
@@ -416,6 +543,13 @@ export default function HomeScreen({ go, user, child, goOnboarding, goProfile, c
     <div style={{ background: 'var(--gradient-sky)', minHeight: '100%' }}>
       {showStreak && checkin && <StreakPopup checkin={checkin} onClose={closeStreak} />}
       {comingSoon && <ComingSoon title={comingSoon} onClose={() => setComingSoon(null)} />}
+      {showBabyArrived && (
+        <BabyArrivedModal
+          child={child}
+          onClose={() => setShowBabyArrived(false)}
+          onSaved={(patch) => { onChildUpdate && onChildUpdate(patch); setShowBabyArrived(false); }}
+        />
+      )}
       {/* Hero */}
       <div style={{
         position: 'relative',
@@ -501,7 +635,7 @@ export default function HomeScreen({ go, user, child, goOnboarding, goProfile, c
       {/* Baby Info Card */}
       {!isGuest && childWithRecord && (
         <div style={{ padding: '20px 16px 0' }}>
-          <BabyInfoCard child={childWithRecord} latestKg={latestKg} latestCm={latestCm} go={go} />
+          <BabyInfoCard child={childWithRecord} latestKg={latestKg} latestCm={latestCm} go={go} onBabyArrived={() => setShowBabyArrived(true)} />
         </div>
       )}
 
