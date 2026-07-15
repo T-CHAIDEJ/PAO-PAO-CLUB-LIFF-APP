@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Baby, Camera } from 'lucide-react';
 import { Card, Button } from '../components/index.jsx';
 import { supabase } from '../lib/supabase.js';
 import { recommendSize } from './TrackerScreen.jsx';
 import { computeStage, PREGNANCY_STAGE } from '../lib/stage.js';
+import { uploadChildAvatar } from '../lib/avatar.js';
 
 const inputStyle = {
   width: '100%', minWidth: 0, maxWidth: '100%', height: 46, padding: '0 14px', borderRadius: 'var(--radius-md)',
@@ -123,13 +125,24 @@ function SegmentForm({ segment, lineProfile, onSubmit, loading }) {
   const [birthdate, setBirthdate] = useState('');
   const [weightKg, setWeightKg] = useState('');
   const [heightCm, setHeightCm] = useState('');
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState(null);
+  const photoInputRef = useRef(null);
 
   const canSubmitA = motherName && edd;
   const canSubmitB = motherName && childName && childGender && birthdate && weightKg && heightCm;
 
+  const handlePhotoPick = (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setPhotoFile(file);
+    setPhotoPreview(URL.createObjectURL(file));
+  };
+
   const handleSubmit = () => {
     if (segment === 'A') onSubmit({ motherName, edd });
-    else if (segment === 'B') onSubmit({ motherName, childName, childGender, birthdate, weightKg: parseFloat(weightKg), heightCm: parseFloat(heightCm) });
+    else if (segment === 'B') onSubmit({ motherName, childName, childGender, birthdate, weightKg: parseFloat(weightKg), heightCm: parseFloat(heightCm), photoFile });
     else onSubmit({});
   };
 
@@ -166,6 +179,24 @@ function SegmentForm({ segment, lineProfile, onSubmit, loading }) {
 
       {segment === 'B' && (
         <>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 18 }}>
+            <div style={{ position: 'relative', width: 84, height: 84 }}>
+              <div style={{ width: 84, height: 84, borderRadius: '50%', overflow: 'hidden', background: 'var(--surface-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid var(--border-default)' }}>
+                {photoPreview
+                  ? <img src={photoPreview} alt="รูปลูกน้อย" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : <Baby width={36} height={36} style={{ color: 'var(--text-faint)' }} />}
+              </div>
+              <button
+                type="button"
+                onClick={() => photoInputRef.current?.click()}
+                aria-label="เลือกรูปโปรไฟล์ลูก"
+                style={{ position: 'absolute', right: -2, bottom: -2, width: 30, height: 30, borderRadius: '50%', background: 'var(--color-secondary)', border: '2px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff' }}
+              >
+                <Camera width={15} height={15} />
+              </button>
+              <input ref={photoInputRef} type="file" accept="image/*" onChange={handlePhotoPick} style={{ display: 'none' }} />
+            </div>
+          </div>
           <FormField label="ชื่อลูกน้อย">
             <input type="text" value={childName} onChange={(e) => setChildName(e.target.value)} style={inputStyle} placeholder="ชื่อเล่น" />
           </FormField>
@@ -322,6 +353,12 @@ export default function OnboardingScreen({ lineProfile, initialSegment, onComple
         const { data: childData, error: childError } = await supabase
           .from('003_children').insert(childPayload).select().single();
         if (childError) throw childError;
+
+        if (childData && formData.photoFile) {
+          try {
+            await uploadChildAvatar(supabase, childData.child_id, formData.photoFile);
+          } catch (e) { console.warn('[onboarding] avatar upload failed:', e?.message); }
+        }
 
         if (childData && formData.weightKg && formData.heightCm) {
           await supabase.from('004_growth').insert({
