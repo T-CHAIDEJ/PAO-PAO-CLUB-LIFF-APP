@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Star, Gift, Plus } from 'lucide-react';
+import { Star, Gift, Plus, ChevronRight, X } from 'lucide-react';
 import { Card, Badge, Button, Tabs } from '../components/index.jsx';
 import { SkyDeco } from '../shared/index.jsx';
 import { supabase } from '../lib/supabase.js';
@@ -13,8 +13,15 @@ const TAG_BY_ID = { sampling: 'ยอดนิยม', 'toy-bin': 'ใหม่!
 
 const TAB_ITEMS = [
   { label: 'แลกของรางวัล', value: 'catalog' },
-  { label: 'ประวัติแต้ม',   value: 'history' },
+  { label: 'ประวัติการแลก', value: 'redemptions' },
 ];
+
+const STATUS_META = {
+  pending:   { label: 'รอดำเนินการ', bg: 'var(--yellow-100, #FFFDE7)', color: 'var(--yellow-800, #F57F17)' },
+  shipped:   { label: 'จัดส่งแล้ว',   bg: 'var(--blue-100)',            color: 'var(--blue-600)' },
+  used:      { label: 'ใช้แล้ว',      bg: 'var(--gray-100)',            color: 'var(--text-muted)' },
+  cancelled: { label: 'ยกเลิก',       bg: '#FFF3E0',                    color: '#E65100' },
+};
 
 const THAI_MONTHS = ['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
 function fmtDate(dateStr) {
@@ -47,6 +54,43 @@ function ConfirmRedeemModal({ reward, points, saving, error, onConfirm, onClose 
   );
 }
 
+function PointsHistoryModal({ activities, onClose }) {
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(15,23,42,.55)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 480, maxHeight: '80vh', overflowY: 'auto', background: '#fff', borderRadius: '20px 20px 0 0', padding: '20px 20px 28px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+          <div style={{ font: 'var(--weight-bold) 17px var(--font-display)', color: 'var(--text-heading)' }}>ประวัติแต้ม</div>
+          <button onClick={onClose} style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: 'var(--surface-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-muted)' }}>
+            <X width={16} height={16} />
+          </button>
+        </div>
+        {activities.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '28px 0' }}>
+            <div style={{ fontSize: 40, marginBottom: 10 }}>⭐</div>
+            <div style={{ font: 'var(--weight-bold) 15px var(--font-display)', color: 'var(--text-heading)' }}>ยังไม่มีประวัติแต้ม</div>
+            <div style={{ font: 'var(--type-body)', color: 'var(--text-muted)', marginTop: 6 }}>เข้าแอปทุกวันเพื่อรับแต้มสะสม</div>
+          </div>
+        ) : (
+          <Card padded={false} style={{ overflow: 'hidden' }}>
+            {activities.map((h, i, arr) => (
+              <div key={h.id ?? i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderBottom: i < arr.length - 1 ? '1px solid var(--gray-100)' : 'none' }}>
+                <span style={{ width: 38, height: 38, borderRadius: 10, background: h.points > 0 ? 'var(--green-100)' : 'var(--blue-100)', color: h.points > 0 ? 'var(--green-700)' : 'var(--blue-600)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
+                  {h.points > 0 ? <Plus width={18} height={18} /> : <Gift width={18} height={18} />}
+                </span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ font: 'var(--weight-medium) 14px var(--font-base)', color: 'var(--text-body)' }}>{activityLabel(h)}</div>
+                  <div style={{ font: 'var(--type-caption)', color: 'var(--text-faint)' }}>{fmtDate(h.created_at)}</div>
+                </div>
+                <span style={{ font: 'var(--weight-bold) 15px var(--font-base)', color: h.points > 0 ? 'var(--green-600)' : 'var(--text-muted)' }}>{h.points > 0 ? '+' : ''}{h.points}</span>
+              </div>
+            ))}
+          </Card>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function RedeemSuccessModal({ reward, onClose }) {
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(15,23,42,.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
@@ -65,6 +109,8 @@ function RedeemSuccessModal({ reward, onClose }) {
 export default function RewardsScreen({ user, onUserUpdate }) {
   const [tab, setTab] = useState('catalog');
   const [activities, setActivities] = useState([]);
+  const [showPointsHistory, setShowPointsHistory] = useState(false);
+  const [redemptions, setRedemptions] = useState([]);
   const [rawCatalog, setRawCatalog] = useState(null); // null = still loading
   const [confirmReward, setConfirmReward] = useState(null);
   const [redeeming, setRedeeming] = useState(false);
@@ -90,6 +136,21 @@ export default function RewardsScreen({ user, onUserUpdate }) {
       .then(({ data }) => setActivities(data || []));
   };
 
+  const loadRedemptions = () => {
+    if (!user?.line_uid) return;
+    supabase
+      .from('016_redemptions')
+      .select('*')
+      .eq('line_uid', user.line_uid)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => setRedemptions(data || []));
+  };
+  useEffect(() => { loadRedemptions(); }, [user?.line_uid]);
+
+  // reward_id (not id) is the FK 016_redemptions.reward_id points at —
+  // catalog only has active rewards, so this can miss retired ones.
+  const rewardNameFor = (rewardId) => catalog.find(r => r.rewardId === rewardId)?.name ?? 'ของรางวัล';
+
   const handleConfirmRedeem = async () => {
     if (!confirmReward || !user?.line_uid) return;
     setRedeeming(true); setRedeemError(null);
@@ -100,6 +161,7 @@ export default function RewardsScreen({ user, onUserUpdate }) {
       setConfirmReward(null);
       loadCatalog();
       loadActivities();
+      loadRedemptions();
     } catch (e) {
       setRedeemError(e?.code === 'OUT_OF_STOCK' ? 'ของรางวัลนี้หมดแล้ว ลองแบบอื่นดูนะ' : 'แลกไม่สำเร็จ ลองใหม่อีกครั้ง');
       console.warn('[rewards] redeem failed:', e?.message);
@@ -127,6 +189,12 @@ export default function RewardsScreen({ user, onUserUpdate }) {
             <Star width={26} height={26} fill="#fff" />
             <span style={{ font: '800 42px var(--font-display)' }}>{points}</span>
           </div>
+          <button
+            onClick={() => setShowPointsHistory(true)}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 2, border: 'none', background: 'none', color: '#fff', opacity: .85, font: 'var(--weight-medium) 12px var(--font-base)', cursor: 'pointer', padding: '2px 0', marginTop: 2 }}
+          >
+            ดูประวัติแต้ม <ChevronRight width={13} height={13} />
+          </button>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
             {streak > 0 && (
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(255,255,255,.18)', padding: '4px 12px', borderRadius: 999 }}>
@@ -170,29 +238,36 @@ export default function RewardsScreen({ user, onUserUpdate }) {
         </div>
       ) : (
         <div style={{ padding: '16px 16px 0' }}>
-          {activities.length === 0 ? (
+          {redemptions.length === 0 ? (
             <Card style={{ textAlign: 'center', padding: 28 }}>
-              <div style={{ fontSize: 40, marginBottom: 10 }}>⭐</div>
-              <div style={{ font: 'var(--weight-bold) 15px var(--font-display)', color: 'var(--text-heading)' }}>ยังไม่มีประวัติแต้ม</div>
-              <div style={{ font: 'var(--type-body)', color: 'var(--text-muted)', marginTop: 6 }}>เข้าแอปทุกวันเพื่อรับแต้มสะสม</div>
+              <div style={{ fontSize: 40, marginBottom: 10 }}>🎁</div>
+              <div style={{ font: 'var(--weight-bold) 15px var(--font-display)', color: 'var(--text-heading)' }}>ยังไม่มีประวัติการแลก</div>
+              <div style={{ font: 'var(--type-body)', color: 'var(--text-muted)', marginTop: 6 }}>แลกของรางวัลแล้วจะเห็นสถานะการจัดส่งที่นี่</div>
             </Card>
           ) : (
             <Card padded={false} style={{ overflow: 'hidden' }}>
-              {activities.map((h, i, arr) => (
-                <div key={h.id ?? i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderBottom: i < arr.length - 1 ? '1px solid var(--gray-100)' : 'none' }}>
-                  <span style={{ width: 38, height: 38, borderRadius: 10, background: h.points > 0 ? 'var(--green-100)' : 'var(--blue-100)', color: h.points > 0 ? 'var(--green-700)' : 'var(--blue-600)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
-                    {h.points > 0 ? <Plus width={18} height={18} /> : <Gift width={18} height={18} />}
-                  </span>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ font: 'var(--weight-medium) 14px var(--font-base)', color: 'var(--text-body)' }}>{activityLabel(h)}</div>
-                    <div style={{ font: 'var(--type-caption)', color: 'var(--text-faint)' }}>{fmtDate(h.created_at)}</div>
+              {redemptions.map((r, i, arr) => {
+                const st = STATUS_META[r.status] ?? { label: r.status, bg: 'var(--gray-100)', color: 'var(--text-muted)' };
+                return (
+                  <div key={r.id ?? i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderBottom: i < arr.length - 1 ? '1px solid var(--gray-100)' : 'none' }}>
+                    <span style={{ width: 38, height: 38, borderRadius: 10, background: 'var(--surface-soft)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
+                      <Gift width={18} height={18} />
+                    </span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ font: 'var(--weight-medium) 14px var(--font-base)', color: 'var(--text-body)' }}>{rewardNameFor(r.reward_id)}</div>
+                      <div style={{ font: 'var(--type-caption)', color: 'var(--text-faint)' }}>{fmtDate(r.created_at)} · ใช้ {r.points_used} แต้ม</div>
+                    </div>
+                    <span style={{ font: 'var(--weight-semibold) 11px var(--font-base)', color: st.color, background: st.bg, padding: '4px 10px', borderRadius: 999, flex: 'none' }}>{st.label}</span>
                   </div>
-                  <span style={{ font: 'var(--weight-bold) 15px var(--font-base)', color: h.points > 0 ? 'var(--green-600)' : 'var(--text-muted)' }}>{h.points > 0 ? '+' : ''}{h.points}</span>
-                </div>
-              ))}
+                );
+              })}
             </Card>
           )}
         </div>
+      )}
+
+      {showPointsHistory && (
+        <PointsHistoryModal activities={activities} onClose={() => setShowPointsHistory(false)} />
       )}
 
       {confirmReward && (
