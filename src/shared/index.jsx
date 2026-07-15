@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, MoreHorizontal } from 'lucide-react';
+import { X, MoreHorizontal, UserCircle2 } from 'lucide-react';
 
 export function SkyDeco() {
   return (
@@ -33,6 +33,25 @@ export function LineChrome({ title }) {
         <MoreHorizontal width={22} height={22} />
       </span>
     </div>
+  );
+}
+
+// Small pill button used in every screen's header to jump to Profile —
+// icon-only used to only appear on Home, now labeled and repeated on
+// every tab's header so it's reachable from anywhere.
+export function ProfileButton({ onClick, picture, name }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{ display: 'flex', alignItems: 'center', gap: 6, border: 'none', background: 'rgba(255,255,255,.18)', borderRadius: 999, padding: '5px 12px 5px 5px', cursor: 'pointer', color: '#fff', flex: 'none' }}
+    >
+      <span style={{ width: 24, height: 24, borderRadius: '50%', background: 'rgba(255,255,255,.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flex: 'none' }}>
+        {picture
+          ? <img src={picture} alt={name || 'โปรไฟล์'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          : <UserCircle2 width={16} height={16} />}
+      </span>
+      <span style={{ font: 'var(--weight-semibold) 12px var(--font-base)' }}>โปรไฟล์</span>
+    </button>
   );
 }
 

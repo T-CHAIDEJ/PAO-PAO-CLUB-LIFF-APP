@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Scale, ChevronRight, Ruler, ShoppingCart, Baby, Camera } from 'lucide-react';
 import { Card } from '../components/index.jsx';
-import { SkyDeco, SectionTitle } from '../shared/index.jsx';
+import { SkyDeco, SectionTitle, ProfileButton } from '../shared/index.jsx';
 import { GrowthPanel } from './BabyTrackerScreen.jsx';
 import { supabase } from '../lib/supabase.js';
 import { recommendSize } from '../lib/diaperSize.js';
@@ -227,6 +227,9 @@ export function DiaperScreen({ go, child, onChildUpdate }) {
     <div style={{ background: 'var(--gradient-sky)', minHeight: '100%', paddingBottom: 24 }}>
       <div style={{ position: 'relative', background: 'var(--gradient-hero)', padding: '20px 20px 28px', color: '#fff', borderBottomLeftRadius: 28, borderBottomRightRadius: 28 }}>
         <SkyDeco />
+        <div style={{ position: 'relative', display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+          <ProfileButton onClick={() => go('profile')} />
+        </div>
         <div style={{ position: 'relative', display: 'flex', gap: 14, alignItems: 'flex-start' }}>
           <ChildAvatarUpload child={child} onChildUpdate={onChildUpdate} />
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -330,7 +333,7 @@ function ChildAvatarUpload({ child, onChildUpdate }) {
   );
 }
 
-export default function TrackerScreen({ child, onChildUpdate }) {
+export default function TrackerScreen({ go, child, onChildUpdate }) {
   const childName  = child?.name     || 'ลูกน้อย';
   const genderLabel = child?.gender === 'male' ? '👦 ชาย' : child?.gender === 'female' ? '👧 หญิง' : null;
   const birthdateLabel = formatBirthdate(child?.birth_date);
@@ -340,6 +343,11 @@ export default function TrackerScreen({ child, onChildUpdate }) {
     <div style={{ background: 'var(--gradient-sky)', minHeight: '100%', paddingBottom: 24 }}>
       <div style={{ position: 'relative', background: 'var(--gradient-hero)', padding: '20px 20px 28px', color: '#fff', borderBottomLeftRadius: 28, borderBottomRightRadius: 28 }}>
         <SkyDeco />
+        {go && (
+          <div style={{ position: 'relative', display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+            <ProfileButton onClick={() => go('profile')} />
+          </div>
+        )}
         <div style={{ position: 'relative', display: 'flex', gap: 14, alignItems: 'flex-start' }}>
           <ChildAvatarUpload child={child} onChildUpdate={onChildUpdate} />
           <div style={{ flex: 1, minWidth: 0 }}>

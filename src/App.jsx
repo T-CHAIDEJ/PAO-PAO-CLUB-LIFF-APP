@@ -157,7 +157,7 @@ export default function App() {
     );
   }
 
-  const navTab = screen === 'size' ? 'diaper' : screen;
+  const navTab = screen === 'size' ? 'diaper' : screen === 'profile' ? 'home' : screen;
 
   const onChildUpdate = (patch) => setChildData(prev => ({ ...(prev ?? {}), ...patch }));
   const onUserUpdate = (patch) => setUserData(prev => prev ? { ...prev, ...patch } : prev);
@@ -165,7 +165,7 @@ export default function App() {
   let view;
   if      (screen === 'home')      view = <HomeScreen go={go} user={userData} child={childData} goOnboarding={goOnboarding} goProfile={() => go('profile')} checkin={checkin} onStreakSeen={() => setCheckin(null)} onChildUpdate={onChildUpdate} />;
   else if (screen === 'diaper')    view = <DiaperScreen go={go} child={childData} onChildUpdate={onChildUpdate} />;
-  else if (screen === 'tracker')   view = <TrackerScreen child={childData} onChildUpdate={onChildUpdate} />;
+  else if (screen === 'tracker')   view = <TrackerScreen go={go} child={childData} onChildUpdate={onChildUpdate} />;
   else if (screen === 'size')      view = <SizeChartScreen go={go} currentKg={childData?.birth_weight ?? 8.5} />;
   else if (screen === 'knowledge') view = <KnowledgeScreen go={go} child={childData} />;
   else if (screen === 'rewards')   view = <RewardsScreen go={go} user={userData} onUserUpdate={onUserUpdate} />;

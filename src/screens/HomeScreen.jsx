@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Baby, Ruler, Gift, ScanLine, Bell, ChevronRight, Star, Package, TicketPercent, UserPlus, UserCircle2, Mars, Venus, Flame, Camera } from 'lucide-react';
 import { Card, Badge, Button, ProgressBar } from '../components/index.jsx';
-import { Wordmark, SectionTitle } from '../shared/index.jsx';
+import { Wordmark, SectionTitle, ProfileButton } from '../shared/index.jsx';
 import { recommendSize } from './TrackerScreen.jsx';
 import { supabase } from '../lib/supabase.js';
 import { STREAK_POINTS } from '../lib/points.js';
@@ -648,9 +648,7 @@ export default function HomeScreen({ go, user, child, goOnboarding, goProfile, c
             <span style={{ width: 34, height: 34, borderRadius: '50%', background: 'rgba(255,255,255,.18)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Bell width={20} height={20} />
             </span>
-            <button onClick={goProfile} style={{ width: 34, height: 34, borderRadius: '50%', background: 'rgba(255,255,255,.18)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
-              <UserCircle2 width={22} height={22} />
-            </button>
+            <ProfileButton onClick={goProfile} picture={user?.picture_url} name={user?.parent_name || user?.display_name} />
           </div>
         </div>
         {isGuest

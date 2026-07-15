@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Star, Gift, Plus, ChevronRight, X } from 'lucide-react';
 import { Card, Badge, Button, Tabs } from '../components/index.jsx';
-import { SkyDeco } from '../shared/index.jsx';
+import { SkyDeco, ProfileButton } from '../shared/index.jsx';
 import { supabase } from '../lib/supabase.js';
 import { fetchRewardsCatalog } from '../lib/rewards.js';
 import { redeemReward } from '../lib/redemptions.js';
@@ -106,7 +106,7 @@ function RedeemSuccessModal({ reward, onClose }) {
   );
 }
 
-export default function RewardsScreen({ user, onUserUpdate }) {
+export default function RewardsScreen({ go, user, onUserUpdate }) {
   const [tab, setTab] = useState('catalog');
   const [activities, setActivities] = useState([]);
   const [showPointsHistory, setShowPointsHistory] = useState(false);
@@ -183,6 +183,11 @@ export default function RewardsScreen({ user, onUserUpdate }) {
     <div style={{ background: 'var(--gradient-sky)', minHeight: '100%', paddingBottom: 24 }}>
       <div style={{ position: 'relative', background: 'var(--gradient-hero)', padding: '20px 20px 30px', color: '#fff', borderBottomLeftRadius: 28, borderBottomRightRadius: 28 }}>
         <SkyDeco />
+        {go && (
+          <div style={{ position: 'relative', display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+            <ProfileButton onClick={() => go('profile')} />
+          </div>
+        )}
         <div style={{ position: 'relative', textAlign: 'center' }}>
           <div style={{ font: 'var(--weight-medium) 13px var(--font-base)', opacity: .9 }}>แต้มสะสมของคุณ</div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 4 }}>

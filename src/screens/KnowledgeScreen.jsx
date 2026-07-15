@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Clock, ChevronRight, BookOpen } from 'lucide-react';
 import { Card, Badge } from '../components/index.jsx';
-import { SkyDeco } from '../shared/index.jsx';
+import { SkyDeco, ProfileButton } from '../shared/index.jsx';
 import { supabase } from '../lib/supabase.js';
 
 // Map a DB row (snake_case) → the shape the UI components expect (camelCase).
@@ -114,7 +114,7 @@ function ArticleModal({ article, onClose }) {
 
 // ─── Knowledge Screen ─────────────────────────────────────────────────────────
 
-export default function KnowledgeScreen({ child }) {
+export default function KnowledgeScreen({ go, child }) {
   const [activeArticle, setActiveArticle] = useState(null);
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -148,6 +148,11 @@ export default function KnowledgeScreen({ child }) {
     <div style={{ background: 'var(--gradient-sky)', minHeight: '100%', paddingBottom: 24 }}>
       <div style={{ position: 'relative', background: 'var(--gradient-hero)', padding: '20px 20px 26px', color: '#fff', borderBottomLeftRadius: 28, borderBottomRightRadius: 28 }}>
         <SkyDeco />
+        {go && (
+          <div style={{ position: 'relative', display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+            <ProfileButton onClick={() => go('profile')} />
+          </div>
+        )}
         <div style={{ position: 'relative' }}>
           <div style={{ font: 'var(--weight-medium) 13px var(--font-base)', opacity: .9 }}>บทความ & เคล็ดลับ</div>
           <div style={{ font: '800 22px var(--font-display)', marginTop: 2 }}>ความรู้คู่คุณแม่</div>
