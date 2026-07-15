@@ -4,6 +4,7 @@ import { Card, Badge, Button, Tabs } from '../components/index.jsx';
 import { SkyDeco } from '../shared/index.jsx';
 import { supabase } from '../lib/supabase.js';
 import { fetchRewardsCatalog } from '../lib/rewards.js';
+import { redeemReward } from '../lib/redemptions.js';
 
 // 007_rewards has no "tag"/icon columns — these only decorate the 3
 // hardcoded fallback ids (see lib/rewards.js); real DB rewards just
@@ -22,33 +23,95 @@ function fmtDate(dateStr) {
 }
 function activityLabel(a) {
   if (a.source === 'daily_login') return `เข้าสู่ระบบต่อเนื่อง (วันที่ ${a.streak_day ?? '-'})`;
+  if (a.source === 'redeem') return 'แลกของรางวัล';
   return a.source;
 }
 
-export default function RewardsScreen({ user }) {
+function ConfirmRedeemModal({ reward, points, saving, error, onConfirm, onClose }) {
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(15,23,42,.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 340, background: '#fff', borderRadius: 20, padding: '24px 22px', textAlign: 'center' }}>
+        <div style={{ fontSize: 40, marginBottom: 8 }}>🎁</div>
+        <div style={{ font: 'var(--weight-bold) 17px var(--font-display)', color: 'var(--text-heading)' }}>ยืนยันแลกของรางวัล</div>
+        <div style={{ font: 'var(--type-body)', color: 'var(--text-body)', marginTop: 8, lineHeight: 1.5 }}>
+          ใช้ <b>{reward.pts}</b> แต้ม แลก<br />"{reward.name}"
+        </div>
+        <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)', marginTop: 6 }}>เหลือแต้มหลังแลก {points - reward.pts} แต้ม</div>
+        {error && <div style={{ font: 'var(--type-caption)', color: '#dc2626', marginTop: 10 }}>{error}</div>}
+        <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
+          <Button variant="soft" fullWidth onClick={onClose} disabled={saving}>ยกเลิก</Button>
+          <Button variant="primary" fullWidth onClick={onConfirm} loading={saving}>ยืนยัน</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RedeemSuccessModal({ reward, onClose }) {
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(15,23,42,.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 340, background: '#fff', borderRadius: 20, padding: '28px 22px', textAlign: 'center' }}>
+        <div style={{ fontSize: 48 }}>🎉</div>
+        <div style={{ font: 'var(--weight-bold) 18px var(--font-display)', color: 'var(--text-heading)', marginTop: 8 }}>แลกสำเร็จ!</div>
+        <div style={{ font: 'var(--type-body)', color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.5 }}>"{reward.name}"<br />ทีมงานจะติดต่อจัดส่งให้เร็วๆ นี้</div>
+        <div style={{ marginTop: 18 }}>
+          <Button variant="primary" fullWidth onClick={onClose}>เข้าใจแล้ว</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function RewardsScreen({ user, onUserUpdate }) {
   const [tab, setTab] = useState('catalog');
   const [activities, setActivities] = useState([]);
   const [rawCatalog, setRawCatalog] = useState(null); // null = still loading
+  const [confirmReward, setConfirmReward] = useState(null);
+  const [redeeming, setRedeeming] = useState(false);
+  const [redeemError, setRedeemError] = useState(null);
+  const [successReward, setSuccessReward] = useState(null);
 
   const points = user?.points ?? 0;
   const streak = user?.login_streak ?? 0;
 
-  useEffect(() => {
-    fetchRewardsCatalog().then(setRawCatalog);
-  }, []);
+  const loadCatalog = () => fetchRewardsCatalog().then(setRawCatalog);
+  useEffect(() => { loadCatalog(); }, []);
 
   const catalog = (rawCatalog ?? []).map(r => ({ ...r, Icon: Gift, tag: TAG_BY_ID[r.id] ?? null }));
+
+  const loadActivities = () => {
+    if (!user?.line_uid) return;
+    supabase
+      .from('006_points')
+      .select('*')
+      .eq('line_uid', user.line_uid)
+      .order('created_at', { ascending: false })
+      .limit(30)
+      .then(({ data }) => setActivities(data || []));
+  };
+
+  const handleConfirmRedeem = async () => {
+    if (!confirmReward || !user?.line_uid) return;
+    setRedeeming(true); setRedeemError(null);
+    try {
+      const { newBalance } = await redeemReward(supabase, { lineUid: user.line_uid, reward: confirmReward, currentBalance: points });
+      onUserUpdate && onUserUpdate({ points: newBalance });
+      setSuccessReward(confirmReward);
+      setConfirmReward(null);
+      loadCatalog();
+      loadActivities();
+    } catch (e) {
+      setRedeemError(e?.code === 'OUT_OF_STOCK' ? 'ของรางวัลนี้หมดแล้ว ลองแบบอื่นดูนะ' : 'แลกไม่สำเร็จ ลองใหม่อีกครั้ง');
+      console.warn('[rewards] redeem failed:', e?.message);
+    } finally {
+      setRedeeming(false);
+    }
+  };
 
   useEffect(() => {
     if (!user?.line_uid) return;
     try {
-      supabase
-        .from('006_points')
-        .select('*')
-        .eq('line_uid', user.line_uid)
-        .order('created_at', { ascending: false })
-        .limit(30)
-        .then(({ data }) => setActivities(data || []));
+      loadActivities();
     } catch (e) {
       console.warn('[rewards] activities fetch failed:', e?.message);
     }
@@ -83,7 +146,7 @@ export default function RewardsScreen({ user }) {
         <div style={{ padding: '16px 16px 0', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           {catalog.map((r, i) => {
             const outOfStock = r.stock != null && r.stock <= 0;
-            const can = points >= r.pts && !outOfStock;
+            const can = points >= r.pts && !outOfStock && r.redeemable;
             return (
               <Card key={r.id ?? i} padded={false} style={{ overflow: 'hidden' }}>
                 <div style={{ height: 84, background: i % 2 ? 'var(--surface-green)' : 'var(--surface-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
@@ -97,7 +160,9 @@ export default function RewardsScreen({ user }) {
                     <span style={{ font: 'var(--weight-bold) 14px var(--font-base)', color: 'var(--text-title)' }}>{r.pts}</span>
                     <span style={{ font: 'var(--type-caption)', color: 'var(--text-muted)' }}>แต้ม</span>
                   </div>
-                  <Button variant={can ? 'primary' : 'soft'} size="sm" fullWidth disabled={!can}>{outOfStock ? 'สินค้าหมด' : can ? 'แลกเลย' : 'แต้มไม่พอ'}</Button>
+                  <Button variant={can ? 'primary' : 'soft'} size="sm" fullWidth disabled={!can} onClick={() => setConfirmReward(r)}>
+                    {outOfStock ? 'สินค้าหมด' : !r.redeemable ? 'ยังแลกไม่ได้' : can ? 'แลกเลย' : 'แต้มไม่พอ'}
+                  </Button>
                 </div>
               </Card>
             );
@@ -128,6 +193,20 @@ export default function RewardsScreen({ user }) {
             </Card>
           )}
         </div>
+      )}
+
+      {confirmReward && (
+        <ConfirmRedeemModal
+          reward={confirmReward}
+          points={points}
+          saving={redeeming}
+          error={redeemError}
+          onConfirm={handleConfirmRedeem}
+          onClose={() => { if (!redeeming) { setConfirmReward(null); setRedeemError(null); } }}
+        />
+      )}
+      {successReward && (
+        <RedeemSuccessModal reward={successReward} onClose={() => setSuccessReward(null)} />
       )}
     </div>
   );
