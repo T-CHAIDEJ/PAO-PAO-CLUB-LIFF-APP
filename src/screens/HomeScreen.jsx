@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Baby, Ruler, Gift, ScanLine, Bell, ChevronRight, Star, Package, TicketPercent, UserPlus, UserCircle2, Mars, Venus, Flame } from 'lucide-react';
+import { Baby, Ruler, Gift, ScanLine, Bell, ChevronRight, Star, Package, TicketPercent, UserPlus, UserCircle2, Mars, Venus, Flame, Camera } from 'lucide-react';
 import { Card, Badge, Button, ProgressBar } from '../components/index.jsx';
 import { Wordmark, SectionTitle } from '../shared/index.jsx';
 import { recommendSize } from './TrackerScreen.jsx';
@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase.js';
 import { STREAK_POINTS } from '../lib/points.js';
 import { fetchRewardsCatalog, nextUnlockedReward } from '../lib/rewards.js';
 import { computeStage } from '../lib/stage.js';
+import { uploadChildAvatar } from '../lib/avatar.js';
 
 const inputStyle = {
   width: '100%', height: 46, padding: '0 14px', borderRadius: 'var(--radius-md)',
@@ -284,10 +285,21 @@ function BabyArrivedModal({ child, onClose, onSaved }) {
   const [birthdate, setBirthdate] = useState('');
   const [weightKg, setWeightKg] = useState('');
   const [heightCm, setHeightCm] = useState('');
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const photoInputRef = useRef(null);
 
   const canSave = name && gender && birthdate && weightKg && heightCm;
+
+  const handlePhotoPick = (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setPhotoFile(file);
+    setPhotoPreview(URL.createObjectURL(file));
+  };
 
   const handleSave = async () => {
     if (!canSave || !child?.child_id) return;
@@ -300,6 +312,9 @@ function BabyArrivedModal({ child, onClose, onSaved }) {
         is_pregnant: false, due_date: null,
         stage: computeStage(birthdate),
       };
+      if (photoFile) {
+        patch.avatar_url = await uploadChildAvatar(supabase, child.child_id, photoFile);
+      }
       const { error: err } = await supabase.from('003_children').update(patch).eq('child_id', child.child_id);
       if (err) throw err;
       await supabase.from('004_growth').insert({
@@ -321,6 +336,24 @@ function BabyArrivedModal({ child, onClose, onSaved }) {
       <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 480, maxHeight: '88vh', overflowY: 'auto', background: '#fff', borderRadius: '20px 20px 0 0', padding: '24px 22px 32px' }}>
         <div style={{ font: '800 20px var(--font-display)', color: 'var(--text-heading)', marginBottom: 4 }}>🎉 ยินดีด้วยค่ะ!</div>
         <div style={{ font: 'var(--type-body)', color: 'var(--text-muted)', marginBottom: 18 }}>กรอกข้อมูลลูกน้อยเพื่อเริ่มติดตามพัฒนาการ</div>
+
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 18 }}>
+          <div style={{ position: 'relative', width: 84, height: 84 }}>
+            <div style={{ width: 84, height: 84, borderRadius: '50%', overflow: 'hidden', background: 'var(--surface-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid var(--border-default)' }}>
+              {photoPreview
+                ? <img src={photoPreview} alt="รูปลูกน้อย" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                : <Baby width={36} height={36} style={{ color: 'var(--text-faint)' }} />}
+            </div>
+            <button
+              onClick={() => photoInputRef.current?.click()}
+              aria-label="เลือกรูปโปรไฟล์ลูก"
+              style={{ position: 'absolute', right: -2, bottom: -2, width: 30, height: 30, borderRadius: '50%', background: 'var(--color-secondary)', border: '2px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff' }}
+            >
+              <Camera width={15} height={15} />
+            </button>
+            <input ref={photoInputRef} type="file" accept="image/*" capture="environment" onChange={handlePhotoPick} style={{ display: 'none' }} />
+          </div>
+        </div>
 
         <div style={{ marginBottom: 14 }}>
           <div style={{ font: 'var(--type-label)', color: 'var(--text-title)', marginBottom: 8 }}>ชื่อลูกน้อย</div>
