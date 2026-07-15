@@ -217,15 +217,42 @@ function DiaperPanel({ go, child }) {
   );
 }
 
-export function DiaperScreen({ go, child }) {
+export function DiaperScreen({ go, child, onChildUpdate }) {
   const childName = child?.name || 'ลูกน้อย';
+  const genderLabel = child?.gender === 'male' ? '👦 ชาย' : child?.gender === 'female' ? '👧 หญิง' : null;
+  const birthdateLabel = formatBirthdate(child?.birth_date);
+  const ageLabel = calcAge(child?.birth_date);
+
   return (
     <div style={{ background: 'var(--gradient-sky)', minHeight: '100%', paddingBottom: 24 }}>
       <div style={{ position: 'relative', background: 'var(--gradient-hero)', padding: '20px 20px 26px', color: '#fff', borderBottomLeftRadius: 28, borderBottomRightRadius: 28 }}>
         <SkyDeco />
-        <div style={{ position: 'relative' }}>
-          <div style={{ font: 'var(--weight-medium) 13px var(--font-base)', opacity: .9 }}>ผ้าอ้อม</div>
-          <div style={{ font: '800 22px var(--font-display)', marginTop: 2 }}>{childName}</div>
+        <div style={{ position: 'relative', display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+          <ChildAvatarUpload child={child} onChildUpdate={onChildUpdate} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ font: 'var(--weight-medium) 13px var(--font-base)', opacity: .9 }}>ผ้าอ้อม</div>
+            <div style={{ font: '800 22px var(--font-display)', marginTop: 2, marginBottom: 10 }}>{childName}</div>
+            <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+              {genderLabel && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <div style={{ font: 'var(--weight-medium) 10px var(--font-base)', opacity: .7, textTransform: 'uppercase', letterSpacing: '.06em' }}>เพศ</div>
+                  <div style={{ font: 'var(--weight-semibold) 13px var(--font-base)' }}>{genderLabel}</div>
+                </div>
+              )}
+              {birthdateLabel && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <div style={{ font: 'var(--weight-medium) 10px var(--font-base)', opacity: .7, textTransform: 'uppercase', letterSpacing: '.06em' }}>วันเกิด</div>
+                  <div style={{ font: 'var(--weight-semibold) 13px var(--font-base)' }}>{birthdateLabel}</div>
+                </div>
+              )}
+              {ageLabel && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <div style={{ font: 'var(--weight-medium) 10px var(--font-base)', opacity: .7, textTransform: 'uppercase', letterSpacing: '.06em' }}>อายุ</div>
+                  <div style={{ font: '800 13px var(--font-display)' }}>{ageLabel}</div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
       <div style={{ padding: '16px 16px 0' }}>
