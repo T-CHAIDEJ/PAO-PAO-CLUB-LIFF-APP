@@ -24,10 +24,17 @@ export async function logAction(lineUid, action, { oldValue = null, newValue = n
 }
 
 // Errors share the same table/shape as actions so they're queryable the
-// same way — action is prefixed "error:" to filter easily, and new_value
-// carries the actual error message so we can diagnose without needing the
-// user to reproduce it live for us.
+// same way. 002_user_logs has no dedicated error-code/stack-trace columns,
+// so this makes deliberate use of the two generic value columns instead of
+// stretching one: old_value carries the Postgres/Supabase error code when
+// present (e.g. '23514' check-violation, '42501' RLS-blocked) so failures
+// can be filtered by code without parsing message text; new_value carries
+// the human-readable message (plus hint, if Postgres supplied one). action
+// is prefixed "error:" so error rows are easy to isolate from normal
+// activity in the same table.
 export function logError(lineUid, context, error) {
-  const message = error?.message || String(error);
-  return logAction(lineUid, `error:${context}`, { newValue: message });
+  const code = error?.code ?? null;
+  const parts = [error?.message || String(error)];
+  if (error?.hint) parts.push(`hint: ${error.hint}`);
+  return logAction(lineUid, `error:${context}`, { oldValue: code, newValue: parts.join(' | ') });
 }
