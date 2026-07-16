@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase.js';
 import { recommendSize } from '../lib/diaperSize.js';
 import { uploadChildAvatar } from '../lib/avatar.js';
 import { AddChildModal, EditChildModal } from './ChildModals.jsx';
+import { logAction, logError } from '../lib/userLogs.js';
 export { recommendSize };
 
 const inputStyle = {
@@ -349,8 +350,10 @@ function ChildAvatarUpload({ child, onChildUpdate }) {
     try {
       const url = await uploadChildAvatar(supabase, child.child_id, file);
       onChildUpdate && onChildUpdate({ avatar_url: url });
+      logAction(child?.line_uid, 'add_child_photo');
     } catch (e2) {
       console.warn('[avatar] upload failed:', e2?.message);
+      logError(child?.line_uid, 'add_child_photo', e2);
       setErr('อัปโหลดรูปไม่สำเร็จ ลองใหม่อีกครั้ง');
     } finally {
       setUploading(false);

@@ -3,6 +3,7 @@ import { Baby, Camera } from 'lucide-react';
 import { Button } from '../components/index.jsx';
 import { supabase } from '../lib/supabase.js';
 import { insertPregnantChild, insertBornChild, graduatePregnantChild, updateChildInfo } from '../lib/children.js';
+import { logAction, logError } from '../lib/userLogs.js';
 
 const inputStyle = {
   width: '100%', minWidth: 0, maxWidth: '100%', height: 46, padding: '0 14px', borderRadius: 'var(--radius-md)',
@@ -125,9 +126,11 @@ export function AddChildModal({ onClose, onSaved, lineUid }) {
           weightKg: parseFloat(weightKg), heightCm: parseFloat(heightCm), photoFile,
         });
       }
+      logAction(lineUid, kind === 'pregnant' ? 'add_child_pregnant' : 'add_child_born');
       onSaved();
     } catch (e) {
       console.warn('[add-child] save failed:', e?.message);
+      logError(lineUid, `add_child_${kind}`, e);
       setError('บันทึกไม่สำเร็จ ลองใหม่อีกครั้ง');
     } finally {
       setSaving(false);
@@ -215,22 +218,27 @@ export function EditChildModal({ child, onClose, onSaved, startGraduating = fals
 
   const handleSave = async () => {
     setSaving(true); setError(null);
+    const lineUid = child?.line_uid;
     try {
       if (graduating) {
         await graduatePregnantChild(supabase, child, {
           name, gender, birthdate, weightKg: parseFloat(weightKg), heightCm: parseFloat(heightCm), photoFile,
         });
+        logAction(lineUid, 'child_born', { oldValue: 'pregnant', newValue: name || child?.child_id });
       } else if (child.is_pregnant) {
         await updateChildInfo(supabase, child, { name: name || null, due_date: dueDate || null }, photoFile);
+        logAction(lineUid, 'edit_child_pregnant');
       } else {
         await updateChildInfo(supabase, child, {
           name, gender, birth_date: birthdate,
           birth_weight: parseFloat(weightKg), birth_height: parseFloat(heightCm),
         }, photoFile);
+        logAction(lineUid, 'edit_child');
       }
       onSaved();
     } catch (e) {
       console.warn('[edit-child] save failed:', e?.message);
+      logError(lineUid, graduating ? 'child_born' : 'edit_child', e);
       setError('บันทึกไม่สำเร็จ ลองใหม่อีกครั้ง');
     } finally {
       setSaving(false);

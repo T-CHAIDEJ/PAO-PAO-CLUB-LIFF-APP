@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase.js';
 import { recommendSize } from './TrackerScreen.jsx';
 import { computeStage, PREGNANCY_STAGE } from '../lib/stage.js';
 import { uploadChildAvatar } from '../lib/avatar.js';
+import { logAction, logError } from '../lib/userLogs.js';
 
 const inputStyle = {
   width: '100%', minWidth: 0, maxWidth: '100%', height: 46, padding: '0 14px', borderRadius: 'var(--radius-md)',
@@ -287,6 +288,12 @@ export default function OnboardingScreen({ lineProfile, initialSegment, onComple
   const handleSubmit = async (formData) => {
     setLoading(true);
     setSaveError(null);
+    // Hoisted so the catch block below can still log which user hit the
+    // error even when the failure happens before 001_users resolves.
+    const cachedUid = localStorage.getItem('pp_line_uid');
+    const lineUserId = lineProfile?.userId
+      ?? (cachedUid && cachedUid !== 'dev_user_001' ? cachedUid : null)
+      ?? `anon_${Date.now()}`;
     try {
       // Guards against a bad numeric input (e.g. a lone "." or a comma
       // decimal separator on some mobile keyboards) silently becoming NaN
@@ -294,12 +301,6 @@ export default function OnboardingScreen({ lineProfile, initialSegment, onComple
       if (segment === 'B' && (!Number.isFinite(formData.weightKg) || !Number.isFinite(formData.heightCm))) {
         throw new Error('น้ำหนักหรือส่วนสูงไม่ถูกต้อง กรุณาใส่เป็นตัวเลข');
       }
-
-      // Use real LINE userId if available, otherwise generate a unique fallback
-      const cachedUid = localStorage.getItem('pp_line_uid');
-      const lineUserId = lineProfile?.userId
-        ?? (cachedUid && cachedUid !== 'dev_user_001' ? cachedUid : null)
-        ?? `anon_${Date.now()}`;
 
       // `role` on 001_users is an account privilege tier (guest/member/staff/admin),
       // NOT our onboarding segment. Segment C ("skip for now") stays a guest;
@@ -390,6 +391,7 @@ export default function OnboardingScreen({ lineProfile, initialSegment, onComple
         }
       }
 
+      logAction(userData.line_uid, `onboarding_complete_${segment.toLowerCase()}`);
       onComplete(userData);
     } catch (err) {
       // Never silently proceed to Home on failure — that leaves the user
@@ -397,6 +399,7 @@ export default function OnboardingScreen({ lineProfile, initialSegment, onComple
       // 001_users exists the app never shows onboarding again, so there'd
       // be no way back into this form. Surface the error and let them retry.
       console.error('[onboarding] save error:', err);
+      logError(lineUserId, `onboarding_segment_${segment}`, err);
       setSaveError(err?.message?.includes('น้ำหนัก') ? err.message : 'บันทึกไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
     } finally {
       setLoading(false);
