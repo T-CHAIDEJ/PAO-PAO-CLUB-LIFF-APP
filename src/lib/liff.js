@@ -34,7 +34,7 @@ export async function initLiff() {
     let lineProfile = null;
     try { lineProfile = await liff.getProfile(); } catch (e) { console.warn('[liff] getProfile failed:', e?.message); }
     let idToken = null;
-    try { idToken = liff.getDecodedIDToken(); } catch (e) { /* openid scope optional */ }
+    try { idToken = liff.getDecodedIDToken(); } catch { /* openid scope optional */ }
 
     const userId = lineProfile?.userId || idToken?.sub || null;
     if (!userId) {

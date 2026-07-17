@@ -1,5 +1,5 @@
-import React from 'react';
 import { X, MoreHorizontal, UserCircle2, Plus, Pencil } from 'lucide-react';
+import { calcAge } from '../lib/age.js';
 
 export function SkyDeco() {
   return (
@@ -53,17 +53,6 @@ export function ProfileButton({ onClick }) {
   );
 }
 
-function calcChildAge(birthdate) {
-  if (!birthdate) return null;
-  const ms = Date.now() - new Date(birthdate).getTime();
-  const totalMonths = Math.floor(ms / (1000 * 60 * 60 * 24 * 30.4375));
-  const years = Math.floor(totalMonths / 12);
-  const months = totalMonths % 12;
-  if (totalMonths < 1) return 'แรกเกิด';
-  if (years === 0) return `${months} เดือน`;
-  return months === 0 ? `${years} ปี` : `${years} ปี ${months} เดือน`;
-}
-
 function ChildMiniStat({ label, value, unit }) {
   return (
     <div style={{ flex: 1, textAlign: 'center' }}>
@@ -80,7 +69,7 @@ function ChildMiniStat({ label, value, unit }) {
 }
 
 function ChildMiniCard({ c, active, latestKg, latestCm, onSelect, onEdit }) {
-  const childAge = calcChildAge(c.birth_date);
+  const childAge = calcAge(c.birth_date);
   return (
     <div
       onClick={onSelect}

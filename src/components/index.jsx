@@ -1,4 +1,3 @@
-import React from 'react';
 
 export function Card({ children, tone = 'white', interactive = false, padded = true, style, onClick, ...rest }) {
   const tones = {

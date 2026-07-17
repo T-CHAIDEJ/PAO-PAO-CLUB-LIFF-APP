@@ -1,17 +1,8 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Settings, Medal, MapPin, ShoppingBag, Headphones, ChevronRight } from 'lucide-react';
 import { Card, Badge, Avatar, Switch, Button } from '../components/index.jsx';
 import { SkyDeco, SectionTitle } from '../shared/index.jsx';
-
-function calcAge(birthdate) {
-  if (!birthdate) return null;
-  const ms = Date.now() - new Date(birthdate).getTime();
-  const totalMonths = Math.floor(ms / (1000 * 60 * 60 * 24 * 30.4375));
-  if (totalMonths < 1) return 'แรกเกิด';
-  const years = Math.floor(totalMonths / 12), months = totalMonths % 12;
-  if (years === 0) return `${months} เดือน`;
-  return months === 0 ? `${years} ปี` : `${years} ปี ${months} เดือน`;
-}
+import { calcAge } from '../lib/age.js';
 
 export default function ProfileScreen({ go, user, child, childrenList, onSwitchChild }) {
   const [push,  setPush]  = useState(true);
@@ -41,7 +32,7 @@ export default function ProfileScreen({ go, user, child, childrenList, onSwitchC
   ];
 
   const handleLogout = () => {
-    try { localStorage.removeItem('pp_line_uid'); } catch (e) { /* ignore */ }
+    try { localStorage.removeItem('pp_line_uid'); } catch { /* ignore */ }
     window.location.reload();
   };
 

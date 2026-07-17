@@ -1,23 +1,13 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Baby, Ruler, Gift, ScanLine, Bell, ChevronRight, Star, Package, TicketPercent, UserPlus, UserCircle2, Mars, Venus, Flame } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Baby, Ruler, Gift, ScanLine, Bell, ChevronRight, Star, UserPlus, UserCircle2, Mars, Venus, Flame } from 'lucide-react';
 import { Card, Badge, Button, ProgressBar } from '../components/index.jsx';
-import { Wordmark, SectionTitle, ProfileButton, ChildCardsRow } from '../shared/index.jsx';
+import { SectionTitle, ProfileButton, ChildCardsRow } from '../shared/index.jsx';
 import { recommendSize } from './TrackerScreen.jsx';
 import { supabase } from '../lib/supabase.js';
 import { STREAK_POINTS } from '../lib/points.js';
 import { fetchRewardsCatalog, nextUnlockedReward } from '../lib/rewards.js';
+import { calcAge } from '../lib/age.js';
 import { AddChildModal, EditChildModal } from './ChildModals.jsx';
-
-function calcAge(birthdate) {
-  if (!birthdate) return null;
-  const ms = Date.now() - new Date(birthdate).getTime();
-  const totalMonths = Math.floor(ms / (1000 * 60 * 60 * 24 * 30.4375));
-  const years = Math.floor(totalMonths / 12);
-  const months = totalMonths % 12;
-  if (totalMonths < 1) return 'แรกเกิด';
-  if (years === 0) return `${months} เดือน`;
-  return months === 0 ? `${years} ปี` : `${years} ปี ${months} เดือน`;
-}
 
 const ACTIONS = [
   { id: 'tracker', Icon: Baby,      label: 'พัฒนาการ',      tone: 'var(--blue-100)',  fg: 'var(--blue-600)'  },
@@ -406,10 +396,9 @@ function BannerCarousel({ banners }) {
   );
 }
 
-export default function HomeScreen({ go, user, child, goOnboarding, goProfile, checkin, onStreakSeen, onChildUpdate, childrenList, activeChildId, onSwitchChild, onChildrenChange }) {
+export default function HomeScreen({ go, user, child, goOnboarding, goProfile, checkin, onStreakSeen, childrenList, activeChildId, onSwitchChild, onChildrenChange, growthByChild }) {
   const isGuest = !user || user.role === 'guest';
   const pts = user?.points ?? 0;
-  const [growthByChild, setGrowthByChild] = useState({});
   const [showStreak, setShowStreak] = useState(false);
   const [comingSoon, setComingSoon] = useState(null);
   const [banners, setBanners] = useState([]);
@@ -446,27 +435,6 @@ export default function HomeScreen({ go, user, child, goOnboarding, goProfile, c
   }, [child?.stage]);
 
   const closeStreak = () => { setShowStreak(false); onStreakSeen && onStreakSeen(); };
-
-  useEffect(() => {
-    // Fetches the latest growth record for every child at once (instead of
-    // just the active one) so every card in ChildCardsRow can show its own
-    // weight/height, keyed by child_id — no per-switch refetch needed.
-    const bornIds = (childrenList || []).filter(c => !c.is_pregnant).map(c => c.child_id);
-    if (bornIds.length === 0) { setGrowthByChild({}); return; }
-    let alive = true;
-    supabase
-      .from('004_growth')
-      .select('child_id, weight_kg, height_cm, recorded_date')
-      .in('child_id', bornIds)
-      .order('recorded_date', { ascending: false })
-      .then(({ data }) => {
-        if (!alive) return;
-        const map = {};
-        (data || []).forEach((r) => { if (!map[r.child_id]) map[r.child_id] = r; });
-        setGrowthByChild(map);
-      });
-    return () => { alive = false; };
-  }, [childrenList]);
 
   // NOTE: 003_children only stores birth_weight/birth_height (birth-time stats),
   // not a "current weight" cache like the old schema did — so there's no

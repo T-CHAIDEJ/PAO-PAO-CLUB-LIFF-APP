@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Scale, Ruler, Calendar, Plus, X, ChevronDown, ChevronUp } from 'lucide-react';
-import { Card, Badge, Button } from '../components/index.jsx';
+import { Card, Button } from '../components/index.jsx';
 import { SectionTitle } from '../shared/index.jsx';
 import { getWHOData, getWHOValueAtMonth } from '../data/whoData.js';
 import { getWHOWflData, getWHOWflAtLength } from '../data/whoWflData.js';
 import { supabase } from '../lib/supabase.js';
 import { recommendSize } from '../lib/diaperSize.js';
+import { inputStyle, dateInputStyle, todayStr } from '../lib/formStyles.js';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -417,7 +418,7 @@ function AgeChart({ chartData, title }) {
   const ySc = v => mg.top + (1 - (v - vMin) / ((vMax - vMin) || 1)) * pH;
 
   const bandTop    = whoSlice.map((d, i) => `${i === 0 ? 'M' : 'L'} ${xSc(d.month).toFixed(1)} ${ySc(d.sd2pos).toFixed(1)}`).join(' ');
-  const bandBottom = [...whoSlice].reverse().map((d, i) => `L ${xSc(d.month).toFixed(1)} ${ySc(d.sd2neg).toFixed(1)}`).join(' ');
+  const bandBottom = [...whoSlice].reverse().map((d) => `L ${xSc(d.month).toFixed(1)} ${ySc(d.sd2neg).toFixed(1)}`).join(' ');
   const band = bandTop + ' ' + bandBottom + ' Z';
 
   const yTicks = niceTicks(vMin, vMax, 5);
@@ -619,19 +620,8 @@ function FormField({ label, children }) {
   );
 }
 
-const inputStyle = {
-  width: '100%', minWidth: 0, maxWidth: '100%', height: 46, padding: '0 14px', borderRadius: 'var(--radius-md)',
-  border: '1px solid var(--border-default)', font: 'var(--type-body)', color: 'var(--text-body)',
-  background: '#fff', outline: 'none', boxSizing: 'border-box',
-};
-
-// Safari on iOS can render <input type="date"> with a native calendar
-// control that ignores width:100% and bleeds past its own box — turning
-// off native appearance hands rendering fully to our CSS instead.
-const dateInputStyle = { ...inputStyle, WebkitAppearance: 'none', appearance: 'none' };
-
 function AddRecordPanel({ childId, onCancel, onSaved }) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayStr();
   const [date, setDate] = useState(today);
   const [weight, setWeight] = useState('');
   const [height, setHeight] = useState('');
@@ -644,14 +634,23 @@ function AddRecordPanel({ childId, onCancel, onSaved }) {
 
   const handleSave = async () => {
     if (!canSave) return;
+    const weightKg = parseFloat(weight), heightCm = parseFloat(height);
+    if (!Number.isFinite(weightKg) || !Number.isFinite(heightCm)) {
+      setError('น้ำหนักหรือส่วนสูงไม่ถูกต้อง กรุณาใส่เป็นตัวเลข');
+      return;
+    }
+    if (date > today) {
+      setError('วันที่บันทึกต้องไม่เกินวันนี้');
+      return;
+    }
     setSaving(true); setError(null);
     try {
       const payload = {
         child_id: childId, recorded_date: date,
-        weight_kg: parseFloat(weight), height_cm: parseFloat(height),
+        weight_kg: weightKg, height_cm: heightCm,
         thigh_cm:  thigh  ? parseFloat(thigh)  : null,
         waist_cm:  waist  ? parseFloat(waist)  : null,
-        diaper_size: recommendSize(parseFloat(weight)).code,
+        diaper_size: recommendSize(weightKg).code,
       };
       const { data, error: err } = await supabase.from('004_growth').insert(payload).select().single();
       if (err) throw err;
@@ -678,7 +677,7 @@ function AddRecordPanel({ childId, onCancel, onSaved }) {
       </div>
       <FormField label="วันที่บันทึก">
         <div style={{ position: 'relative' }}>
-          <input type="date" value={date} onChange={e => setDate(e.target.value)} style={dateInputStyle} />
+          <input type="date" value={date} max={today} onChange={e => setDate(e.target.value)} style={dateInputStyle} />
           <Calendar width={18} height={18} style={{ position: 'absolute', right: 14, top: 14, color: 'var(--text-faint)', pointerEvents: 'none' }} />
         </div>
       </FormField>

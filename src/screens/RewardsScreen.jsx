@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Star, Gift, Plus, ChevronRight, X } from 'lucide-react';
 import { Card, Badge, Button, Tabs } from '../components/index.jsx';
 import { SkyDeco, ProfileButton } from '../shared/index.jsx';

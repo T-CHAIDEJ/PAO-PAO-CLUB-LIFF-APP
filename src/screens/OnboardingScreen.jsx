@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Baby, Camera } from 'lucide-react';
 import { Card, Button } from '../components/index.jsx';
 import { supabase } from '../lib/supabase.js';
@@ -6,17 +6,7 @@ import { recommendSize } from './TrackerScreen.jsx';
 import { computeStage, PREGNANCY_STAGE } from '../lib/stage.js';
 import { uploadChildAvatar } from '../lib/avatar.js';
 import { logAction, logError } from '../lib/userLogs.js';
-
-const inputStyle = {
-  width: '100%', minWidth: 0, maxWidth: '100%', height: 46, padding: '0 14px', borderRadius: 'var(--radius-md)',
-  border: '1px solid var(--border-default)', font: 'var(--type-body)', color: 'var(--text-body)',
-  background: '#fff', outline: 'none', boxSizing: 'border-box',
-};
-
-// Safari on iOS can render <input type="date"> with a native calendar
-// control that ignores width:100% and bleeds past its own box — turning
-// off native appearance hands rendering fully to our CSS instead.
-const dateInputStyle = { ...inputStyle, WebkitAppearance: 'none', appearance: 'none' };
+import { inputStyle, dateInputStyle, todayStr } from '../lib/formStyles.js';
 
 function FormField({ label, children }) {
   return (
@@ -217,7 +207,7 @@ function SegmentForm({ segment, lineProfile, onSubmit, loading, error }) {
             </div>
           </FormField>
           <FormField label="วันเกิดลูก">
-            <input type="date" value={birthdate} onChange={(e) => setBirthdate(e.target.value)} style={dateInputStyle} />
+            <input type="date" value={birthdate} max={todayStr()} onChange={(e) => setBirthdate(e.target.value)} style={dateInputStyle} />
           </FormField>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <FormField label="น้ำหนัก (กก.)">
@@ -271,7 +261,7 @@ export default function OnboardingScreen({ lineProfile, initialSegment, onComple
           .from('008_consent').select('consent_version, pdpa_text')
           .eq('is_active', true).limit(1).single();
         if (alive && data) setPdpaDoc(data);
-      } catch (e) { /* fall back to hardcoded text/version */ }
+      } catch { /* fall back to hardcoded text/version */ }
     })();
     return () => { alive = false; };
   }, []);
@@ -294,12 +284,18 @@ export default function OnboardingScreen({ lineProfile, initialSegment, onComple
     const lineUserId = lineProfile?.userId
       ?? (cachedUid && cachedUid !== 'dev_user_001' ? cachedUid : null)
       ?? `anon_${Date.now()}`;
+    const validationError = (message) => { const e = new Error(message); e.isValidation = true; return e; };
     try {
       // Guards against a bad numeric input (e.g. a lone "." or a comma
       // decimal separator on some mobile keyboards) silently becoming NaN
       // — which Supabase would otherwise happily accept as a null write.
       if (segment === 'B' && (!Number.isFinite(formData.weightKg) || !Number.isFinite(formData.heightCm))) {
-        throw new Error('น้ำหนักหรือส่วนสูงไม่ถูกต้อง กรุณาใส่เป็นตัวเลข');
+        throw validationError('น้ำหนักหรือส่วนสูงไม่ถูกต้อง กรุณาใส่เป็นตัวเลข');
+      }
+      // The date input's `max` attribute isn't reliably enforced by every
+      // mobile keyboard/browser, so re-check server-side too.
+      if (segment === 'B' && formData.birthdate && formData.birthdate > todayStr()) {
+        throw validationError('วันเกิดลูกต้องไม่เกินวันนี้');
       }
 
       // `role` on 001_users is an account privilege tier (guest/member/staff/admin),
@@ -400,7 +396,7 @@ export default function OnboardingScreen({ lineProfile, initialSegment, onComple
       // be no way back into this form. Surface the error and let them retry.
       console.error('[onboarding] save error:', err);
       logError(lineUserId, `onboarding_segment_${segment}`, err);
-      setSaveError(err?.message?.includes('น้ำหนัก') ? err.message : 'บันทึกไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
+      setSaveError(err?.isValidation ? err.message : 'บันทึกไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
     } finally {
       setLoading(false);
     }

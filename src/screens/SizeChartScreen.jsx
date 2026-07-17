@@ -1,4 +1,3 @@
-import React from 'react';
 import { ChevronLeft, Info } from 'lucide-react';
 import { Card, Badge } from '../components/index.jsx';
 import { SkyDeco } from '../shared/index.jsx';

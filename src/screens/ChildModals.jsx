@@ -1,16 +1,26 @@
-import React, { useState, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { Baby, Camera } from 'lucide-react';
 import { Button } from '../components/index.jsx';
 import { supabase } from '../lib/supabase.js';
 import { insertPregnantChild, insertBornChild, graduatePregnantChild, updateChildInfo } from '../lib/children.js';
 import { logAction, logError } from '../lib/userLogs.js';
+import { inputStyle, dateInputStyle, todayStr } from '../lib/formStyles.js';
 
-const inputStyle = {
-  width: '100%', minWidth: 0, maxWidth: '100%', height: 46, padding: '0 14px', borderRadius: 'var(--radius-md)',
-  border: '1px solid var(--border-default)', font: 'var(--type-body)', color: 'var(--text-body)',
-  background: '#fff', outline: 'none', boxSizing: 'border-box',
-};
-const dateInputStyle = { ...inputStyle, WebkitAppearance: 'none', appearance: 'none' };
+// Guards against a bad numeric input (e.g. a lone "." or a comma decimal
+// separator on some mobile keyboards) silently becoming NaN, and against a
+// future birthdate slipping past the date input's `max` (not reliably
+// enforced by every mobile keyboard/browser) — same checks OnboardingScreen
+// already does for its own born-child form. Returns an error message, or
+// null if the input is valid.
+function validateBornChild({ weightKg, heightCm, birthdate }) {
+  if (!Number.isFinite(weightKg) || !Number.isFinite(heightCm)) {
+    return 'น้ำหนักหรือส่วนสูงไม่ถูกต้อง กรุณาใส่เป็นตัวเลข';
+  }
+  if (birthdate && birthdate > todayStr()) {
+    return 'วันเกิดลูกต้องไม่เกินวันนี้';
+  }
+  return null;
+}
 
 function Field({ label, children }) {
   return (
@@ -75,7 +85,7 @@ function BornChildFields({ name, setName, gender, setGender, birthdate, setBirth
         </div>
       </Field>
       <Field label="วันเกิดลูก">
-        <input type="date" value={birthdate} onChange={(e) => setBirthdate(e.target.value)} style={dateInputStyle} />
+        <input type="date" value={birthdate} max={todayStr()} onChange={(e) => setBirthdate(e.target.value)} style={dateInputStyle} />
       </Field>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
         <Field label="น้ำหนัก (กก.)">
@@ -117,6 +127,10 @@ export function AddChildModal({ onClose, onSaved, lineUid }) {
 
   const handleSave = async () => {
     setSaving(true); setError(null);
+    if (kind !== 'pregnant') {
+      const validationMsg = validateBornChild({ weightKg: parseFloat(weightKg), heightCm: parseFloat(heightCm), birthdate });
+      if (validationMsg) { setError(validationMsg); setSaving(false); return; }
+    }
     try {
       if (kind === 'pregnant') {
         await insertPregnantChild(supabase, lineUid, { name, dueDate });
@@ -219,6 +233,10 @@ export function EditChildModal({ child, onClose, onSaved, startGraduating = fals
   const handleSave = async () => {
     setSaving(true); setError(null);
     const lineUid = child?.line_uid;
+    if (graduating || !child.is_pregnant) {
+      const validationMsg = validateBornChild({ weightKg: parseFloat(weightKg), heightCm: parseFloat(heightCm), birthdate });
+      if (validationMsg) { setError(validationMsg); setSaving(false); return; }
+    }
     try {
       if (graduating) {
         await graduatePregnantChild(supabase, child, {

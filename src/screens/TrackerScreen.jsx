@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Scale, ChevronRight, Ruler, ShoppingCart, Baby, Camera } from 'lucide-react';
 import { Card } from '../components/index.jsx';
 import { SkyDeco, SectionTitle, ProfileButton, ChildCardsRow } from '../shared/index.jsx';
@@ -6,15 +6,10 @@ import { GrowthPanel } from './BabyTrackerScreen.jsx';
 import { supabase } from '../lib/supabase.js';
 import { recommendSize } from '../lib/diaperSize.js';
 import { uploadChildAvatar } from '../lib/avatar.js';
+import { calcAge } from '../lib/age.js';
 import { AddChildModal, EditChildModal } from './ChildModals.jsx';
 import { logAction, logError } from '../lib/userLogs.js';
 export { recommendSize };
-
-const inputStyle = {
-  width: '100%', minWidth: 0, maxWidth: '100%', height: 46, padding: '0 14px', borderRadius: 'var(--radius-md)',
-  border: '1px solid var(--border-default)', font: 'var(--type-body)', color: 'var(--text-body)',
-  background: '#fff', outline: 'none', boxSizing: 'border-box',
-};
 
 // 011_shop_links.platform codes → display treatment. Order here also sets
 // display order (DB has no sort_order column of its own).
@@ -92,17 +87,6 @@ function DiaperPanel({ go, child }) {
   // weight" cache — so there's no sensible fallback if no growth record exists yet.
   const kg = latestKg;
   const size = kg ? recommendSize(kg) : null;
-
-  function calcAge(birthdate) {
-    if (!birthdate) return null;
-    const ms = Date.now() - new Date(birthdate).getTime();
-    const totalMonths = Math.floor(ms / (1000 * 60 * 60 * 24 * 30.4375));
-    const years = Math.floor(totalMonths / 12);
-    const months = totalMonths % 12;
-    if (totalMonths < 1) return 'แรกเกิด';
-    if (years === 0) return `${months} เดือน`;
-    return months === 0 ? `${years} ปี` : `${years} ปี ${months} เดือน`;
-  }
   const ageLabel = calcAge(child?.birth_date);
 
   return (
@@ -219,39 +203,13 @@ function DiaperPanel({ go, child }) {
   );
 }
 
-// Fetches the latest growth record for every child at once (keyed by
-// child_id) so a ChildCardsRow can show each card's own weight/height
-// without a per-switch refetch — same approach as HomeScreen.
-function useGrowthByChild(childrenList) {
-  const [growthByChild, setGrowthByChild] = useState({});
-  useEffect(() => {
-    const bornIds = (childrenList || []).filter(c => !c.is_pregnant).map(c => c.child_id);
-    if (bornIds.length === 0) { setGrowthByChild({}); return; }
-    let alive = true;
-    supabase
-      .from('004_growth')
-      .select('child_id, weight_kg, height_cm, recorded_date')
-      .in('child_id', bornIds)
-      .order('recorded_date', { ascending: false })
-      .then(({ data }) => {
-        if (!alive) return;
-        const map = {};
-        (data || []).forEach((r) => { if (!map[r.child_id]) map[r.child_id] = r; });
-        setGrowthByChild(map);
-      });
-    return () => { alive = false; };
-  }, [childrenList]);
-  return growthByChild;
-}
-
-export function DiaperScreen({ go, child, onChildUpdate, childrenList, activeChildId, onSwitchChild, onChildrenChange }) {
+export function DiaperScreen({ go, child, onChildUpdate, childrenList, activeChildId, onSwitchChild, onChildrenChange, growthByChild }) {
   const childName = child?.name || 'ลูกน้อย';
   const genderLabel = child?.gender === 'male' ? '👦 ชาย' : child?.gender === 'female' ? '👧 หญิง' : null;
   const birthdateLabel = formatBirthdate(child?.birth_date);
   const ageLabel = calcAge(child?.birth_date);
   const [showAddChild, setShowAddChild] = useState(false);
   const [editingChild, setEditingChild] = useState(null);
-  const growthByChild = useGrowthByChild(childrenList);
 
   return (
     <div style={{ background: 'var(--gradient-sky)', minHeight: '100%', paddingBottom: 24 }}>
@@ -325,17 +283,6 @@ function formatBirthdate(dateStr) {
   return `${d.getDate()} ${THAI_MONTHS[d.getMonth()]} ${d.getFullYear() + 543}`;
 }
 
-function calcAge(birthdate) {
-  if (!birthdate) return null;
-  const ms = Date.now() - new Date(birthdate).getTime();
-  const totalMonths = Math.floor(ms / (1000 * 60 * 60 * 24 * 30.4375));
-  const years = Math.floor(totalMonths / 12);
-  const months = totalMonths % 12;
-  if (totalMonths < 1) return 'แรกเกิด';
-  if (years === 0) return `${months} เดือน`;
-  return months === 0 ? `${years} ปี` : `${years} ปี ${months} เดือน`;
-}
-
 function ChildAvatarUpload({ child, onChildUpdate }) {
   const inputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
@@ -388,14 +335,13 @@ function ChildAvatarUpload({ child, onChildUpdate }) {
   );
 }
 
-export default function TrackerScreen({ go, child, onChildUpdate, childrenList, activeChildId, onSwitchChild, onChildrenChange }) {
+export default function TrackerScreen({ go, child, onChildUpdate, childrenList, activeChildId, onSwitchChild, onChildrenChange, growthByChild }) {
   const childName  = child?.name     || 'ลูกน้อย';
   const genderLabel = child?.gender === 'male' ? '👦 ชาย' : child?.gender === 'female' ? '👧 หญิง' : null;
   const birthdateLabel = formatBirthdate(child?.birth_date);
   const ageLabel = calcAge(child?.birth_date);
   const [showAddChild, setShowAddChild] = useState(false);
   const [editingChild, setEditingChild] = useState(null);
-  const growthByChild = useGrowthByChild(childrenList);
 
   return (
     <div style={{ background: 'var(--gradient-sky)', minHeight: '100%', paddingBottom: 24 }}>
