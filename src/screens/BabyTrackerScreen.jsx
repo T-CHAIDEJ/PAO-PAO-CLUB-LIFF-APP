@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Scale, Ruler, Calendar, Plus, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { Scale, Ruler, Calendar, Plus, X, ChevronDown, ChevronUp, ChevronRight } from 'lucide-react';
 import { Card, Button } from '../components/index.jsx';
 import { SectionTitle } from '../shared/index.jsx';
 import { getWHOData, getWHOValueAtMonth } from '../data/whoData.js';
@@ -7,6 +7,7 @@ import { getWHOWflData, getWHOWflAtLength } from '../data/whoWflData.js';
 import { supabase } from '../lib/supabase.js';
 import { recommendSize } from '../lib/diaperSize.js';
 import { inputStyle, dateInputStyle, todayStr } from '../lib/formStyles.js';
+import { logAction, logError } from '../lib/userLogs.js';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -570,7 +571,7 @@ function WHChart({ records, gender, birthDate, title }) {
 
 // ─── History list ─────────────────────────────────────────────────────────────
 
-function HistoryList({ records }) {
+function HistoryList({ records, onEditRecord }) {
   const [expanded, setExpanded] = useState(false);
   const sorted = [...records].sort((a, b) => new Date(b.date) - new Date(a.date));
   const shown = expanded ? sorted : sorted.slice(0, 3);
@@ -578,12 +579,17 @@ function HistoryList({ records }) {
   return (
     <div>
       <SectionTitle>รายการบันทึกย้อนหลัง</SectionTitle>
+      <div style={{ font: 'var(--type-caption)', color: 'var(--text-faint)', marginBottom: 8 }}>แตะรายการเพื่อแก้ไข หากบันทึกผิด</div>
       <Card padded={false} style={{ overflow: 'hidden' }}>
         {shown.map((r, i) => (
-          <div key={r.id} style={{
-            display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px',
-            borderBottom: i < shown.length - 1 ? '1px solid var(--gray-100)' : 'none',
-          }}>
+          <div
+            key={r.id}
+            onClick={() => onEditRecord(r)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', cursor: 'pointer',
+              borderBottom: i < shown.length - 1 ? '1px solid var(--gray-100)' : 'none',
+            }}
+          >
             <span style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--gray-50)', color: 'var(--blue-500)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
               <Scale width={18} height={18} />
             </span>
@@ -593,6 +599,7 @@ function HistoryList({ records }) {
               </div>
             </div>
             <span style={{ font: 'var(--type-caption)', color: 'var(--text-faint)' }}>{formatThaiDate(r.date)}</span>
+            <ChevronRight width={16} height={16} style={{ color: 'var(--text-faint)', flex: 'none' }} />
           </div>
         ))}
         {sorted.length > 3 && (
@@ -620,14 +627,19 @@ function FormField({ label, children }) {
   );
 }
 
-function AddRecordPanel({ childId, onCancel, onSaved }) {
+// `record` (optional): an existing 004_growth row being corrected — pre-fills
+// the form and UPDATEs that row instead of inserting a new one, so a mistyped
+// entry can be fixed in place rather than living in the history forever.
+function AddRecordPanel({ childId, lineUid, record, onCancel, onSaved, onDelete }) {
   const today = todayStr();
-  const [date, setDate] = useState(today);
-  const [weight, setWeight] = useState('');
-  const [height, setHeight] = useState('');
-  const [thigh, setThigh] = useState('');
-  const [waist, setWaist] = useState('');
+  const isEdit = !!record;
+  const [date, setDate] = useState(record?.date ?? today);
+  const [weight, setWeight] = useState(record ? String(record.weightKg) : '');
+  const [height, setHeight] = useState(record ? String(record.heightCm) : '');
+  const [thigh, setThigh] = useState(record?.thighCm != null ? String(record.thighCm) : '');
+  const [waist, setWaist] = useState(record?.waistCm != null ? String(record.waistCm) : '');
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState(null);
 
   const canSave = date && weight && height;
@@ -652,25 +664,51 @@ function AddRecordPanel({ childId, onCancel, onSaved }) {
         waist_cm:  waist  ? parseFloat(waist)  : null,
         diaper_size: recommendSize(weightKg).code,
       };
-      const { data, error: err } = await supabase.from('004_growth').insert(payload).select().single();
+      const query = isEdit
+        ? supabase.from('004_growth').update(payload).eq('id', record.id)
+        : supabase.from('004_growth').insert(payload);
+      const { data, error: err } = await query.select().single();
       if (err) throw err;
+      logAction(lineUid, isEdit ? 'edit_growth_record' : 'add_growth_record');
       onSaved({
         id: data.id, date: data.recorded_date,
         weightKg: data.weight_kg, heightCm: data.height_cm,
         thighCm: data.thigh_cm, waistCm: data.waist_cm,
-      });
+      }, isEdit);
     } catch (e) {
       console.error('[AddRecord]', e);
+      logError(lineUid, isEdit ? 'edit_growth_record' : 'add_growth_record', e);
       setError('บันทึกไม่สำเร็จ กรุณาลองใหม่');
     } finally {
       setSaving(false);
     }
   };
 
+  const handleDelete = async () => {
+    if (!record || !window.confirm('ลบรายการบันทึกนี้?')) return;
+    setDeleting(true); setError(null);
+    try {
+      // DELETE reports no error even when RLS silently blocks it (0 rows
+      // removed) — .select() forces the deleted row back so we can tell
+      // apart "actually deleted" from "no-op", instead of trusting the
+      // absence of an error alone.
+      const { data, error: err } = await supabase.from('004_growth').delete().eq('id', record.id).select('id');
+      if (err) throw err;
+      if (!data || data.length === 0) throw new Error('ไม่มีสิทธิ์ลบรายการนี้');
+      logAction(lineUid, 'delete_growth_record');
+      onDelete(record.id);
+    } catch (e) {
+      console.error('[DeleteRecord]', e);
+      logError(lineUid, 'delete_growth_record', e);
+      setError('ลบไม่สำเร็จ กรุณาลองใหม่');
+      setDeleting(false);
+    }
+  };
+
   return (
     <Card>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-        <h3 style={{ font: 'var(--weight-bold) 17px var(--font-display)', color: 'var(--text-heading)' }}>บันทึกข้อมูลใหม่</h3>
+        <h3 style={{ font: 'var(--weight-bold) 17px var(--font-display)', color: 'var(--text-heading)' }}>{isEdit ? 'แก้ไขข้อมูลบันทึก' : 'บันทึกข้อมูลใหม่'}</h3>
         <button onClick={onCancel} style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: 'var(--surface-soft)', color: 'var(--blue-600)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
           <X width={18} height={18} />
         </button>
@@ -697,14 +735,21 @@ function AddRecordPanel({ childId, onCancel, onSaved }) {
       </div>
       <div style={{ font: 'var(--type-caption)', color: 'var(--text-faint)', marginBottom: 14 }}>* จำเป็น · ช่องอื่นไม่บังคับ</div>
       {error && <div style={{ font: 'var(--type-caption)', color: 'var(--red-400)', marginBottom: 12 }}>{error}</div>}
-      <Button variant="primary" fullWidth disabled={!canSave} loading={saving} onClick={handleSave} leftIcon={<Plus width={18} height={18} />}>บันทึก</Button>
+      <Button variant="primary" fullWidth disabled={!canSave} loading={saving} onClick={handleSave} leftIcon={<Plus width={18} height={18} />}>
+        {isEdit ? 'บันทึกการแก้ไข' : 'บันทึก'}
+      </Button>
+      {isEdit && (
+        <Button variant="soft" fullWidth loading={deleting} onClick={handleDelete} style={{ marginTop: 10, color: 'var(--red-400)' }}>
+          ลบรายการนี้
+        </Button>
+      )}
     </Card>
   );
 }
 
 // ─── Overview panel ───────────────────────────────────────────────────────────
 
-function OverviewPanel({ records, gender, birthDate, chartTab, onChartTabChange, onAddNew }) {
+function OverviewPanel({ records, gender, birthDate, chartTab, onChartTabChange, onAddNew, onEditRecord }) {
   const sorted = [...records].sort((a, b) => new Date(a.date) - new Date(b.date));
   const latest = sorted[sorted.length - 1];
   const latestAge = ageInMonths(birthDate, latest.date);
@@ -783,7 +828,7 @@ function OverviewPanel({ records, gender, birthDate, chartTab, onChartTabChange,
       )}
 
       {/* History */}
-      <HistoryList records={records} />
+      <HistoryList records={records} onEditRecord={onEditRecord} />
 
       {/* Add button */}
       <Button variant="primary" fullWidth onClick={onAddNew} leftIcon={<Plus width={18} height={18} />}>บันทึกข้อมูลใหม่</Button>
@@ -794,7 +839,8 @@ function OverviewPanel({ records, gender, birthDate, chartTab, onChartTabChange,
 // ─── GrowthPanel (exported) ───────────────────────────────────────────────────
 
 export function GrowthPanel({ child }) {
-  const [panelView, setPanelView] = useState('overview');
+  const [panelView, setPanelView] = useState('overview'); // 'overview' | 'form'
+  const [editingRecord, setEditingRecord] = useState(null); // null = adding new, record = editing that one
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [chartTab, setChartTab] = useState('wa');
@@ -825,9 +871,21 @@ export function GrowthPanel({ child }) {
     fetchRecords();
   }, [child?.id]);
 
-  const handleSaved = (record) => {
-    setRecords(prev => [...prev, record].sort((a, b) => new Date(a.date) - new Date(b.date)));
-    setPanelView('overview');
+  const closeForm = () => { setPanelView('overview'); setEditingRecord(null); };
+  const openAdd = () => { setEditingRecord(null); setPanelView('form'); };
+  const openEdit = (record) => { setEditingRecord(record); setPanelView('form'); };
+
+  const handleSaved = (record, isEdit) => {
+    setRecords(prev => {
+      const next = isEdit ? prev.map(r => (r.id === record.id ? record : r)) : [...prev, record];
+      return next.sort((a, b) => new Date(a.date) - new Date(b.date));
+    });
+    closeForm();
+  };
+
+  const handleDeleted = (id) => {
+    setRecords(prev => prev.filter(r => r.id !== id));
+    closeForm();
   };
 
   if (loading) return (
@@ -844,8 +902,17 @@ export function GrowthPanel({ child }) {
     </Card>
   );
 
-  if (panelView === 'add') {
-    return <AddRecordPanel childId={child.child_id} onCancel={() => setPanelView('overview')} onSaved={handleSaved} />;
+  if (panelView === 'form') {
+    return (
+      <AddRecordPanel
+        childId={child.child_id}
+        lineUid={child?.line_uid}
+        record={editingRecord}
+        onCancel={closeForm}
+        onSaved={handleSaved}
+        onDelete={handleDeleted}
+      />
+    );
   }
 
   if (records.length === 0) return (
@@ -855,7 +922,7 @@ export function GrowthPanel({ child }) {
         <div style={{ font: 'var(--weight-bold) 17px var(--font-display)', color: 'var(--text-heading)' }}>ยังไม่มีข้อมูลพัฒนาการ</div>
         <div style={{ font: 'var(--type-body)', color: 'var(--text-muted)', marginTop: 8, lineHeight: 1.6 }}>เริ่มบันทึกน้ำหนักและส่วนสูง<br />เพื่อติดตามพัฒนาการของลูก</div>
       </Card>
-      <Button variant="primary" fullWidth onClick={() => setPanelView('add')} leftIcon={<Plus width={18} height={18} />}>บันทึกข้อมูลแรก</Button>
+      <Button variant="primary" fullWidth onClick={openAdd} leftIcon={<Plus width={18} height={18} />}>บันทึกข้อมูลแรก</Button>
     </div>
   );
 
@@ -866,7 +933,8 @@ export function GrowthPanel({ child }) {
       birthDate={birthDate}
       chartTab={chartTab}
       onChartTabChange={setChartTab}
-      onAddNew={() => setPanelView('add')}
+      onAddNew={openAdd}
+      onEditRecord={openEdit}
     />
   );
 }
