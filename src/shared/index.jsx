@@ -13,6 +13,23 @@ export function ConsentGateNotice() {
   );
 }
 
+// Shown alongside a size recommendation when the child's weight also
+// already qualifies for the next size up (recommendSize() always resolves
+// that overlap by keeping the smaller/current size) — gives parents
+// something concrete to check for themselves instead of just a number.
+export function SizeBoundaryNotice({ style }) {
+  return (
+    <div style={{ font: 'var(--type-caption)', color: '#9A3412', background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: 'var(--radius-md)', padding: '10px 12px', lineHeight: 1.6, ...style }}>
+      <div style={{ fontWeight: 700, marginBottom: 4 }}>⚠️ น้ำหนักลูกอยู่ในช่วงใกล้ไซส์ถัดไป ลองสังเกต:</div>
+      • มีรอยรัดแดงที่ขาหรือรอบเอว<br />
+      • ผ้าอ้อมรั่วซึมบ่อย โดยเฉพาะรอบขา<br />
+      • ต้องดึงแถบกาวจนตึงมากถึงจะปิดสนิท<br />
+      • หน้าท้องดูแน่นหรือนูนผิดปกติ
+      <div style={{ marginTop: 6 }}>ถ้าเจอสัญญาณเหล่านี้ แนะนำขยับขึ้นไซส์ถัดไปได้เลย</div>
+    </div>
+  );
+}
+
 export function SkyDeco() {
   return (
     <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', color: '#fff' }}>

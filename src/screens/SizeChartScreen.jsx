@@ -1,10 +1,11 @@
 import { ChevronLeft, Info } from 'lucide-react';
 import { Card, Badge } from '../components/index.jsx';
-import { SkyDeco } from '../shared/index.jsx';
-import { recommendSize, getSizes } from '../lib/diaperSize.js';
+import { SkyDeco, SizeBoundaryNotice } from '../shared/index.jsx';
+import { recommendSize, getSizes, isNearSizeBoundary } from '../lib/diaperSize.js';
 
 export default function SizeChartScreen({ go, currentKg = 8.5 }) {
   const cur = recommendSize(currentKg).code;
+  const nearBoundary = isNearSizeBoundary(currentKg);
   // Read on every render (not module scope) — loadDiaperSizes() at App boot
   // resolves async, so the cache may still be filling in when this mounts.
   const ROWS = getSizes().map(s => ({
@@ -60,6 +61,12 @@ export default function SizeChartScreen({ go, currentKg = 8.5 }) {
             <div style={{ font: 'var(--type-body-sm)', color: 'var(--text-body)', lineHeight: 1.5 }}>ช่วงน้ำหนักซ้อนทับกันได้ — หากผ้าอ้อมเริ่มรัดหรือรั่วซึม แนะนำขยับขึ้นไซส์ถัดไป</div>
           </Card>
         </div>
+
+        {nearBoundary && (
+          <div style={{ marginTop: 12 }}>
+            <SizeBoundaryNotice />
+          </div>
+        )}
       </div>
     </div>
   );

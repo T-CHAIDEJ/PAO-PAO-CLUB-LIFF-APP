@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { Baby, Ruler, Gift, ScanLine, Bell, ChevronRight, Star, UserPlus, UserCircle2, Mars, Venus, Flame } from 'lucide-react';
 import { Card, Badge, Button, ProgressBar } from '../components/index.jsx';
-import { SectionTitle, ProfileButton, ChildCardsRow } from '../shared/index.jsx';
+import { SectionTitle, ProfileButton, ChildCardsRow, SizeBoundaryNotice } from '../shared/index.jsx';
 import { recommendSize } from './TrackerScreen.jsx';
+import { isNearSizeBoundary } from '../lib/diaperSize.js';
 import { supabase } from '../lib/supabase.js';
 import { STREAK_POINTS } from '../lib/points.js';
 import { fetchRewardsCatalog, nextUnlockedReward } from '../lib/rewards.js';
@@ -198,21 +199,24 @@ function BabyInfoCard({ child, latestKg, latestCm, go, onBabyArrived }) {
   );
 }
 
-function SizeRecommendCard({ sizeRec, go }) {
+function SizeRecommendCard({ sizeRec, nearBoundary, go }) {
   if (!sizeRec) return null;
   return (
-    <Card tone="green" interactive onClick={() => go('diaper')} style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-      <div style={{ width: 64, height: 64, borderRadius: 18, background: 'var(--color-secondary)', color: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 'none', boxShadow: 'var(--shadow-green)' }}>
-        <span style={{ font: '800 24px var(--font-display)', lineHeight: 1 }}>{sizeRec.code}</span>
-        <span style={{ font: 'var(--weight-semibold) 9px var(--font-base)', letterSpacing: '.06em', opacity: .9 }}>SIZE</span>
-      </div>
-      <div style={{ flex: 1 }}>
-        <div style={{ font: 'var(--type-caption)', color: 'var(--green-700)' }}>ไซส์ผ้าอ้อมแนะนำ</div>
-        <div style={{ font: 'var(--weight-bold) 19px var(--font-display)', color: 'var(--text-heading)' }}>Size {sizeRec.code}</div>
-        <div style={{ font: 'var(--type-body-sm)', color: 'var(--text-muted)' }}>สำหรับน้ำหนัก {sizeRec.min}–{sizeRec.max} กก.</div>
-      </div>
-      <ChevronRight width={22} height={22} style={{ color: 'var(--green-700)' }} />
-    </Card>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <Card tone="green" interactive onClick={() => go('diaper')} style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        <div style={{ width: 64, height: 64, borderRadius: 18, background: 'var(--color-secondary)', color: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 'none', boxShadow: 'var(--shadow-green)' }}>
+          <span style={{ font: '800 24px var(--font-display)', lineHeight: 1 }}>{sizeRec.code}</span>
+          <span style={{ font: 'var(--weight-semibold) 9px var(--font-base)', letterSpacing: '.06em', opacity: .9 }}>SIZE</span>
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ font: 'var(--type-caption)', color: 'var(--green-700)' }}>ไซส์ผ้าอ้อมแนะนำ</div>
+          <div style={{ font: 'var(--weight-bold) 19px var(--font-display)', color: 'var(--text-heading)' }}>Size {sizeRec.code}</div>
+          <div style={{ font: 'var(--type-body-sm)', color: 'var(--text-muted)' }}>สำหรับน้ำหนัก {sizeRec.min}–{sizeRec.max} กก.</div>
+        </div>
+        <ChevronRight width={22} height={22} style={{ color: 'var(--green-700)' }} />
+      </Card>
+      {nearBoundary && <SizeBoundaryNotice />}
+    </div>
   );
 }
 
@@ -443,6 +447,7 @@ export default function HomeScreen({ go, user, child, goOnboarding, goProfile, c
   const latestKg = activeGrowth?.weight_kg ?? null;
   const latestCm = activeGrowth?.height_cm ?? null;
   const sizeRec = latestKg ? recommendSize(latestKg) : null;
+  const sizeNearBoundary = isNearSizeBoundary(latestKg);
   const childWithRecord = child ? { ...child, _recordedAt: activeGrowth?.recorded_date ?? null } : null;
 
   return (
@@ -606,7 +611,7 @@ export default function HomeScreen({ go, user, child, goOnboarding, goProfile, c
       {/* Size Recommend Card */}
       {!isGuest && sizeRec && (
         <div style={{ padding: '12px 16px 0' }}>
-          <SizeRecommendCard sizeRec={sizeRec} go={go} />
+          <SizeRecommendCard sizeRec={sizeRec} nearBoundary={sizeNearBoundary} go={go} />
         </div>
       )}
 

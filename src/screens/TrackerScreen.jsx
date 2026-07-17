@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { Scale, ChevronRight, Ruler, ShoppingCart, Baby, Camera } from 'lucide-react';
 import { Card } from '../components/index.jsx';
-import { SkyDeco, SectionTitle, ProfileButton, ChildCardsRow } from '../shared/index.jsx';
+import { SkyDeco, SectionTitle, ProfileButton, ChildCardsRow, SizeBoundaryNotice } from '../shared/index.jsx';
 import { GrowthPanel } from './BabyTrackerScreen.jsx';
 import { supabase } from '../lib/supabase.js';
-import { recommendSize } from '../lib/diaperSize.js';
+import { recommendSize, isNearSizeBoundary } from '../lib/diaperSize.js';
 import { uploadChildAvatar } from '../lib/avatar.js';
 import { calcAge } from '../lib/age.js';
 import { AddChildModal, EditChildModal } from './ChildModals.jsx';
@@ -154,20 +154,23 @@ function DiaperPanel({ go, child }) {
 
       {/* Recommended size detail */}
       {size && (
-        <Card tone="green" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <div style={{ width: 72, height: 72, borderRadius: 20, background: 'var(--color-secondary)', color: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 'none', boxShadow: 'var(--shadow-green)' }}>
-            <span style={{ font: '800 26px var(--font-display)', lineHeight: 1 }}>{size.code}</span>
-            <span style={{ font: 'var(--weight-semibold) 9px var(--font-base)', letterSpacing: '.06em', opacity: .9 }}>SIZE</span>
-          </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ font: 'var(--type-caption)', color: 'var(--green-700)' }}>ไซส์ที่แนะนำจากน้ำหนัก</div>
-            <div style={{ font: 'var(--weight-bold) 19px var(--font-display)', color: 'var(--text-heading)' }}>Size {size.code}</div>
-            <div style={{ font: 'var(--type-body-sm)', color: 'var(--text-muted)' }}>สำหรับน้ำหนัก {size.min}–{size.max} กก.</div>
-          </div>
-          <button onClick={() => go('size')} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--green-700)', display: 'flex' }}>
-            <ChevronRight width={22} height={22} />
-          </button>
-        </Card>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <Card tone="green" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <div style={{ width: 72, height: 72, borderRadius: 20, background: 'var(--color-secondary)', color: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 'none', boxShadow: 'var(--shadow-green)' }}>
+              <span style={{ font: '800 26px var(--font-display)', lineHeight: 1 }}>{size.code}</span>
+              <span style={{ font: 'var(--weight-semibold) 9px var(--font-base)', letterSpacing: '.06em', opacity: .9 }}>SIZE</span>
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ font: 'var(--type-caption)', color: 'var(--green-700)' }}>ไซส์ที่แนะนำจากน้ำหนัก</div>
+              <div style={{ font: 'var(--weight-bold) 19px var(--font-display)', color: 'var(--text-heading)' }}>Size {size.code}</div>
+              <div style={{ font: 'var(--type-body-sm)', color: 'var(--text-muted)' }}>สำหรับน้ำหนัก {size.min}–{size.max} กก.</div>
+            </div>
+            <button onClick={() => go('size')} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--green-700)', display: 'flex' }}>
+              <ChevronRight width={22} height={22} />
+            </button>
+          </Card>
+          {isNearSizeBoundary(kg) && <SizeBoundaryNotice />}
+        </div>
       )}
 
       {/* Buy CTA */}

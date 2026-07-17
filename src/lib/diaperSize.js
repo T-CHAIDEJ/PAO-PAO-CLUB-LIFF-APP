@@ -42,3 +42,18 @@ export function recommendSize(kg) {
   const sizes = getSizes();
   return sizes.find(s => kg >= s.min && kg <= s.max) || sizes[sizes.length - 1];
 }
+
+// Sizes deliberately overlap by a couple kg with the next one up (real
+// diaper fit varies by body shape, not just weight) — recommendSize()
+// always resolves that overlap by picking the smaller/current size. This
+// tells the UI when a weight also already qualifies for the next size up,
+// so it can show fit-check guidance right at the recommendation instead of
+// silently locking them into the smaller size.
+export function isNearSizeBoundary(kg) {
+  if (kg == null) return false;
+  const sizes = getSizes();
+  const idx = sizes.findIndex(s => kg >= s.min && kg <= s.max);
+  if (idx === -1) return false;
+  const next = sizes[idx + 1];
+  return !!(next && kg >= next.min && kg <= next.max);
+}
