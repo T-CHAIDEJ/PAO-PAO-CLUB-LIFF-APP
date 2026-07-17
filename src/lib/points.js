@@ -58,13 +58,37 @@ export async function checkinDaily(lineUid) {
 
   const dayIndex = (newStreak - 1) % 7; // 0..6
   const award = STREAK_POINTS[dayIndex];
+
+  // Atomically claim today's checkin: the UPDATE only affects a row if
+  // last_checkin still isn't today, so if this function fires twice at
+  // nearly the same moment (double-tap reload, retry after a slow
+  // response, etc.) only one of the two calls can win the race — Postgres
+  // serializes concurrent UPDATEs on the same row, so the loser's WHERE
+  // clause re-evaluates against the winner's already-committed write and
+  // correctly matches nothing. Verified against real concurrent requests
+  // before relying on this. Previously this was a plain unconditional
+  // UPDATE with no such guard, so both calls could pass the earlier
+  // last_checkin check and each insert their own 006_points row —
+  // confirmed as the cause of dev_user_001's duplicate same-timestamp
+  // ledger rows found while auditing the points-balance mismatches.
+  const { data: claimed, error: claimErr } = await supabase
+    .from('001_users')
+    .update({ login_streak: newStreak, login_count: (u.login_count || 0) + 1, last_checkin: today })
+    .eq('line_uid', lineUid)
+    .or(`last_checkin.is.null,last_checkin.neq.${today}`)
+    .select('line_uid');
+
+  if (claimErr || !claimed || claimed.length === 0) {
+    // Lost the race (or the update failed) — another call already
+    // recorded today's checkin, so behave like the already-checked-in
+    // fast path instead of awarding points twice.
+    const balance = await getCurrentBalance(lineUid);
+    return { alreadyChecked: true, points: balance, streak: newStreak };
+  }
+
   const currentBalance = await getCurrentBalance(lineUid);
   const newBalance = currentBalance + award;
 
-  await supabase
-    .from('001_users')
-    .update({ login_streak: newStreak, login_count: (u.login_count || 0) + 1, last_checkin: today })
-    .eq('line_uid', lineUid);
   await supabase
     .from('006_points')
     .insert({ line_uid: lineUid, source: 'daily_login', points: award, balance: newBalance, streak_day: dayIndex + 1, expired_at: SEASON_EXPIRES_AT });
