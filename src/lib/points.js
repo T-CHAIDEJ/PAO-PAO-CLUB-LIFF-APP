@@ -27,6 +27,16 @@ async function getCurrentBalance(lineUid) {
   return data?.balance ?? 0;
 }
 
+// Read-only — current balance + streak with no writes at all. Used when the
+// member can't check in right now (e.g. outdated consent) but should still
+// see their existing balance rather than it appearing to reset to 0.
+export async function fetchPointsSnapshot(lineUid) {
+  if (!lineUid) return null;
+  const { data: u } = await supabase.from('001_users').select('login_streak').eq('line_uid', lineUid).single();
+  const balance = await getCurrentBalance(lineUid);
+  return { points: balance, streak: u?.login_streak ?? 0 };
+}
+
 // Awards daily-login points at most once per calendar day.
 // Safe to call on every app boot — if the user already checked in today it no-ops.
 // `lineUid` is the LINE userId (001_users.line_uid), used as the natural key

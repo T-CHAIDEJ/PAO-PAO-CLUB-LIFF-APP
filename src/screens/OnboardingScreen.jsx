@@ -7,6 +7,7 @@ import { computeStage, PREGNANCY_STAGE } from '../lib/stage.js';
 import { uploadChildAvatar } from '../lib/avatar.js';
 import { logAction, logError } from '../lib/userLogs.js';
 import { inputStyle, dateInputStyle, todayStr } from '../lib/formStyles.js';
+import { fetchActiveConsent, PDPA_VERSION_FALLBACK, PDPA_TEXT_FALLBACK } from '../lib/consent.js';
 
 function FormField({ label, children }) {
   return (
@@ -46,8 +47,6 @@ function StepWelcome({ onNext }) {
   );
 }
 
-const PDPA_VERSION_FALLBACK = 'v1';
-const PDPA_TEXT_FALLBACK = 'เราจะเก็บข้อมูลของคุณเพื่อให้บริการที่ดีขึ้น ข้อมูลจะไม่ถูกเปิดเผยต่อบุคคลที่สาม และจะถูกจัดเก็บอย่างปลอดภัยตามมาตรฐาน PDPA';
 
 function StepPDPA({ onAccept, pdpaText, version }) {
   const [checked, setChecked] = useState(false);
@@ -250,19 +249,11 @@ export default function OnboardingScreen({ lineProfile, initialSegment, onComple
   const [pdpaDoc, setPdpaDoc] = useState(null);
   const [saveError, setSaveError] = useState(null);
 
-  // 008_consent is Dev B's catalog of policy versions (is_active flags the
-  // current one). Falls back to the hardcoded text/version if empty/unset —
-  // it's empty as of this writing, so this is untested against real rows.
+  // Falls back to the hardcoded text/version if 008_consent has no active
+  // row, or the active row's pdpa_text itself is unset.
   useEffect(() => {
     let alive = true;
-    (async () => {
-      try {
-        const { data } = await supabase
-          .from('008_consent').select('consent_version, pdpa_text')
-          .eq('is_active', true).limit(1).single();
-        if (alive && data) setPdpaDoc(data);
-      } catch { /* fall back to hardcoded text/version */ }
-    })();
+    fetchActiveConsent().then((data) => { if (alive && data) setPdpaDoc(data); });
     return () => { alive = false; };
   }, []);
 

@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase.js';
 import { insertPregnantChild, insertBornChild, graduatePregnantChild, updateChildInfo } from '../lib/children.js';
 import { logAction, logError } from '../lib/userLogs.js';
 import { inputStyle, dateInputStyle, todayStr } from '../lib/formStyles.js';
+import { ConsentGateNotice } from '../shared/index.jsx';
 
 // Guards against a bad numeric input (e.g. a lone "." or a comma decimal
 // separator on some mobile keyboards) silently becoming NaN, and against a
@@ -101,7 +102,7 @@ function BornChildFields({ name, setName, gender, setGender, birthdate, setBirth
 
 // ─── Add a new child (pregnant or born) ────────────────────────────────────
 
-export function AddChildModal({ onClose, onSaved, lineUid }) {
+export function AddChildModal({ onClose, onSaved, lineUid, needsConsent }) {
   const [kind, setKind] = useState(null); // null | 'pregnant' | 'born'
   const [name, setName] = useState('');
   const [dueDate, setDueDate] = useState('');
@@ -191,9 +192,10 @@ export function AddChildModal({ onClose, onSaved, lineUid }) {
           photoPreview={photoPreview} onPhotoPick={onPhotoPick}
         />
       )}
+      {needsConsent && <ConsentGateNotice />}
       {error && <div style={{ font: 'var(--type-caption)', color: '#dc2626', marginBottom: 8 }}>{error}</div>}
       <div style={{ marginTop: 8 }}>
-        <Button variant="primary" fullWidth disabled={kind === 'pregnant' ? !canSavePregnant : !canSaveBorn} loading={saving} onClick={handleSave}>
+        <Button variant="primary" fullWidth disabled={needsConsent || (kind === 'pregnant' ? !canSavePregnant : !canSaveBorn)} loading={saving} onClick={handleSave}>
           บันทึก
         </Button>
       </div>
@@ -206,7 +208,7 @@ export function AddChildModal({ onClose, onSaved, lineUid }) {
 
 // ─── Edit an existing child (name/details, or "graduate" a pregnancy) ─────
 
-export function EditChildModal({ child, onClose, onSaved, startGraduating = false }) {
+export function EditChildModal({ child, onClose, onSaved, startGraduating = false, needsConsent }) {
   const [graduating, setGraduating] = useState(startGraduating);
   const [name, setName] = useState(child?.name || '');
   const [gender, setGender] = useState(child?.gender || '');
@@ -285,9 +287,10 @@ export function EditChildModal({ child, onClose, onSaved, startGraduating = fals
           photoPreview={photoPreview} onPhotoPick={onPhotoPick}
         />
       )}
+      {needsConsent && <ConsentGateNotice />}
       {error && <div style={{ font: 'var(--type-caption)', color: '#dc2626', marginBottom: 8 }}>{error}</div>}
       <div style={{ marginTop: 8 }}>
-        <Button variant="primary" fullWidth disabled={!canSave} loading={saving} onClick={handleSave}>บันทึก</Button>
+        <Button variant="primary" fullWidth disabled={needsConsent || !canSave} loading={saving} onClick={handleSave}>บันทึก</Button>
       </div>
       {graduating && (
         <button onClick={() => setGraduating(false)} style={{ marginTop: 10, width: '100%', border: 'none', background: 'transparent', font: 'var(--weight-medium) 14px var(--font-base)', color: 'var(--text-muted)', cursor: 'pointer', padding: '6px 0' }}>

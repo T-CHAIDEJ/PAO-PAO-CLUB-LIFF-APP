@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { initLiff } from './lib/liff.js';
 import { supabase } from './lib/supabase.js';
-import { checkinDaily } from './lib/points.js';
+import { checkinDaily, fetchPointsSnapshot } from './lib/points.js';
 import { loadDiaperSizes } from './lib/diaperSize.js';
 import { useGrowthByChild } from './lib/useGrowthByChild.js';
+import { fetchActiveConsent, isConsentOutdated, acceptConsent } from './lib/consent.js';
 import BottomNav from './screens/BottomNav.jsx';
 import HomeScreen from './screens/HomeScreen.jsx';
 import TrackerScreen, { DiaperScreen } from './screens/TrackerScreen.jsx';
@@ -12,6 +13,7 @@ import KnowledgeScreen from './screens/KnowledgeScreen.jsx';
 import RewardsScreen from './screens/RewardsScreen.jsx';
 import ProfileScreen from './screens/ProfileScreen.jsx';
 import OnboardingScreen from './screens/OnboardingScreen.jsx';
+import { ConsentUpdateModal } from './screens/ConsentUpdateModal.jsx';
 
 const ACTIVE_CHILD_KEY = 'pp_active_child_id';
 
@@ -42,6 +44,11 @@ export default function App() {
   const [childrenList, setChildrenList] = useState([]);
   const [activeChildId, setActiveChildIdState] = useState(null);
   const [checkin, setCheckin] = useState(null);
+  const [activeConsent, setActiveConsent] = useState(null);
+  const [needsConsent, setNeedsConsent] = useState(false);
+  const [showConsentModal, setShowConsentModal] = useState(false);
+  const [consentSaving, setConsentSaving] = useState(false);
+  const [consentError, setConsentError] = useState(null);
 
   const applyChildren = (list) => {
     setChildrenList(list);
@@ -54,11 +61,28 @@ export default function App() {
         .from('001_users').select('*').eq('line_uid', userId).single();
       if (users) {
         let merged = users;
-        try {
-          const chk = await checkinDaily(users.line_uid);
-          if (chk && chk.points != null) merged = { ...users, points: chk.points, login_streak: chk.streak ?? users.login_streak };
-          if (chk && chk.awarded != null) setCheckin(chk);
-        } catch { /* points are optional — never block boot */ }
+
+        const consent = await fetchActiveConsent();
+        setActiveConsent(consent);
+        const outdated = isConsentOutdated(users, consent);
+        setNeedsConsent(outdated);
+
+        // Daily-login points are a "sanctioned" write like any other —
+        // skip awarding more until the member re-accepts the newer policy.
+        // Still load their existing balance read-only though — "outdated
+        // consent" means can't earn/edit, not that their own data vanishes.
+        if (!outdated) {
+          try {
+            const chk = await checkinDaily(users.line_uid);
+            if (chk && chk.points != null) merged = { ...users, points: chk.points, login_streak: chk.streak ?? users.login_streak };
+            if (chk && chk.awarded != null) setCheckin(chk);
+          } catch { /* points are optional — never block boot */ }
+        } else {
+          try {
+            const snap = await fetchPointsSnapshot(users.line_uid);
+            if (snap) merged = { ...users, points: snap.points, login_streak: snap.streak };
+          } catch { /* points are optional — never block boot */ }
+        }
 
         // Backfill LINE display name / picture for existing users (once profile scope is granted)
         try {
@@ -153,6 +177,29 @@ export default function App() {
     applyChildren(data ?? []);
   };
 
+  const handleReconsent = async () => {
+    if (!userData?.line_uid || !activeConsent) return;
+    setConsentSaving(true); setConsentError(null);
+    try {
+      const patch = await acceptConsent(userData.line_uid, activeConsent.consent_version);
+      setUserData(prev => ({ ...prev, ...patch }));
+      setNeedsConsent(false);
+      setShowConsentModal(false);
+      // They were blocked from earning today's points while outdated —
+      // catch that up immediately now instead of making them reopen the app.
+      try {
+        const chk = await checkinDaily(userData.line_uid);
+        if (chk && chk.points != null) setUserData(prev => ({ ...prev, points: chk.points, login_streak: chk.streak ?? prev.login_streak }));
+        if (chk && chk.awarded != null) setCheckin(chk);
+      } catch { /* points are optional */ }
+    } catch (e) {
+      console.error('[consent] reconsent failed:', e);
+      setConsentError('บันทึกไม่สำเร็จ กรุณาลองใหม่');
+    } finally {
+      setConsentSaving(false);
+    }
+  };
+
   // patch applies to the active child unless a specific childId is given
   // (e.g. editing a child that isn't currently selected).
   const onChildUpdate = (patch, childId) => {
@@ -164,6 +211,7 @@ export default function App() {
   const childData = childrenList.find(c => c.child_id === activeChildId) ?? null;
   const growthByChild = useGrowthByChild(childrenList);
   const childSwitcherProps = { childrenList, activeChildId, onSwitchChild: switchActiveChild, onChildrenChange: refetchChildren, growthByChild };
+  const consentGateProps = { needsConsent, onOpenConsent: () => setShowConsentModal(true) };
 
   if (screen === 'loading') return <LoadingScreen />;
 
@@ -192,12 +240,12 @@ export default function App() {
   const navTab = screen === 'size' ? 'diaper' : screen === 'profile' ? 'home' : screen;
 
   let view;
-  if      (screen === 'home')      view = <HomeScreen go={go} user={userData} child={childData} goOnboarding={goOnboarding} goProfile={() => go('profile')} checkin={checkin} onStreakSeen={() => setCheckin(null)} {...childSwitcherProps} />;
-  else if (screen === 'diaper')    view = <DiaperScreen go={go} child={childData} onChildUpdate={onChildUpdate} {...childSwitcherProps} />;
-  else if (screen === 'tracker')   view = <TrackerScreen go={go} child={childData} onChildUpdate={onChildUpdate} {...childSwitcherProps} />;
+  if      (screen === 'home')      view = <HomeScreen go={go} user={userData} child={childData} goOnboarding={goOnboarding} goProfile={() => go('profile')} checkin={checkin} onStreakSeen={() => setCheckin(null)} {...childSwitcherProps} {...consentGateProps} />;
+  else if (screen === 'diaper')    view = <DiaperScreen go={go} child={childData} onChildUpdate={onChildUpdate} {...childSwitcherProps} {...consentGateProps} />;
+  else if (screen === 'tracker')   view = <TrackerScreen go={go} child={childData} onChildUpdate={onChildUpdate} {...childSwitcherProps} {...consentGateProps} />;
   else if (screen === 'size')      view = <SizeChartScreen go={go} currentKg={growthByChild[activeChildId]?.weight_kg ?? childData?.birth_weight ?? 8.5} />;
   else if (screen === 'knowledge') view = <KnowledgeScreen go={go} child={childData} />;
-  else if (screen === 'rewards')   view = <RewardsScreen go={go} user={userData} onUserUpdate={onUserUpdate} />;
+  else if (screen === 'rewards')   view = <RewardsScreen go={go} user={userData} onUserUpdate={onUserUpdate} {...consentGateProps} />;
   else if (screen === 'profile')   view = <ProfileScreen go={go} user={userData} child={childData} childrenList={childrenList} onSwitchChild={switchActiveChild} />;
 
   return (
@@ -206,6 +254,15 @@ export default function App() {
         {view}
       </div>
       <BottomNav active={navTab} onChange={go} />
+      {showConsentModal && (
+        <ConsentUpdateModal
+          activeConsent={activeConsent}
+          saving={consentSaving}
+          error={consentError}
+          onAccept={handleReconsent}
+          onClose={() => { setShowConsentModal(false); setConsentError(null); }}
+        />
+      )}
     </div>
   );
 }

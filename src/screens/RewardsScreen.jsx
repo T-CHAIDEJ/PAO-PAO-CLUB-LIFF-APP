@@ -106,7 +106,7 @@ function RedeemSuccessModal({ reward, onClose }) {
   );
 }
 
-export default function RewardsScreen({ go, user, onUserUpdate }) {
+export default function RewardsScreen({ go, user, onUserUpdate, needsConsent, onOpenConsent }) {
   const [tab, setTab] = useState('catalog');
   const [activities, setActivities] = useState([]);
   const [showPointsHistory, setShowPointsHistory] = useState(false);
@@ -152,7 +152,7 @@ export default function RewardsScreen({ go, user, onUserUpdate }) {
   const rewardNameFor = (rewardId) => catalog.find(r => r.rewardId === rewardId)?.name ?? 'ของรางวัล';
 
   const handleConfirmRedeem = async () => {
-    if (!confirmReward || !user?.line_uid) return;
+    if (!confirmReward || !user?.line_uid || needsConsent) return;
     setRedeeming(true); setRedeemError(null);
     try {
       const { newBalance } = await redeemReward(supabase, { lineUid: user.line_uid, reward: confirmReward, currentBalance: points });
@@ -219,7 +219,8 @@ export default function RewardsScreen({ go, user, onUserUpdate }) {
         <div style={{ padding: '16px 16px 0', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           {catalog.map((r, i) => {
             const outOfStock = r.stock != null && r.stock <= 0;
-            const can = points >= r.pts && !outOfStock && r.redeemable;
+            const can = points >= r.pts && !outOfStock && r.redeemable && !needsConsent;
+            const blockedByConsent = needsConsent && points >= r.pts && !outOfStock && r.redeemable;
             return (
               <Card key={r.id ?? i} padded={false} style={{ overflow: 'hidden' }}>
                 <div style={{ height: 84, background: i % 2 ? 'var(--surface-green)' : 'var(--surface-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
@@ -233,8 +234,12 @@ export default function RewardsScreen({ go, user, onUserUpdate }) {
                     <span style={{ font: 'var(--weight-bold) 14px var(--font-base)', color: 'var(--text-title)' }}>{r.pts}</span>
                     <span style={{ font: 'var(--type-caption)', color: 'var(--text-muted)' }}>แต้ม</span>
                   </div>
-                  <Button variant={can ? 'primary' : 'soft'} size="sm" fullWidth disabled={!can} onClick={() => setConfirmReward(r)}>
-                    {outOfStock ? 'สินค้าหมด' : !r.redeemable ? 'ยังแลกไม่ได้' : can ? 'แลกเลย' : 'แต้มไม่พอ'}
+                  <Button
+                    variant={can ? 'primary' : 'soft'} size="sm" fullWidth
+                    disabled={!can && !blockedByConsent}
+                    onClick={() => (blockedByConsent ? onOpenConsent?.() : setConfirmReward(r))}
+                  >
+                    {outOfStock ? 'สินค้าหมด' : !r.redeemable ? 'ยังแลกไม่ได้' : blockedByConsent ? 'ต้องยอมรับเงื่อนไขก่อน' : can ? 'แลกเลย' : 'แต้มไม่พอ'}
                   </Button>
                 </div>
               </Card>

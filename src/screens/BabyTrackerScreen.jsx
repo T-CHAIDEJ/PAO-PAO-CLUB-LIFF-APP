@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Scale, Ruler, Calendar, Plus, X, ChevronDown, ChevronUp, ChevronRight } from 'lucide-react';
 import { Card, Button } from '../components/index.jsx';
-import { SectionTitle } from '../shared/index.jsx';
+import { SectionTitle, ConsentGateNotice } from '../shared/index.jsx';
 import { getWHOData, getWHOValueAtMonth } from '../data/whoData.js';
 import { getWHOWflData, getWHOWflAtLength } from '../data/whoWflData.js';
 import { supabase } from '../lib/supabase.js';
@@ -630,7 +630,7 @@ function FormField({ label, children }) {
 // `record` (optional): an existing 004_growth row being corrected — pre-fills
 // the form and UPDATEs that row instead of inserting a new one, so a mistyped
 // entry can be fixed in place rather than living in the history forever.
-function AddRecordPanel({ childId, lineUid, record, onCancel, onSaved, onDelete }) {
+function AddRecordPanel({ childId, lineUid, record, needsConsent, onCancel, onSaved, onDelete }) {
   const today = todayStr();
   const isEdit = !!record;
   const [date, setDate] = useState(record?.date ?? today);
@@ -645,7 +645,7 @@ function AddRecordPanel({ childId, lineUid, record, onCancel, onSaved, onDelete 
   const canSave = date && weight && height;
 
   const handleSave = async () => {
-    if (!canSave) return;
+    if (!canSave || needsConsent) return;
     const weightKg = parseFloat(weight), heightCm = parseFloat(height);
     if (!Number.isFinite(weightKg) || !Number.isFinite(heightCm)) {
       setError('น้ำหนักหรือส่วนสูงไม่ถูกต้อง กรุณาใส่เป็นตัวเลข');
@@ -685,7 +685,7 @@ function AddRecordPanel({ childId, lineUid, record, onCancel, onSaved, onDelete 
   };
 
   const handleDelete = async () => {
-    if (!record || !window.confirm('ลบรายการบันทึกนี้?')) return;
+    if (!record || needsConsent || !window.confirm('ลบรายการบันทึกนี้?')) return;
     setDeleting(true); setError(null);
     try {
       // DELETE reports no error even when RLS silently blocks it (0 rows
@@ -734,12 +734,13 @@ function AddRecordPanel({ childId, lineUid, record, onCancel, onSaved, onDelete 
         </FormField>
       </div>
       <div style={{ font: 'var(--type-caption)', color: 'var(--text-faint)', marginBottom: 14 }}>* จำเป็น · ช่องอื่นไม่บังคับ</div>
+      {needsConsent && <ConsentGateNotice />}
       {error && <div style={{ font: 'var(--type-caption)', color: 'var(--red-400)', marginBottom: 12 }}>{error}</div>}
-      <Button variant="primary" fullWidth disabled={!canSave} loading={saving} onClick={handleSave} leftIcon={<Plus width={18} height={18} />}>
+      <Button variant="primary" fullWidth disabled={needsConsent || !canSave} loading={saving} onClick={handleSave} leftIcon={<Plus width={18} height={18} />}>
         {isEdit ? 'บันทึกการแก้ไข' : 'บันทึก'}
       </Button>
       {isEdit && (
-        <Button variant="soft" fullWidth loading={deleting} onClick={handleDelete} style={{ marginTop: 10, color: 'var(--red-400)' }}>
+        <Button variant="soft" fullWidth disabled={needsConsent} loading={deleting} onClick={handleDelete} style={{ marginTop: 10, color: 'var(--red-400)' }}>
           ลบรายการนี้
         </Button>
       )}
@@ -838,7 +839,7 @@ function OverviewPanel({ records, gender, birthDate, chartTab, onChartTabChange,
 
 // ─── GrowthPanel (exported) ───────────────────────────────────────────────────
 
-export function GrowthPanel({ child }) {
+export function GrowthPanel({ child, needsConsent }) {
   const [panelView, setPanelView] = useState('overview'); // 'overview' | 'form'
   const [editingRecord, setEditingRecord] = useState(null); // null = adding new, record = editing that one
   const [records, setRecords] = useState([]);
@@ -908,6 +909,7 @@ export function GrowthPanel({ child }) {
         childId={child.child_id}
         lineUid={child?.line_uid}
         record={editingRecord}
+        needsConsent={needsConsent}
         onCancel={closeForm}
         onSaved={handleSaved}
         onDelete={handleDeleted}

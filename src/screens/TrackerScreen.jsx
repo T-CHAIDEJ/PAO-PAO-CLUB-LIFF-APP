@@ -203,7 +203,7 @@ function DiaperPanel({ go, child }) {
   );
 }
 
-export function DiaperScreen({ go, child, onChildUpdate, childrenList, activeChildId, onSwitchChild, onChildrenChange, growthByChild }) {
+export function DiaperScreen({ go, child, onChildUpdate, childrenList, activeChildId, onSwitchChild, onChildrenChange, growthByChild, needsConsent }) {
   const childName = child?.name || 'ลูกน้อย';
   const genderLabel = child?.gender === 'male' ? '👦 ชาย' : child?.gender === 'female' ? '👧 หญิง' : null;
   const birthdateLabel = formatBirthdate(child?.birth_date);
@@ -219,7 +219,7 @@ export function DiaperScreen({ go, child, onChildUpdate, childrenList, activeChi
           <ProfileButton onClick={() => go('profile')} />
         </div>
         <div style={{ position: 'relative', display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-          <ChildAvatarUpload child={child} onChildUpdate={onChildUpdate} />
+          <ChildAvatarUpload child={child} onChildUpdate={onChildUpdate} needsConsent={needsConsent} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ font: 'var(--weight-medium) 13px var(--font-base)', opacity: .8 }}>ผ้าอ้อม</div>
             <div style={{ font: '800 24px var(--font-display)', marginTop: 2, marginBottom: 10 }}>{childName}</div>
@@ -261,6 +261,7 @@ export function DiaperScreen({ go, child, onChildUpdate, childrenList, activeChi
       {showAddChild && (
         <AddChildModal
           lineUid={child?.line_uid}
+          needsConsent={needsConsent}
           onClose={() => setShowAddChild(false)}
           onSaved={() => { onChildrenChange && onChildrenChange(); setShowAddChild(false); }}
         />
@@ -268,6 +269,7 @@ export function DiaperScreen({ go, child, onChildUpdate, childrenList, activeChi
       {editingChild && (
         <EditChildModal
           child={editingChild}
+          needsConsent={needsConsent}
           onClose={() => setEditingChild(null)}
           onSaved={() => { onChildrenChange && onChildrenChange(); setEditingChild(null); }}
         />
@@ -283,7 +285,7 @@ function formatBirthdate(dateStr) {
   return `${d.getDate()} ${THAI_MONTHS[d.getMonth()]} ${d.getFullYear() + 543}`;
 }
 
-function ChildAvatarUpload({ child, onChildUpdate }) {
+function ChildAvatarUpload({ child, onChildUpdate, needsConsent }) {
   const inputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
   const [err, setErr] = useState('');
@@ -291,7 +293,7 @@ function ChildAvatarUpload({ child, onChildUpdate }) {
   const handleFile = async (e) => {
     const file = e.target.files?.[0];
     e.target.value = '';
-    if (!file || !child?.child_id) return;
+    if (!file || !child?.child_id || needsConsent) return;
     setErr('');
     setUploading(true);
     try {
@@ -317,9 +319,9 @@ function ChildAvatarUpload({ child, onChildUpdate }) {
         </div>
         <button
           onClick={() => inputRef.current?.click()}
-          disabled={uploading}
+          disabled={uploading || needsConsent}
           aria-label="เปลี่ยนรูปโปรไฟล์ลูก"
-          style={{ position: 'absolute', right: -2, bottom: -2, width: 26, height: 26, borderRadius: '50%', background: 'var(--color-secondary)', border: '2px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff' }}
+          style={{ position: 'absolute', right: -2, bottom: -2, width: 26, height: 26, borderRadius: '50%', background: 'var(--color-secondary)', border: '2px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff', opacity: needsConsent ? .5 : 1 }}
         >
           <Camera width={13} height={13} />
         </button>
@@ -335,7 +337,7 @@ function ChildAvatarUpload({ child, onChildUpdate }) {
   );
 }
 
-export default function TrackerScreen({ go, child, onChildUpdate, childrenList, activeChildId, onSwitchChild, onChildrenChange, growthByChild }) {
+export default function TrackerScreen({ go, child, onChildUpdate, childrenList, activeChildId, onSwitchChild, onChildrenChange, growthByChild, needsConsent }) {
   const childName  = child?.name     || 'ลูกน้อย';
   const genderLabel = child?.gender === 'male' ? '👦 ชาย' : child?.gender === 'female' ? '👧 หญิง' : null;
   const birthdateLabel = formatBirthdate(child?.birth_date);
@@ -353,7 +355,7 @@ export default function TrackerScreen({ go, child, onChildUpdate, childrenList, 
           </div>
         )}
         <div style={{ position: 'relative', display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-          <ChildAvatarUpload child={child} onChildUpdate={onChildUpdate} />
+          <ChildAvatarUpload child={child} onChildUpdate={onChildUpdate} needsConsent={needsConsent} />
           <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ font: 'var(--weight-medium) 13px var(--font-base)', opacity: .8 }}>พัฒนาการ</div>
           <div style={{ font: '800 24px var(--font-display)', marginTop: 2, marginBottom: 10 }}>{childName}</div>
@@ -390,11 +392,12 @@ export default function TrackerScreen({ go, child, onChildUpdate, childrenList, 
         </div>
       )}
       <div style={{ padding: '16px 16px 0' }}>
-        <GrowthPanel child={child} />
+        <GrowthPanel child={child} needsConsent={needsConsent} />
       </div>
       {showAddChild && (
         <AddChildModal
           lineUid={child?.line_uid}
+          needsConsent={needsConsent}
           onClose={() => setShowAddChild(false)}
           onSaved={() => { onChildrenChange && onChildrenChange(); setShowAddChild(false); }}
         />
@@ -402,6 +405,7 @@ export default function TrackerScreen({ go, child, onChildUpdate, childrenList, 
       {editingChild && (
         <EditChildModal
           child={editingChild}
+          needsConsent={needsConsent}
           onClose={() => setEditingChild(null)}
           onSaved={() => { onChildrenChange && onChildrenChange(); setEditingChild(null); }}
         />

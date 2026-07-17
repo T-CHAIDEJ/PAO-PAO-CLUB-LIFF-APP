@@ -396,7 +396,7 @@ function BannerCarousel({ banners }) {
   );
 }
 
-export default function HomeScreen({ go, user, child, goOnboarding, goProfile, checkin, onStreakSeen, childrenList, activeChildId, onSwitchChild, onChildrenChange, growthByChild }) {
+export default function HomeScreen({ go, user, child, goOnboarding, goProfile, checkin, onStreakSeen, childrenList, activeChildId, onSwitchChild, onChildrenChange, growthByChild, needsConsent, onOpenConsent }) {
   const isGuest = !user || user.role === 'guest';
   const pts = user?.points ?? 0;
   const [showStreak, setShowStreak] = useState(false);
@@ -452,6 +452,7 @@ export default function HomeScreen({ go, user, child, goOnboarding, goProfile, c
       {showAddChild && (
         <AddChildModal
           lineUid={user?.line_uid}
+          needsConsent={needsConsent}
           onClose={() => setShowAddChild(false)}
           onSaved={() => { onChildrenChange && onChildrenChange(); setShowAddChild(false); }}
         />
@@ -460,6 +461,7 @@ export default function HomeScreen({ go, user, child, goOnboarding, goProfile, c
         <EditChildModal
           child={editingChild.child}
           startGraduating={editingChild.startGraduating}
+          needsConsent={needsConsent}
           onClose={() => setEditingChild(null)}
           onSaved={() => { onChildrenChange && onChildrenChange(); setEditingChild(null); }}
         />
@@ -526,6 +528,23 @@ export default function HomeScreen({ go, user, child, goOnboarding, goProfile, c
           </Card>
         )}
       </div>
+
+      {/* Reconsent banner — shown when the member's accepted PDPA version has
+          fallen behind the currently active one. Not a hard block: they can
+          still view everything as-is, they just can't add/edit data or earn
+          more points until they re-accept (enforced at each write action). */}
+      {needsConsent && (
+        <div style={{ padding: '14px 16px 0' }}>
+          <Card tone="soft" interactive onClick={onOpenConsent} style={{ display: 'flex', alignItems: 'center', gap: 12, border: '1px solid #FDE68A', background: '#FFFBEB' }}>
+            <span style={{ fontSize: 22, flex: 'none' }}>⚠️</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ font: 'var(--weight-bold) 14px var(--font-display)', color: 'var(--text-heading)' }}>นโยบายความเป็นส่วนตัวมีการปรับปรุง</div>
+              <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)', marginTop: 2 }}>กดยอมรับเงื่อนไขใหม่ เพื่อบันทึกข้อมูล/สะสมแต้มต่อได้</div>
+            </div>
+            <ChevronRight width={18} height={18} style={{ color: 'var(--text-faint)', flex: 'none' }} />
+          </Card>
+        </div>
+      )}
 
       {/* Quick actions */}
       <div style={{ padding: '20px 16px 0' }}>

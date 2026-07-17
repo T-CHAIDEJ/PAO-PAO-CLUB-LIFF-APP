@@ -1,6 +1,18 @@
 import { X, MoreHorizontal, UserCircle2, Plus, Pencil } from 'lucide-react';
 import { calcAge } from '../lib/age.js';
 
+// Shown next to any disabled save/redeem/upload button while the member's
+// consent version is outdated — points them at where to actually fix it
+// (the banner/modal lives on Home) instead of just leaving a mystery-disabled
+// button.
+export function ConsentGateNotice() {
+  return (
+    <div style={{ font: 'var(--type-caption)', color: '#B45309', background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 'var(--radius-md)', padding: '8px 12px', marginBottom: 10 }}>
+      ต้องกดยอมรับเงื่อนไขความเป็นส่วนตัวฉบับใหม่ก่อน (ที่หน้าแรก) จึงจะบันทึก/แก้ไขข้อมูลได้
+    </div>
+  );
+}
+
 export function SkyDeco() {
   return (
     <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', color: '#fff' }}>
