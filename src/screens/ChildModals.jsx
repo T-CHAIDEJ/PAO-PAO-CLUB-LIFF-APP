@@ -56,7 +56,7 @@ function PhotoPicker({ preview, onPick }) {
   );
 }
 
-function ModalShell({ title, subtitle, onClose, children }) {
+export function ModalShell({ title, subtitle, onClose, children }) {
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(15,23,42,.55)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
       <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 480, maxHeight: '88vh', overflowY: 'auto', background: '#fff', borderRadius: '20px 20px 0 0', padding: '24px 22px 32px' }}>
@@ -131,6 +131,9 @@ export function AddChildModal({ onClose, onSaved, lineUid, needsConsent }) {
     if (kind !== 'pregnant') {
       const validationMsg = validateBornChild({ weightKg: parseFloat(weightKg), heightCm: parseFloat(heightCm), birthdate });
       if (validationMsg) { setError(validationMsg); setSaving(false); return; }
+    } else if (dueDate && dueDate < todayStr()) {
+      // min attr on the date input isn't reliably enforced everywhere
+      setError('กำหนดคลอดต้องไม่เป็นวันในอดีต'); setSaving(false); return;
     }
     try {
       if (kind === 'pregnant') {
@@ -182,7 +185,7 @@ export function AddChildModal({ onClose, onSaved, lineUid, needsConsent }) {
     <ModalShell title={kind === 'pregnant' ? '🤰 เพิ่มการตั้งครรภ์' : '👶 เพิ่มลูก'} onClose={onClose}>
       {kind === 'pregnant' ? (
         <Field label="กำหนดคลอด (EDD)">
-          <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} style={dateInputStyle} />
+          <input type="date" value={dueDate} min={todayStr()} onChange={(e) => setDueDate(e.target.value)} style={dateInputStyle} />
         </Field>
       ) : (
         <BornChildFields
@@ -238,6 +241,10 @@ export function EditChildModal({ child, onClose, onSaved, startGraduating = fals
     if (graduating || !child.is_pregnant) {
       const validationMsg = validateBornChild({ weightKg: parseFloat(weightKg), heightCm: parseFloat(heightCm), birthdate });
       if (validationMsg) { setError(validationMsg); setSaving(false); return; }
+    } else if (dueDate && dueDate !== child.due_date && dueDate < todayStr()) {
+      // Only reject a NEWLY-picked past EDD — an overdue pregnancy's stored
+      // EDD is legitimately in the past and shouldn't block editing the name.
+      setError('กำหนดคลอดต้องไม่เป็นวันในอดีต'); setSaving(false); return;
     }
     try {
       if (graduating) {
@@ -273,7 +280,7 @@ export function EditChildModal({ child, onClose, onSaved, startGraduating = fals
             <input type="text" value={name} onChange={(e) => setName(e.target.value)} style={inputStyle} placeholder="ชื่อเล่น (ไม่บังคับ)" />
           </Field>
           <Field label="กำหนดคลอด (EDD)">
-            <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} style={dateInputStyle} />
+            <input type="date" value={dueDate} min={todayStr()} onChange={(e) => setDueDate(e.target.value)} style={dateInputStyle} />
           </Field>
           <div style={{ marginBottom: 14 }}>
             <Button variant="soft" fullWidth onClick={() => setGraduating(true)}>ลูกเกิดแล้ว 🎉</Button>

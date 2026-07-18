@@ -17,3 +17,15 @@ export function computeStage(birthDateStr) {
 }
 
 export const PREGNANCY_STAGE = 'pregnancy';
+
+// Live stage for content/banner targeting. The stored 003_children.stage
+// is only refreshed when the row is written, so it goes stale as the child
+// ages (found a real case: a child stored as early_infant who had already
+// grown into growing_infant) — always derive from birth_date at read time
+// instead, falling back to the stored value only when there's no birth
+// date to compute from.
+export function currentStage(child) {
+  if (!child) return null;
+  if (child.is_pregnant) return PREGNANCY_STAGE;
+  return computeStage(child.birth_date) ?? child.stage ?? null;
+}

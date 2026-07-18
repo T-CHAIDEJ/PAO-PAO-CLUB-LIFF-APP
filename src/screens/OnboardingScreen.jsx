@@ -168,7 +168,7 @@ function SegmentForm({ segment, lineProfile, onSubmit, loading, error }) {
 
       {segment === 'A' && (
         <FormField label="กำหนดคลอด (EDD)">
-          <input type="date" value={edd} onChange={(e) => setEdd(e.target.value)} style={dateInputStyle} />
+          <input type="date" value={edd} min={todayStr()} onChange={(e) => setEdd(e.target.value)} style={dateInputStyle} />
         </FormField>
       )}
 
@@ -283,10 +283,13 @@ export default function OnboardingScreen({ lineProfile, initialSegment, onComple
       if (segment === 'B' && (!Number.isFinite(formData.weightKg) || !Number.isFinite(formData.heightCm))) {
         throw validationError('น้ำหนักหรือส่วนสูงไม่ถูกต้อง กรุณาใส่เป็นตัวเลข');
       }
-      // The date input's `max` attribute isn't reliably enforced by every
-      // mobile keyboard/browser, so re-check server-side too.
+      // The date input's `max`/`min` attributes aren't reliably enforced by
+      // every mobile keyboard/browser, so re-check at submit too.
       if (segment === 'B' && formData.birthdate && formData.birthdate > todayStr()) {
         throw validationError('วันเกิดลูกต้องไม่เกินวันนี้');
+      }
+      if (segment === 'A' && formData.edd && formData.edd < todayStr()) {
+        throw validationError('กำหนดคลอดต้องไม่เป็นวันในอดีต');
       }
 
       // `role` on 001_users is an account privilege tier (guest/member/staff/admin),

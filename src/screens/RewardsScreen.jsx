@@ -1,10 +1,19 @@
 import { useState, useEffect } from 'react';
 import { Star, Gift, Plus, ChevronRight, X } from 'lucide-react';
 import { Card, Badge, Button, Tabs } from '../components/index.jsx';
-import { SkyDeco, ProfileButton } from '../shared/index.jsx';
+import { SkyDeco, ProfileButton, SizeBoundaryNotice } from '../shared/index.jsx';
 import { supabase } from '../lib/supabase.js';
 import { fetchRewardsCatalog } from '../lib/rewards.js';
 import { redeemReward } from '../lib/redemptions.js';
+import { getSizes, recommendSize, isNearSizeBoundary } from '../lib/diaperSize.js';
+import { AddressFields, shippingFromUser, validateShipping, buildAddressText, saveShipping } from './AddressModal.jsx';
+
+// Which rewards need a diaper-size choice — 007_rewards has no "type"
+// column, so this keys off the name (works for the current catalog;
+// flagged to Dev B that a real product-type column would be sturdier).
+function needsSizeChoice(reward) {
+  return /ผ้าอ้อม|ไซซ์|size|sampling/i.test(reward?.name ?? '');
+}
 
 // 007_rewards has no "tag"/icon columns — these only decorate the 3
 // hardcoded fallback ids (see lib/rewards.js); real DB rewards just
@@ -34,20 +43,74 @@ function activityLabel(a) {
   return a.source;
 }
 
-function ConfirmRedeemModal({ reward, points, saving, error, onConfirm, onClose }) {
+// Bottom sheet collecting everything an order actually needs before points
+// get deducted: diaper size (when applicable, defaulted to the recommended
+// size but freely adjustable — e.g. sizing up when the child is close to
+// the next range) and receiver/shipping info (prefilled from the profile,
+// saved back to it on confirm so next time it's one tap).
+function ConfirmRedeemModal({ reward, points, user, currentKg, saving, error, onConfirm, onClose }) {
+  const askSize = needsSizeChoice(reward);
+  const recommended = currentKg ? recommendSize(currentKg).code : null;
+  const [size, setSize] = useState(recommended ?? '');
+  const [shipping, setShipping] = useState(shippingFromUser(user));
+  const [localError, setLocalError] = useState(null);
+
+  const handleConfirm = () => {
+    if (askSize && !size) { setLocalError('กรุณาเลือกไซส์'); return; }
+    const msg = validateShipping(shipping);
+    if (msg) { setLocalError(msg); return; }
+    setLocalError(null);
+    onConfirm({ size: askSize ? size : null, shipping });
+  };
+
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(15,23,42,.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 340, background: '#fff', borderRadius: 20, padding: '24px 22px', textAlign: 'center' }}>
-        <div style={{ fontSize: 40, marginBottom: 8 }}>🎁</div>
-        <div style={{ font: 'var(--weight-bold) 17px var(--font-display)', color: 'var(--text-heading)' }}>ยืนยันแลกของรางวัล</div>
-        <div style={{ font: 'var(--type-body)', color: 'var(--text-body)', marginTop: 8, lineHeight: 1.5 }}>
-          ใช้ <b>{reward.pts}</b> แต้ม แลก<br />"{reward.name}"
+    <div onClick={saving ? undefined : onClose} style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(15,23,42,.55)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 480, maxHeight: '90vh', overflowY: 'auto', background: '#fff', borderRadius: '20px 20px 0 0', padding: '24px 22px 32px' }}>
+        <div style={{ font: '800 20px var(--font-display)', color: 'var(--text-heading)', marginBottom: 2 }}>🎁 ยืนยันแลกของรางวัล</div>
+        <div style={{ font: 'var(--type-body)', color: 'var(--text-body)', lineHeight: 1.5 }}>"{reward.name}"</div>
+        <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)', marginBottom: 14 }}>
+          ใช้ {reward.pts} แต้ม · เหลือหลังแลก {points - reward.pts} แต้ม
         </div>
-        <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)', marginTop: 6 }}>เหลือแต้มหลังแลก {points - reward.pts} แต้ม</div>
-        {error && <div style={{ font: 'var(--type-caption)', color: '#dc2626', marginTop: 10 }}>{error}</div>}
-        <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
+
+        {askSize && (
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ font: 'var(--type-label)', color: 'var(--text-title)', marginBottom: 8 }}>เลือกไซส์ *</div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {getSizes().map((s) => {
+                const active = size === s.code;
+                return (
+                  <button
+                    key={s.code}
+                    onClick={() => setSize(s.code)}
+                    style={{
+                      border: active ? '2px solid var(--color-secondary)' : '1px solid var(--border-default)',
+                      background: active ? 'var(--surface-green)' : '#fff',
+                      color: active ? 'var(--green-700)' : 'var(--text-body)',
+                      borderRadius: 12, padding: '8px 14px', cursor: 'pointer',
+                      font: `${active ? 'var(--weight-bold)' : 'var(--weight-medium)'} 14px var(--font-base)`,
+                    }}
+                  >
+                    {s.code}{recommended === s.code ? ' ★' : ''}
+                  </button>
+                );
+              })}
+            </div>
+            {recommended && (
+              <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)', marginTop: 6 }}>
+                ★ ไซส์แนะนำจากน้ำหนักล่าสุดของลูก ({currentKg} กก.) — เลือกไซส์อื่นได้ตามต้องการ
+              </div>
+            )}
+            {currentKg != null && isNearSizeBoundary(currentKg) && <SizeBoundaryNotice style={{ marginTop: 8 }} />}
+          </div>
+        )}
+
+        <div style={{ font: 'var(--type-label)', color: 'var(--text-title)', marginBottom: 8 }}>ที่อยู่จัดส่ง</div>
+        <AddressFields values={shipping} onChange={setShipping} />
+
+        {(localError || error) && <div style={{ font: 'var(--type-caption)', color: '#dc2626', marginBottom: 8 }}>{localError || error}</div>}
+        <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
           <Button variant="soft" fullWidth onClick={onClose} disabled={saving}>ยกเลิก</Button>
-          <Button variant="primary" fullWidth onClick={onConfirm} loading={saving}>ยืนยัน</Button>
+          <Button variant="primary" fullWidth onClick={handleConfirm} loading={saving}>ยืนยันแลก</Button>
         </div>
       </div>
     </div>
@@ -106,7 +169,7 @@ function RedeemSuccessModal({ reward, onClose }) {
   );
 }
 
-export default function RewardsScreen({ go, user, onUserUpdate, needsConsent, onOpenConsent }) {
+export default function RewardsScreen({ go, user, onUserUpdate, needsConsent, onOpenConsent, currentKg }) {
   const [tab, setTab] = useState('catalog');
   const [activities, setActivities] = useState([]);
   const [showPointsHistory, setShowPointsHistory] = useState(false);
@@ -151,12 +214,22 @@ export default function RewardsScreen({ go, user, onUserUpdate, needsConsent, on
   // catalog only has active rewards, so this can miss retired ones.
   const rewardNameFor = (rewardId) => catalog.find(r => r.rewardId === rewardId)?.name ?? 'ของรางวัล';
 
-  const handleConfirmRedeem = async () => {
+  const handleConfirmRedeem = async ({ size, shipping }) => {
     if (!confirmReward || !user?.line_uid || needsConsent) return;
     setRedeeming(true); setRedeemError(null);
     try {
-      const { newBalance } = await redeemReward(supabase, { lineUid: user.line_uid, reward: confirmReward, currentBalance: points });
-      onUserUpdate && onUserUpdate({ points: newBalance });
+      // Save the shipping info to the profile first (so it's prefilled next
+      // time and Profile > ที่อยู่จัดส่ง shows it), then place the order with
+      // a snapshot of it.
+      const shippingPatch = await saveShipping(user.line_uid, shipping);
+      const { newBalance } = await redeemReward(supabase, {
+        lineUid: user.line_uid, reward: confirmReward, currentBalance: points,
+        size,
+        receiverName: shipping.name.trim(),
+        receiverPhone: shipping.phone.trim(),
+        shippingAddress: buildAddressText(shipping),
+      });
+      onUserUpdate && onUserUpdate({ ...shippingPatch, points: newBalance });
       setSuccessReward(confirmReward);
       setConfirmReward(null);
       loadCatalog();
@@ -265,7 +338,7 @@ export default function RewardsScreen({ go, user, onUserUpdate, needsConsent, on
                     </span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ font: 'var(--weight-medium) 14px var(--font-base)', color: 'var(--text-body)' }}>{rewardNameFor(r.reward_id)}</div>
-                      <div style={{ font: 'var(--type-caption)', color: 'var(--text-faint)' }}>{fmtDate(r.created_at)} · ใช้ {r.points_used} แต้ม</div>
+                      <div style={{ font: 'var(--type-caption)', color: 'var(--text-faint)' }}>{fmtDate(r.created_at)} · ใช้ {r.points_used} แต้ม{r.size ? ` · ไซส์ ${r.size}` : ''}</div>
                     </div>
                     <span style={{ font: 'var(--weight-semibold) 11px var(--font-base)', color: st.color, background: st.bg, padding: '4px 10px', borderRadius: 999, flex: 'none' }}>{st.label}</span>
                   </div>
@@ -284,6 +357,8 @@ export default function RewardsScreen({ go, user, onUserUpdate, needsConsent, on
         <ConfirmRedeemModal
           reward={confirmReward}
           points={points}
+          user={user}
+          currentKg={currentKg}
           saving={redeeming}
           error={redeemError}
           onConfirm={handleConfirmRedeem}

@@ -1,13 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 import { Baby, Ruler, Gift, ScanLine, Bell, ChevronRight, Star, UserPlus, UserCircle2, Mars, Venus, Flame } from 'lucide-react';
 import { Card, Badge, Button, ProgressBar } from '../components/index.jsx';
-import { SectionTitle, ProfileButton, ChildCardsRow, SizeBoundaryNotice } from '../shared/index.jsx';
+import { SectionTitle, ProfileButton, ChildCardsRow, SizeBoundaryNotice, ComingSoon } from '../shared/index.jsx';
 import { recommendSize } from './TrackerScreen.jsx';
 import { isNearSizeBoundary } from '../lib/diaperSize.js';
 import { supabase } from '../lib/supabase.js';
 import { STREAK_POINTS } from '../lib/points.js';
 import { fetchRewardsCatalog, nextUnlockedReward } from '../lib/rewards.js';
 import { calcAge } from '../lib/age.js';
+import { currentStage } from '../lib/stage.js';
 import { AddChildModal, EditChildModal } from './ChildModals.jsx';
 
 const ACTIONS = [
@@ -269,21 +270,6 @@ function StreakPopup({ checkin, onClose }) {
   );
 }
 
-function ComingSoon({ title, onClose }) {
-  return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(15,23,42,.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 320, background: '#fff', borderRadius: 20, padding: '28px 22px', textAlign: 'center' }}>
-        <div style={{ fontSize: 46 }}>🚧</div>
-        <div style={{ font: 'var(--weight-bold) 18px var(--font-display)', color: 'var(--text-heading)', marginTop: 8 }}>{title}</div>
-        <div style={{ font: 'var(--type-body)', color: 'var(--text-muted)', marginTop: 6 }}>ฟีเจอร์นี้กำลังพัฒนา เร็วๆ นี้</div>
-        <div style={{ marginTop: 18 }}>
-          <Button variant="primary" fullWidth onClick={onClose}>เข้าใจแล้ว</Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // Lets a pregnant (segment A) user "graduate" to segment B once the baby
 // is born — updates the existing 003_children row (never inserts a new
 // one) and logs an initial 004_growth record, same as segment B signup.
@@ -429,14 +415,14 @@ export default function HomeScreen({ go, user, child, goOnboarding, goProfile, c
           .order('banner_no', { ascending: true });
         // target_stages: empty/null = show to everyone; otherwise only show
         // if it includes this child's stage.
-        const stage = child?.stage ?? null;
+        const stage = currentStage(child);
         const filtered = (data || []).filter(b =>
           !b.target_stages || b.target_stages.length === 0 || (stage && b.target_stages.includes(stage)));
         if (alive) setBanners(filtered);
       } catch (e) { console.warn('[home] banners fetch failed:', e?.message); }
     })();
     return () => { alive = false; };
-  }, [child?.stage]);
+  }, [child?.child_id, child?.birth_date, child?.is_pregnant]);
 
   const closeStreak = () => { setShowStreak(false); onStreakSeen && onStreakSeen(); };
 
@@ -482,9 +468,13 @@ export default function HomeScreen({ go, user, child, goOnboarding, goProfile, c
       }}>
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
           <div style={{ display: 'flex', gap: 8 }}>
-            <span style={{ width: 34, height: 34, borderRadius: '50%', background: 'rgba(255,255,255,.18)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <button
+              onClick={() => setComingSoon('การแจ้งเตือน')}
+              aria-label="การแจ้งเตือน"
+              style={{ width: 34, height: 34, borderRadius: '50%', border: 'none', background: 'rgba(255,255,255,.18)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+            >
               <Bell width={20} height={20} />
-            </span>
+            </button>
             <ProfileButton onClick={goProfile} />
           </div>
         </div>

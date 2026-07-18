@@ -1,12 +1,13 @@
 import { useState } from 'react';
-import { Settings, Medal, MapPin, ShoppingBag, Headphones, ChevronRight } from 'lucide-react';
-import { Card, Badge, Avatar, Switch, Button } from '../components/index.jsx';
-import { SkyDeco, SectionTitle } from '../shared/index.jsx';
+import { Medal, MapPin, Headphones, ChevronRight } from 'lucide-react';
+import { Card, Badge, Avatar, Button } from '../components/index.jsx';
+import { SkyDeco, SectionTitle, ComingSoon } from '../shared/index.jsx';
 import { calcAge } from '../lib/age.js';
+import { AddressModal, hasShippingInfo } from './AddressModal.jsx';
 
-export default function ProfileScreen({ go, user, child, childrenList, onSwitchChild }) {
-  const [push,  setPush]  = useState(true);
-  const [promo, setPromo] = useState(false);
+export default function ProfileScreen({ go, user, child, childrenList, onSwitchChild, onUserUpdate }) {
+  const [showAddress, setShowAddress] = useState(false);
+  const [comingSoon, setComingSoon] = useState(null);
 
   const name = user?.parent_name || user?.display_name || 'คุณแม่';
   const points = user?.points ?? 0;
@@ -25,10 +26,12 @@ export default function ProfileScreen({ go, user, child, childrenList, onSwitchC
     if (go) go('tracker');
   };
 
+  // "ประวัติการสั่งซื้อ" removed for now — no central order system exists
+  // yet to back it. "ติดต่อเรา" stays visible but as coming-soon until the
+  // contact page + its DB wiring get built.
   const LINKS = [
-    { Icon: MapPin,      label: 'ที่อยู่จัดส่ง',       note: null },
-    { Icon: ShoppingBag, label: 'ประวัติการสั่งซื้อ',  note: null },
-    { Icon: Headphones,  label: 'ติดต่อเรา',            note: null },
+    { Icon: MapPin,     label: 'ที่อยู่จัดส่ง', note: hasShippingInfo(user) ? user.province : 'ยังไม่ได้ระบุ', onClick: () => setShowAddress(true) },
+    { Icon: Headphones, label: 'ติดต่อเรา',      note: null, onClick: () => setComingSoon('ติดต่อเรา') },
   ];
 
   const handleLogout = () => {
@@ -48,7 +51,6 @@ export default function ProfileScreen({ go, user, child, childrenList, onSwitchC
             <div style={{ font: '800 20px var(--font-display)' }}>{name}</div>
             <div style={{ font: 'var(--weight-medium) 13px var(--font-base)', opacity: .9 }}>{segLabel}</div>
           </div>
-          <Settings width={22} height={22} style={{ opacity: .9 }} />
         </div>
       </div>
 
@@ -104,17 +106,14 @@ export default function ProfileScreen({ go, user, child, childrenList, onSwitchC
         </Card>
       </div>
 
-      {/* Notification settings */}
+      {/* Notification settings — coming soon (the old toggles were pure
+          local state that persisted nowhere, worse than saying so honestly) */}
       <div style={{ padding: '18px 16px 0' }}>
         <SectionTitle>การแจ้งเตือน</SectionTitle>
-        <Card padded={false} style={{ overflow: 'hidden' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', borderBottom: '1px solid var(--gray-100)' }}>
-            <span style={{ flex: 1, font: 'var(--weight-medium) 15px var(--font-base)', color: 'var(--text-body)' }}>เตือนเปลี่ยนผ้าอ้อม</span>
-            <Switch checked={push} onChange={setPush} />
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px' }}>
-            <span style={{ flex: 1, font: 'var(--weight-medium) 15px var(--font-base)', color: 'var(--text-body)' }}>ข่าวสาร & โปรโมชั่น</span>
-            <Switch checked={promo} onChange={setPromo} />
+        <Card style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ fontSize: 22, flex: 'none' }}>🚧</span>
+          <div style={{ font: 'var(--type-body-sm)', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+            ตั้งค่าการแจ้งเตือน (เตือนเปลี่ยนผ้าอ้อม, ข่าวสาร & โปรโมชั่น) กำลังพัฒนา เร็วๆ นี้
           </div>
         </Card>
       </div>
@@ -122,6 +121,15 @@ export default function ProfileScreen({ go, user, child, childrenList, onSwitchC
       <div style={{ padding: '20px 16px 0' }}>
         <Button variant="soft" fullWidth onClick={handleLogout}>ออกจากระบบ</Button>
       </div>
+
+      {showAddress && (
+        <AddressModal
+          user={user}
+          onClose={() => setShowAddress(false)}
+          onSaved={(patch) => { onUserUpdate && onUserUpdate(patch); setShowAddress(false); }}
+        />
+      )}
+      {comingSoon && <ComingSoon title={comingSoon} onClose={() => setComingSoon(null)} />}
     </div>
   );
 }

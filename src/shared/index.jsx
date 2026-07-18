@@ -1,5 +1,24 @@
 import { X, MoreHorizontal, UserCircle2, Plus, Pencil } from 'lucide-react';
 import { calcAge } from '../lib/age.js';
+import { Button } from '../components/index.jsx';
+
+// "Feature under construction" popup — shared by every screen that has a
+// visible entry point for something not built yet (notifications, contact
+// page, scan-to-earn), so nothing on screen is ever a silent dead button.
+export function ComingSoon({ title, onClose }) {
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(15,23,42,.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 320, background: '#fff', borderRadius: 20, padding: '28px 22px', textAlign: 'center' }}>
+        <div style={{ fontSize: 46 }}>🚧</div>
+        <div style={{ font: 'var(--weight-bold) 18px var(--font-display)', color: 'var(--text-heading)', marginTop: 8 }}>{title}</div>
+        <div style={{ font: 'var(--type-body)', color: 'var(--text-muted)', marginTop: 6 }}>ฟีเจอร์นี้กำลังพัฒนา เร็วๆ นี้</div>
+        <div style={{ marginTop: 18 }}>
+          <Button variant="primary" fullWidth onClick={onClose}>เข้าใจแล้ว</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // Shown next to any disabled save/redeem/upload button while the member's
 // consent version is outdated — points them at where to actually fix it

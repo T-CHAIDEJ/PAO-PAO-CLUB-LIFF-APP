@@ -9,7 +9,11 @@ import { logAction, logError } from './userLogs.js';
 //    fails). Each failure point logs which step it was — a plain "redeem
 //    failed" catch-all wouldn't tell us whether stock/points already moved
 //    before the failure, which is exactly the state that needs reconciling.
-export async function redeemReward(supabase, { lineUid, reward, currentBalance }) {
+// `size` (diaper rewards only) and the receiver/shipping fields are
+// snapshotted onto the redemption row itself, so the order keeps whatever
+// was chosen/entered at redemption time even if the profile address
+// changes later.
+export async function redeemReward(supabase, { lineUid, reward, currentBalance, size = null, receiverName = null, receiverPhone = null, shippingAddress = null }) {
   if (reward.stock != null) {
     const { data: claimed, error: stockErr } = await supabase
       .from('007_rewards')
@@ -37,6 +41,7 @@ export async function redeemReward(supabase, { lineUid, reward, currentBalance }
 
   const { error: redemptionErr } = await supabase.from('016_redemptions').insert({
     line_uid: lineUid, reward_id: reward.rewardId, points_used: reward.pts, status: 'pending',
+    size, receiver_name: receiverName, receiver_phone: receiverPhone, shipping_address: shippingAddress,
   });
   if (redemptionErr) {
     logError(lineUid, 'redeem_log_insert_after_points_deducted', redemptionErr);

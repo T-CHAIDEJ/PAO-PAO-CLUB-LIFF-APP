@@ -3,6 +3,7 @@ import { X, Clock, ChevronRight, BookOpen } from 'lucide-react';
 import { Card, Badge } from '../components/index.jsx';
 import { SkyDeco, ProfileButton } from '../shared/index.jsx';
 import { supabase } from '../lib/supabase.js';
+import { currentStage } from '../lib/stage.js';
 
 // Map a DB row (snake_case) → the shape the UI components expect (camelCase).
 // 014_articles.content is a plain `text` column (not the old jsonb block-array
@@ -118,7 +119,9 @@ export default function KnowledgeScreen({ go, child }) {
   const [activeArticle, setActiveArticle] = useState(null);
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
-  const stage = child?.stage ?? null;
+  // Derived live from birth_date (not the stored stage column, which goes
+  // stale as the child ages) so age-targeted articles stay accurate.
+  const stage = currentStage(child);
 
   useEffect(() => {
     let alive = true;
