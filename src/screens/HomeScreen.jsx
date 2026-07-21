@@ -9,6 +9,7 @@ import { STREAK_POINTS } from '../lib/points.js';
 import { fetchRewardsCatalog, nextUnlockedReward } from '../lib/rewards.js';
 import { calcAge } from '../lib/age.js';
 import { currentStage } from '../lib/stage.js';
+import { normalizeExternalUrl } from '../lib/url.js';
 import { AddChildModal, EditChildModal } from './ChildModals.jsx';
 
 const ACTIONS = [
@@ -349,25 +350,31 @@ function BannerCarousel({ banners }) {
         onClickCapture={onClickCapture}
       >
         <div style={{ display: 'flex', height: '100%', transform: `translateX(${-safeIndex * trackWidth + dragOffset}px)`, transition: dragging ? 'none' : 'transform .45s cubic-bezier(.4,0,.2,1)' }}>
-          {banners.map((b) => (
-            <a
-              key={b.id}
-              href={b.link_url || '#'}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ flex: `0 0 ${trackWidth}px`, height: '100%', textDecoration: 'none', position: 'relative', background: b.banner_img ? 'var(--surface-soft)' : 'var(--gradient-green)' }}
-            >
-              {b.banner_img ? (
-                <img src={b.banner_img} alt={b.title || 'โปรโมชัน'} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
-              ) : (
-                <div style={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '0 22px', color: '#fff' }}>
-                  <div style={{ font: '800 18px var(--font-display)' }}>{b.title}</div>
-                  {b.subtitle && <div style={{ font: 'var(--weight-medium) 13px var(--font-base)', opacity: .95, marginTop: 4 }}>{b.subtitle}</div>}
-                  {b.link_url && <div style={{ marginTop: 12, display: 'inline-block', background: 'rgba(255,255,255,.92)', color: 'var(--text-heading)', font: 'var(--weight-bold) 12px var(--font-base)', padding: '6px 14px', borderRadius: 999 }}>ดูเลย →</div>}
-                </div>
-              )}
-            </a>
-          ))}
+          {banners.map((b) => {
+            // A link_url typed without a scheme (e.g. "tiktok.com") is a
+            // relative path to a browser, not an external site — normalize
+            // it, and skip rendering a dead <a href="#"> when there's no
+            // link at all (some banners are purely decorative).
+            const href = normalizeExternalUrl(b.link_url);
+            const Wrapper = href ? 'a' : 'div';
+            return (
+              <Wrapper
+                key={b.id}
+                {...(href ? { href, target: '_blank', rel: 'noopener noreferrer' } : {})}
+                style={{ flex: `0 0 ${trackWidth}px`, height: '100%', textDecoration: 'none', position: 'relative', background: b.banner_img ? 'var(--surface-soft)' : 'var(--gradient-green)' }}
+              >
+                {b.banner_img ? (
+                  <img src={b.banner_img} alt={b.title || 'โปรโมชัน'} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <div style={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '0 22px', color: '#fff' }}>
+                    <div style={{ font: '800 18px var(--font-display)' }}>{b.title}</div>
+                    {b.subtitle && <div style={{ font: 'var(--weight-medium) 13px var(--font-base)', opacity: .95, marginTop: 4 }}>{b.subtitle}</div>}
+                    {href && <div style={{ marginTop: 12, display: 'inline-block', background: 'rgba(255,255,255,.92)', color: 'var(--text-heading)', font: 'var(--weight-bold) 12px var(--font-base)', padding: '6px 14px', borderRadius: 999 }}>ดูเลย →</div>}
+                  </div>
+                )}
+              </Wrapper>
+            );
+          })}
         </div>
       </div>
       {count > 1 && (
