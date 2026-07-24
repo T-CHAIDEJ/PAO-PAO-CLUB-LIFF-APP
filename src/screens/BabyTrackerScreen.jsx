@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Scale, Ruler, Calendar, Plus, X, ChevronDown, ChevronUp, ChevronRight } from 'lucide-react';
+import { Ruler, Calendar, Plus, X, ChevronDown, ChevronUp, ChevronRight } from 'lucide-react';
 import { Card, Button } from '../components/index.jsx';
-import { SectionTitle, ConsentGateNotice } from '../shared/index.jsx';
+import { SectionTitle, ConsentGateNotice, ScaleStandIcon } from '../shared/index.jsx';
 import { getWHOData, getWHOValueAtMonth } from '../data/whoData.js';
 import { getWHOWflData, getWHOWflAtLength } from '../data/whoWflData.js';
 import { supabase } from '../lib/supabase.js';
@@ -218,7 +218,7 @@ function GrowthZoneBar({ zScore }) {
 // ─── Summary metric cards ─────────────────────────────────────────────────────
 
 const METRICS = [
-  { key: 'weightKg', indicator: 'wfa',  label: 'น้ำหนัก',  unit: 'กก.', Icon: Scale,  tone: 'var(--blue-100)',  fg: 'var(--blue-600)'  },
+  { key: 'weightKg', indicator: 'wfa',  label: 'น้ำหนัก',  unit: 'กก.', Icon: ScaleStandIcon,  tone: 'var(--blue-100)',  fg: 'var(--blue-600)'  },
   { key: 'heightCm', indicator: 'lhfa', label: 'ส่วนสูง',  unit: 'ซม.', Icon: Ruler,  tone: 'var(--green-100)', fg: 'var(--green-700)' },
 ];
 
@@ -591,7 +591,7 @@ function HistoryList({ records, onEditRecord }) {
             }}
           >
             <span style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--gray-50)', color: 'var(--blue-500)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
-              <Scale width={18} height={18} />
+              <ScaleStandIcon width={18} height={18} />
             </span>
             <div style={{ flex: 1 }}>
               <div style={{ font: 'var(--weight-medium) 14px var(--font-base)', color: 'var(--text-body)' }}>

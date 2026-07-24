@@ -15,6 +15,21 @@ export const HERO_BG = {
   overflow: 'hidden',
 };
 
+// A standing bathroom scale (square body + dial gauge) — lucide-react has
+// no such glyph (its "Scale" is a justice balance, "Weight" a kettlebell).
+// Shared by the Diaper and Growth screens' weight displays.
+export function ScaleStandIcon({ width = 21, height = 21, style }) {
+  return (
+    <svg width={width} height={height} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={style}>
+      <rect x="2" y="2" width="20" height="20" rx="4" />
+      <path d="M7.5 11.5a5 5 0 0 1 9 0" />
+      <path d="M7.5 11.5v-2" />
+      <path d="M16.5 11.5v-2" />
+      <path d="M12 11.5V8" />
+    </svg>
+  );
+}
+
 // "Feature under construction" popup — shared by every screen that has a
 // visible entry point for something not built yet (notifications, contact
 // page, scan-to-earn), so nothing on screen is ever a silent dead button.
