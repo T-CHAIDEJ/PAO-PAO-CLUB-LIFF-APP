@@ -97,7 +97,7 @@ const ZONE_SEGS = [
 ];
 const TOTAL_UNITS = ZONE_SEGS.reduce((s, z) => s + z.width, 0); // 6
 
-function GrowthZoneBar({ zScore }) {
+function GrowthZoneBar({ zScore, value, unit, accentColor }) {
   const clamped = Math.max(-3, Math.min(3, zScore ?? 0));
   // map clamped z (-3..+3) → percentage across bar
   // bar segments: -3→-2 (1u), -2→-1.5 (0.5u), -1.5→1.5 (3u), 1.5→2 (0.5u), 2→3 (1u)
@@ -110,28 +110,41 @@ function GrowthZoneBar({ zScore }) {
     return 5 + (z - 2);                                // 2..3 → 5..6
   };
   const markerPct = (zToUnit(clamped) / TOTAL_UNITS) * 100;
+  const marker = accentColor || 'var(--text-heading)';
+  // Keep the callout bubble from spilling off the card near the extremes.
+  const shift = markerPct <= 12 ? '-8%' : markerPct >= 88 ? '-92%' : '-50%';
 
   return (
     <div>
-      <div style={{ position: 'relative', display: 'flex', borderRadius: 8, overflow: 'visible', height: 14 }}>
+      {/* Floating current-value callout above the marker */}
+      {value != null && (
+        <div style={{ position: 'relative', height: 24 }}>
+          <div style={{
+            position: 'absolute', left: `${markerPct}%`, top: 0, transform: `translateX(${shift})`,
+            whiteSpace: 'nowrap', padding: '3px 10px', borderRadius: 999,
+            background: marker, color: '#fff', font: 'var(--weight-bold) 11px var(--font-base)',
+          }}>{value.toFixed(2)} {unit}</div>
+        </div>
+      )}
+      <div style={{ position: 'relative', display: 'flex', borderRadius: 8, overflow: 'visible', height: 16 }}>
         {ZONE_SEGS.map((seg, i) => (
           <div key={seg.key} style={{
             flex: seg.width, height: '100%', background: seg.bg,
             borderRadius: i === 0 ? '8px 0 0 8px' : i === ZONE_SEGS.length - 1 ? '0 8px 8px 0' : 0,
           }} />
         ))}
-        {/* Marker */}
+        {/* Marker — a tall rounded bar poking past the track toward the callout */}
         <div style={{
           position: 'absolute', top: '50%', left: `${markerPct}%`,
           transform: 'translate(-50%, -50%)',
-          width: 4, height: 22, borderRadius: 2,
-          background: 'var(--text-heading)', boxShadow: '0 0 0 2px #fff',
+          width: 5, height: 28, borderRadius: 3,
+          background: marker, boxShadow: '0 0 0 2px #fff',
           zIndex: 2,
         }} />
       </div>
-      <div style={{ display: 'flex', marginTop: 4 }}>
+      <div style={{ display: 'flex', marginTop: 6 }}>
         {ZONE_SEGS.map(seg => (
-          <div key={seg.key} style={{ flex: seg.width, textAlign: 'center', font: '8px var(--font-base)', color: 'var(--text-faint)', lineHeight: 1.2, overflow: 'hidden', whiteSpace: 'nowrap' }}>
+          <div key={seg.key} style={{ flex: seg.width, textAlign: 'center', font: '9px var(--font-base)', color: 'var(--text-faint)', lineHeight: 1.2, overflow: 'hidden', whiteSpace: 'nowrap' }}>
             {seg.width >= 1 ? seg.label : ''}
           </div>
         ))}
@@ -188,51 +201,56 @@ function MergedMetricCard({ metric, value, who, zone, zScore, measurementText })
   const colors = ZONE_COLORS[zone.key] || ZONE_COLORS.normal;
   return (
     <Card>
-      <div style={{ position: 'relative' }}>
-        {/* Ribbon-style status tag — a pointed left edge instead of a plain
-            pill, sitting in the card's top-right corner. */}
-        <span style={{
-          position: 'absolute', top: -4, right: -4,
-          padding: '5px 12px 5px 16px',
-          clipPath: 'polygon(10px 0, 100% 0, 100% 100%, 10px 100%, 0 50%)',
-          background: colors.fg, color: '#fff',
-          font: 'var(--weight-bold) 12px var(--font-base)', whiteSpace: 'nowrap',
-        }}>{zone.label}</span>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 14, paddingRight: 60 }}>
-          {iconSrc
-            ? <img src={iconSrc} alt="" style={{ height: 92, width: 'auto', maxWidth: 110, objectFit: 'contain', flex: 'none' }} />
-            : (
-              <span style={{ width: 48, height: 48, borderRadius: 14, background: tone, color: fg, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
-                <Icon width={23} height={23} />
-              </span>
-            )}
-          <div>
-            <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)' }}>{label}</div>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-              <span style={{ font: '800 30px var(--font-display)', color: 'var(--text-heading)' }}>{value.toFixed(1)}</span>
-              <span style={{ font: 'var(--weight-semibold) 13px var(--font-base)', color: 'var(--text-muted)' }}>{unit}</span>
-            </div>
+      {/* Header: big mascot + label above a dominant value, with a
+          chat-bubble status tag floating at the value's level on the right. */}
+      <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 16 }}>
+        {iconSrc
+          ? <img src={iconSrc} alt="" style={{ height: 104, width: 'auto', maxWidth: 120, objectFit: 'contain', flex: 'none', marginLeft: -6 }} />
+          : (
+            <span style={{ width: 52, height: 52, borderRadius: 14, background: tone, color: fg, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
+              <Icon width={25} height={25} />
+            </span>
+          )}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ font: 'var(--weight-semibold) 14px var(--font-base)', color: 'var(--text-muted)', marginBottom: 2 }}>{label}</div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
+            <span style={{ font: '800 42px var(--font-display)', color: 'var(--text-heading)', lineHeight: 1 }}>{value.toFixed(1)}</span>
+            <span style={{ font: 'var(--weight-semibold) 16px var(--font-base)', color: 'var(--text-muted)' }}>{unit}</span>
           </div>
+        </div>
+        <div style={{ position: 'absolute', top: 8, right: 0, alignSelf: 'flex-start' }}>
+          <span style={{
+            display: 'inline-block', padding: '6px 14px', borderRadius: 999,
+            background: colors.fg, color: '#fff',
+            font: 'var(--weight-bold) 12px var(--font-base)', whiteSpace: 'nowrap',
+          }}>{zone.label}</span>
+          <span style={{
+            position: 'absolute', bottom: -5, left: 18,
+            width: 0, height: 0,
+            borderLeft: '5px solid transparent', borderRight: '5px solid transparent',
+            borderTop: `7px solid ${colors.fg}`,
+          }} />
         </div>
       </div>
 
-      <div style={{ padding: '10px 12px', background: 'var(--surface-soft)', borderRadius: 'var(--radius-sm)', marginBottom: 10 }}>
-        <span style={{ font: 'var(--weight-bold) 14px var(--font-display)', color: colors.fg }}>{zone.friendly}</span>
-        <span style={{ font: 'var(--type-body-sm)', color: 'var(--text-muted)' }}> {measurementText}</span>
+      {/* Interpretation + disclaimer, together in one tinted box */}
+      <div style={{ padding: '12px 14px', background: 'var(--surface-soft)', borderRadius: 'var(--radius-md)', marginBottom: 18 }}>
+        <div style={{ marginBottom: 5 }}>
+          <span style={{ font: 'var(--weight-bold) 15px var(--font-display)', color: colors.fg }}>{zone.friendly}</span>
+          <span style={{ font: 'var(--type-body-sm)', color: 'var(--text-muted)' }}> {measurementText}</span>
+        </div>
+        <div style={{ font: 'var(--type-caption)', color: 'var(--text-faint)', lineHeight: 1.5 }}>
+          ข้อมูลนี้ใช้เพื่อช่วยติดตามแนวโน้มการเจริญเติบโตเบื้องต้น ไม่ใช่การวินิจฉัยทางการแพทย์
+        </div>
       </div>
 
-      <div style={{ font: 'var(--type-caption)', color: 'var(--text-faint)', lineHeight: 1.5, marginBottom: 14 }}>
-        ข้อมูลนี้ใช้เพื่อช่วยติดตามแนวโน้มการเจริญเติบโตเบื้องต้น ไม่ใช่การวินิจฉัยทางการแพทย์
-      </div>
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10, font: 'var(--type-caption)', color: 'var(--text-muted)' }}>
-        <Calendar width={13} height={13} style={{ flex: 'none' }} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 14, font: 'var(--weight-medium) 12px var(--font-base)', color: 'var(--text-muted)' }}>
+        <Calendar width={14} height={14} style={{ flex: 'none' }} />
         เกณฑ์ปกติ: {who.sd2neg}–{who.sd2pos} {unit}
       </div>
-      <GrowthZoneBar zScore={zScore} />
+      <GrowthZoneBar zScore={zScore} value={value} unit={unit} accentColor={colors.fg} />
 
-      <div style={{ marginTop: 14, font: 'var(--type-caption)', color: 'var(--text-faint)', textAlign: 'center' }}>
+      <div style={{ marginTop: 16, font: 'var(--type-caption)', color: 'var(--text-faint)', textAlign: 'center', lineHeight: 1.5 }}>
         อ้างอิงจากเกณฑ์การเจริญเติบโตขององค์การอนามัยโลก (WHO) สำหรับเด็กอายุ 0–5 ปี
       </div>
     </Card>
