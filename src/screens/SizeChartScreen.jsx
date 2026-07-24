@@ -24,7 +24,7 @@ export default function SizeChartScreen({ go, currentKg = 8.5 }) {
           </button>
           <div>
             <div style={{ font: 'var(--weight-medium) 12px var(--font-base)', opacity: .9 }}>PAO PAO Size Guide</div>
-            <div style={{ font: '800 20px var(--font-display)' }}>ตารางไซส์ผ้าอ้อม</div>
+            <div style={{ font: '800 20px var(--font-display)' }}>ตารางไซซ์ผ้าอ้อม</div>
           </div>
         </div>
       </div>
@@ -32,7 +32,7 @@ export default function SizeChartScreen({ go, currentKg = 8.5 }) {
       <div style={{ padding: '18px 16px 0' }}>
         <Card padded={false} style={{ overflow: 'hidden' }}>
           <div style={{ display: 'flex', padding: '12px 18px', background: 'var(--surface-soft)', font: 'var(--weight-bold) 11px var(--font-base)', letterSpacing: '.06em', color: 'var(--blue-700)', textTransform: 'uppercase' }}>
-            <span style={{ width: 64 }}>ไซส์</span>
+            <span style={{ width: 64 }}>ไซซ์</span>
             <span style={{ flex: 1 }}>น้ำหนัก</span>
             <span>ช่วงวัย</span>
           </div>
@@ -52,13 +52,15 @@ export default function SizeChartScreen({ go, currentKg = 8.5 }) {
 
         <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
           <Badge variant="green">●</Badge>
-          <span style={{ font: 'var(--type-body-sm)', color: 'var(--text-muted)' }}>แถบสีเขียวคือไซส์ที่แนะนำสำหรับลูกน้อย ({currentKg} กก.)</span>
+          <span style={{ font: 'var(--type-body-sm)', color: 'var(--text-muted)' }}>แถบสีเขียวคือไซซ์ที่แนะนำสำหรับลูกน้อย ({currentKg} กก.)</span>
         </div>
+
+        <div style={{ marginTop: 6, font: 'var(--type-caption)', color: 'var(--text-faint)' }}>คำนวณจาก: ตารางเทียบขนาดผ้าอ้อมเปาเปา</div>
 
         <div style={{ marginTop: 16 }}>
           <Card tone="soft" style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
             <Info width={20} height={20} style={{ color: 'var(--blue-600)', flex: 'none', marginTop: 2 }} />
-            <div style={{ font: 'var(--type-body-sm)', color: 'var(--text-body)', lineHeight: 1.5 }}>ช่วงน้ำหนักซ้อนทับกันได้ — หากผ้าอ้อมเริ่มรัดหรือรั่วซึม แนะนำขยับขึ้นไซส์ถัดไป</div>
+            <div style={{ font: 'var(--type-body-sm)', color: 'var(--text-body)', lineHeight: 1.5 }}>ช่วงน้ำหนักซ้อนทับกันได้ — หากผ้าอ้อมเริ่มรัดหรือรั่วซึม แนะนำขยับขึ้นไซซ์ถัดไป</div>
           </Card>
         </div>
 

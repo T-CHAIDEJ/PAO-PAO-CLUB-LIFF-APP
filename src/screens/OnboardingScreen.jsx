@@ -21,7 +21,7 @@ function FormField({ label, children }) {
 function StepWelcome({ onNext }) {
   const BULLETS = [
     'ติดตามพัฒนาการลูก',
-    'แนะนำไซส์ผ้าอ้อม',
+    'แนะนำไซซ์ผ้าอ้อม',
     'สะสมแต้มและรางวัล',
     'โปรโมชันเฉพาะสมาชิก',
   ];

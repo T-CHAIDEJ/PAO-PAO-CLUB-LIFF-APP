@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Scale, ChevronRight, Ruler, ShoppingCart, Baby, Camera } from 'lucide-react';
+import { Weight, ChevronRight, Ruler, ShoppingCart, Baby, Camera } from 'lucide-react';
 import { Card } from '../components/index.jsx';
 import { SkyDeco, SectionTitle, ProfileButton, ChildCardsRow, SizeBoundaryNotice } from '../shared/index.jsx';
 import { GrowthPanel } from './BabyTrackerScreen.jsx';
@@ -97,7 +97,7 @@ function DiaperPanel({ go, child }) {
         {/* Weight row */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <span style={{ width: 42, height: 42, borderRadius: 12, background: 'var(--blue-100)', color: 'var(--blue-600)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
-            <Scale width={21} height={21} />
+            <Weight width={21} height={21} />
           </span>
           <div style={{ flex: 1 }}>
             <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)' }}>น้ำหนักล่าสุด</div>
@@ -146,9 +146,12 @@ function DiaperPanel({ go, child }) {
               </div>
             ))}
           </div>
-          <div style={{ marginTop: 8, font: 'var(--type-caption)', color: 'var(--text-faint)' }}>
+          <button
+            onClick={() => go && go('tracker', { openAddRecord: true })}
+            style={{ marginTop: 8, border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', font: 'var(--type-caption)', color: 'var(--blue-600)', textDecoration: 'underline', textAlign: 'left' }}
+          >
             บันทึกผ่านหน้า พัฒนาการ → บันทึกข้อมูลใหม่
-          </div>
+          </button>
         </div>
       </Card>
 
@@ -161,9 +164,10 @@ function DiaperPanel({ go, child }) {
               <span style={{ font: 'var(--weight-semibold) 9px var(--font-base)', letterSpacing: '.06em', opacity: .9 }}>SIZE</span>
             </div>
             <div style={{ flex: 1 }}>
-              <div style={{ font: 'var(--type-caption)', color: 'var(--green-700)' }}>ไซส์ที่แนะนำจากน้ำหนัก</div>
+              <div style={{ font: 'var(--type-caption)', color: 'var(--green-700)' }}>ไซซ์ที่แนะนำจากน้ำหนัก</div>
               <div style={{ font: 'var(--weight-bold) 19px var(--font-display)', color: 'var(--text-heading)' }}>Size {size.code}</div>
               <div style={{ font: 'var(--type-body-sm)', color: 'var(--text-muted)' }}>สำหรับน้ำหนัก {size.min}–{size.max} กก.</div>
+              <div style={{ font: 'var(--type-caption)', color: 'var(--text-faint)', marginTop: 2 }}>คำนวณจาก: ตารางเทียบขนาดผ้าอ้อมเปาเปา</div>
             </div>
             <button onClick={() => go('size')} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--green-700)', display: 'flex' }}>
               <ChevronRight width={22} height={22} />
@@ -340,7 +344,7 @@ function ChildAvatarUpload({ child, onChildUpdate, needsConsent }) {
   );
 }
 
-export default function TrackerScreen({ go, child, onChildUpdate, childrenList, activeChildId, onSwitchChild, onChildrenChange, growthByChild, needsConsent }) {
+export default function TrackerScreen({ go, child, onChildUpdate, childrenList, activeChildId, onSwitchChild, onChildrenChange, growthByChild, needsConsent, autoOpenAdd, onAutoOpenAddConsumed }) {
   const childName  = child?.name     || 'ลูกน้อย';
   const genderLabel = child?.gender === 'male' ? '👦 ชาย' : child?.gender === 'female' ? '👧 หญิง' : null;
   const birthdateLabel = formatBirthdate(child?.birth_date);
@@ -395,7 +399,7 @@ export default function TrackerScreen({ go, child, onChildUpdate, childrenList, 
         </div>
       )}
       <div style={{ padding: '16px 16px 0' }}>
-        <GrowthPanel child={child} needsConsent={needsConsent} />
+        <GrowthPanel child={child} needsConsent={needsConsent} autoOpenAdd={autoOpenAdd} onAutoOpenAddConsumed={onAutoOpenAddConsumed} />
       </div>
       {showAddChild && (
         <AddChildModal

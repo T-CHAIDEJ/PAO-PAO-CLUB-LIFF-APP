@@ -137,7 +137,7 @@ export function AddChildModal({ onClose, onSaved, lineUid, needsConsent }) {
     }
     try {
       if (kind === 'pregnant') {
-        await insertPregnantChild(supabase, lineUid, { name, dueDate });
+        await insertPregnantChild(supabase, lineUid, { name, dueDate, photoFile });
       } else {
         await insertBornChild(supabase, lineUid, {
           name, gender, birthdate,
@@ -184,9 +184,12 @@ export function AddChildModal({ onClose, onSaved, lineUid, needsConsent }) {
   return (
     <ModalShell title={kind === 'pregnant' ? '🤰 เพิ่มการตั้งครรภ์' : '👶 เพิ่มลูก'} onClose={onClose}>
       {kind === 'pregnant' ? (
-        <Field label="กำหนดคลอด (EDD)">
-          <input type="date" value={dueDate} min={todayStr()} onChange={(e) => setDueDate(e.target.value)} style={dateInputStyle} />
-        </Field>
+        <>
+          <PhotoPicker preview={photoPreview} onPick={onPhotoPick} />
+          <Field label="กำหนดคลอด (EDD)">
+            <input type="date" value={dueDate} min={todayStr()} onChange={(e) => setDueDate(e.target.value)} style={dateInputStyle} />
+          </Field>
+        </>
       ) : (
         <BornChildFields
           name={name} setName={setName} gender={gender} setGender={setGender}
@@ -276,6 +279,7 @@ export function EditChildModal({ child, onClose, onSaved, startGraduating = fals
     <ModalShell title={graduating ? '🎉 ลูกเกิดแล้ว' : 'แก้ไขข้อมูลลูก'} onClose={onClose}>
       {isPregnant ? (
         <>
+          <PhotoPicker preview={photoPreview} onPick={onPhotoPick} />
           <Field label="ชื่อ (ถ้ามี)">
             <input type="text" value={name} onChange={(e) => setName(e.target.value)} style={inputStyle} placeholder="ชื่อเล่น (ไม่บังคับ)" />
           </Field>

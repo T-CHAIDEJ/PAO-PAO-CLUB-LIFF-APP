@@ -6,11 +6,17 @@ import { uploadChildAvatar } from './avatar.js';
 // Home's "+ เพิ่มลูก" / "แก้ไข" / "ลูกเกิดแล้ว" flows and onboarding's
 // segment B form all share one source of truth instead of drifting.
 
-export async function insertPregnantChild(supabase, lineUid, { name, dueDate } = {}) {
+export async function insertPregnantChild(supabase, lineUid, { name, dueDate, photoFile } = {}) {
   const { data, error } = await supabase.from('003_children').insert({
     line_uid: lineUid, name: name || null, is_pregnant: true, due_date: dueDate || null, stage: PREGNANCY_STAGE,
   }).select().single();
   if (error) throw error;
+
+  if (photoFile) {
+    try {
+      data.avatar_url = await uploadChildAvatar(supabase, data.child_id, photoFile);
+    } catch (e) { console.warn('[children] avatar upload failed:', e?.message); }
+  }
   return data;
 }
 

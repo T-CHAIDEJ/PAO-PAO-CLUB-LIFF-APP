@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Baby, Ruler, Gift, ScanLine, Bell, ChevronRight, Star, UserPlus, UserCircle2, Mars, Venus, Flame } from 'lucide-react';
+import { Bell, ChevronRight, Star, UserPlus, UserCircle2, Mars, Venus, Flame } from 'lucide-react';
 import { Card, Badge, Button, ProgressBar } from '../components/index.jsx';
 import { SectionTitle, ProfileButton, ChildCardsRow, SizeBoundaryNotice, ComingSoon } from '../shared/index.jsx';
 import { recommendSize } from './TrackerScreen.jsx';
@@ -11,13 +11,6 @@ import { calcAge } from '../lib/age.js';
 import { currentStage } from '../lib/stage.js';
 import { normalizeExternalUrl } from '../lib/url.js';
 import { AddChildModal, EditChildModal } from './ChildModals.jsx';
-
-const ACTIONS = [
-  { id: 'tracker', Icon: Baby,      label: 'พัฒนาการ',      tone: 'var(--blue-100)',  fg: 'var(--blue-600)'  },
-  { id: 'diaper',  Icon: Ruler,     label: 'ผ้าอ้อม',       tone: 'var(--green-100)', fg: 'var(--green-700)' },
-  { id: 'rewards', Icon: Gift,      label: 'แลกของรางวัล',  tone: 'var(--blue-100)',  fg: 'var(--blue-600)'  },
-  { id: 'scan',    Icon: ScanLine,  label: 'สแกนรับแต้ม',  tone: 'var(--green-100)', fg: 'var(--green-700)' },
-];
 
 function greetingByTime() {
   const h = new Date().getHours();
@@ -211,9 +204,10 @@ function SizeRecommendCard({ sizeRec, nearBoundary, go }) {
           <span style={{ font: 'var(--weight-semibold) 9px var(--font-base)', letterSpacing: '.06em', opacity: .9 }}>SIZE</span>
         </div>
         <div style={{ flex: 1 }}>
-          <div style={{ font: 'var(--type-caption)', color: 'var(--green-700)' }}>ไซส์ผ้าอ้อมแนะนำ</div>
+          <div style={{ font: 'var(--type-caption)', color: 'var(--green-700)' }}>ไซซ์ผ้าอ้อมแนะนำ</div>
           <div style={{ font: 'var(--weight-bold) 19px var(--font-display)', color: 'var(--text-heading)' }}>Size {sizeRec.code}</div>
           <div style={{ font: 'var(--type-body-sm)', color: 'var(--text-muted)' }}>สำหรับน้ำหนัก {sizeRec.min}–{sizeRec.max} กก.</div>
+          <div style={{ font: 'var(--type-caption)', color: 'var(--text-faint)', marginTop: 2 }}>คำนวณจาก: ตารางเทียบขนาดผ้าอ้อมเปาเปา</div>
         </div>
         <ChevronRight width={22} height={22} style={{ color: 'var(--green-700)' }} />
       </Card>
@@ -470,7 +464,7 @@ export default function HomeScreen({ go, user, child, goOnboarding, goProfile, c
         background: 'var(--gradient-hero)',
         backgroundImage: 'url(/home-hero-bg.png)',
         backgroundSize: 'cover',
-        backgroundPosition: 'left top',
+        backgroundPosition: 'right top',
         padding: '12px 20px 42px', color: '#fff', borderBottomLeftRadius: 28, borderBottomRightRadius: 28,
       }}>
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
@@ -548,23 +542,6 @@ export default function HomeScreen({ go, user, child, goOnboarding, goProfile, c
         </div>
       )}
 
-      {/* Quick actions */}
-      <div style={{ padding: '20px 16px 0' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
-          {ACTIONS.map(({ id, Icon, label, tone, fg }) => (
-            <button key={id} onClick={() => id === 'scan' ? setComingSoon('สแกนรับแต้ม') : go(id)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 7, padding: 0 }}>
-              <span style={{ width: 56, height: 56, borderRadius: 18, background: tone, color: fg, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: 'var(--shadow-xs)' }}>
-                <Icon width={24} height={24} />
-              </span>
-              <span style={{ font: 'var(--weight-medium) 11px var(--font-base)', color: 'var(--text-body)', textAlign: 'center', lineHeight: 1.25 }}>{label}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Advertising / campaign banners (DB-driven, swipeable) */}
-      <BannerCarousel banners={banners} />
-
       {/* Child cards — one per child plus an add card, shown whenever
           there's at least 1 child, so switching who you're looking at
           works the same way as every other child-specific screen. */}
@@ -582,6 +559,9 @@ export default function HomeScreen({ go, user, child, goOnboarding, goProfile, c
         </div>
       )}
 
+      {/* Advertising / campaign banners (DB-driven, swipeable) */}
+      <BannerCarousel banners={banners} />
+
       {/* Baby Info Card */}
       {!isGuest && childWithRecord && (
         <div style={{ padding: '14px 16px 0' }}>
@@ -597,7 +577,7 @@ export default function HomeScreen({ go, user, child, goOnboarding, goProfile, c
           <Card style={{ boxShadow: 'var(--shadow-md)', textAlign: 'center' }}>
             <div style={{ fontSize: 32, marginBottom: 8 }}>👶</div>
             <div style={{ font: 'var(--weight-bold) 16px var(--font-display)', color: 'var(--text-heading)' }}>ยังไม่มีข้อมูลลูกน้อย</div>
-            <div style={{ font: 'var(--type-body-sm)', color: 'var(--text-muted)', marginTop: 4 }}>กรอกข้อมูลลูกเพื่อเริ่มติดตามพัฒนาการและแนะนำไซส์ผ้าอ้อม</div>
+            <div style={{ font: 'var(--type-body-sm)', color: 'var(--text-muted)', marginTop: 4 }}>กรอกข้อมูลลูกเพื่อเริ่มติดตามพัฒนาการและแนะนำไซซ์ผ้าอ้อม</div>
             <div style={{ marginTop: 14 }}>
               <Button variant="primary" fullWidth onClick={() => setShowAddChild(true)}>ลงทะเบียนข้อมูลลูก</Button>
             </div>

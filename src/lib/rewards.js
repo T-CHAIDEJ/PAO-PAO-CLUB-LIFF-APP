@@ -6,7 +6,7 @@ import { supabase } from './supabase.js';
 // display-only — their id isn't a real reward_id, so redeemReward() would
 // fail trying to write it as a FK. Real DB rows are always redeemable.
 export const REWARDS_FALLBACK = [
-  { id: 'sampling',   name: 'Sampling PaoPao (เลือกไซส์ NB-2XL)',      pts: 100, stock: null, redeemable: false },
+  { id: 'sampling',   name: 'Sampling PaoPao (เลือกไซซ์ NB-2XL)',      pts: 100, stock: null, redeemable: false },
   { id: 'mini-pack',  name: 'ผ้าอ้อมเปาเปา ไซซ์มินิ (NB-2XL) 1 ชิ้น', pts: 200, stock: null, redeemable: false },
   { id: 'toy-bin',    name: 'ถังเก็บของเล่นลูกน้อย 1 ชิ้น (คละลาย)',  pts: 300, stock: null, redeemable: false },
 ];

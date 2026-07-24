@@ -56,7 +56,7 @@ function ConfirmRedeemModal({ reward, points, user, currentKg, saving, error, on
   const [localError, setLocalError] = useState(null);
 
   const handleConfirm = () => {
-    if (askSize && !size) { setLocalError('กรุณาเลือกไซส์'); return; }
+    if (askSize && !size) { setLocalError('กรุณาเลือกไซซ์'); return; }
     const msg = validateShipping(shipping);
     if (msg) { setLocalError(msg); return; }
     setLocalError(null);
@@ -74,7 +74,7 @@ function ConfirmRedeemModal({ reward, points, user, currentKg, saving, error, on
 
         {askSize && (
           <div style={{ marginBottom: 14 }}>
-            <div style={{ font: 'var(--type-label)', color: 'var(--text-title)', marginBottom: 8 }}>เลือกไซส์ *</div>
+            <div style={{ font: 'var(--type-label)', color: 'var(--text-title)', marginBottom: 8 }}>เลือกไซซ์ *</div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {getSizes().map((s) => {
                 const active = size === s.code;
@@ -97,7 +97,7 @@ function ConfirmRedeemModal({ reward, points, user, currentKg, saving, error, on
             </div>
             {recommended && (
               <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)', marginTop: 6 }}>
-                ★ ไซส์แนะนำจากน้ำหนักล่าสุดของลูก ({currentKg} กก.) — เลือกไซส์อื่นได้ตามต้องการ
+                ★ ไซซ์แนะนำจากน้ำหนักล่าสุดของลูก ({currentKg} กก.) — เลือกไซซ์อื่นได้ตามต้องการ
               </div>
             )}
             {currentKg != null && isNearSizeBoundary(currentKg) && <SizeBoundaryNotice style={{ marginTop: 8 }} />}
@@ -338,7 +338,7 @@ export default function RewardsScreen({ go, user, onUserUpdate, needsConsent, on
                     </span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ font: 'var(--weight-medium) 14px var(--font-base)', color: 'var(--text-body)' }}>{rewardNameFor(r.reward_id)}</div>
-                      <div style={{ font: 'var(--type-caption)', color: 'var(--text-faint)' }}>{fmtDate(r.created_at)} · ใช้ {r.points_used} แต้ม{r.size ? ` · ไซส์ ${r.size}` : ''}</div>
+                      <div style={{ font: 'var(--type-caption)', color: 'var(--text-faint)' }}>{fmtDate(r.created_at)} · ใช้ {r.points_used} แต้ม{r.size ? ` · ไซซ์ ${r.size}` : ''}</div>
                     </div>
                     <span style={{ font: 'var(--weight-semibold) 11px var(--font-base)', color: st.color, background: st.bg, padding: '4px 10px', borderRadius: 999, flex: 'none' }}>{st.label}</span>
                   </div>

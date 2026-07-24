@@ -839,7 +839,7 @@ function OverviewPanel({ records, gender, birthDate, chartTab, onChartTabChange,
 
 // ─── GrowthPanel (exported) ───────────────────────────────────────────────────
 
-export function GrowthPanel({ child, needsConsent }) {
+export function GrowthPanel({ child, needsConsent, autoOpenAdd, onAutoOpenAddConsumed }) {
   const [panelView, setPanelView] = useState('overview'); // 'overview' | 'form'
   const [editingRecord, setEditingRecord] = useState(null); // null = adding new, record = editing that one
   const [records, setRecords] = useState([]);
@@ -875,6 +875,17 @@ export function GrowthPanel({ child, needsConsent }) {
   const closeForm = () => { setPanelView('overview'); setEditingRecord(null); };
   const openAdd = () => { setEditingRecord(null); setPanelView('form'); };
   const openEdit = (record) => { setEditingRecord(record); setPanelView('form'); };
+
+  // Diaper tab's "บันทึกผ่านหน้า พัฒนาการ → บันทึกข้อมูลใหม่" link jumps here
+  // and wants the form open immediately — consume the one-shot signal once
+  // records have finished loading, then tell the parent to clear it so
+  // navigating away and back doesn't reopen the form on its own.
+  useEffect(() => {
+    if (autoOpenAdd && !loading) {
+      openAdd();
+      onAutoOpenAddConsumed?.();
+    }
+  }, [autoOpenAdd, loading]);
 
   const handleSaved = (record, isEdit) => {
     setRecords(prev => {

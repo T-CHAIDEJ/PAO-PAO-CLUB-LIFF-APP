@@ -39,6 +39,7 @@ function LoadingScreen() {
 
 export default function App() {
   const [screen, setScreen] = useState('loading');
+  const [trackerAutoOpenAdd, setTrackerAutoOpenAdd] = useState(false);
   const [lineProfile, setLineProfile] = useState(null);
   const [userData, setUserData] = useState(null);
   const [childrenList, setChildrenList] = useState([]);
@@ -161,7 +162,10 @@ export default function App() {
     setScreen('home');
   };
 
-  const go = (s) => setScreen(s);
+  const go = (s, opts) => {
+    setScreen(s);
+    if (opts?.openAddRecord) setTrackerAutoOpenAdd(true);
+  };
   const goOnboarding = (seg) => setScreen(seg ? `onboarding-${seg.toLowerCase()}` : 'onboarding');
 
   const switchActiveChild = (childId) => {
@@ -242,7 +246,7 @@ export default function App() {
   let view;
   if      (screen === 'home')      view = <HomeScreen go={go} user={userData} child={childData} goOnboarding={goOnboarding} goProfile={() => go('profile')} checkin={checkin} onStreakSeen={() => setCheckin(null)} {...childSwitcherProps} {...consentGateProps} />;
   else if (screen === 'diaper')    view = <DiaperScreen go={go} child={childData} onChildUpdate={onChildUpdate} {...childSwitcherProps} {...consentGateProps} />;
-  else if (screen === 'tracker')   view = <TrackerScreen go={go} child={childData} onChildUpdate={onChildUpdate} {...childSwitcherProps} {...consentGateProps} />;
+  else if (screen === 'tracker')   view = <TrackerScreen go={go} child={childData} onChildUpdate={onChildUpdate} autoOpenAdd={trackerAutoOpenAdd} onAutoOpenAddConsumed={() => setTrackerAutoOpenAdd(false)} {...childSwitcherProps} {...consentGateProps} />;
   else if (screen === 'size')      view = <SizeChartScreen go={go} currentKg={growthByChild[activeChildId]?.weight_kg ?? childData?.birth_weight ?? 8.5} />;
   else if (screen === 'knowledge') view = <KnowledgeScreen go={go} child={childData} />;
   else if (screen === 'rewards')   view = <RewardsScreen go={go} user={userData} onUserUpdate={onUserUpdate} currentKg={growthByChild[activeChildId]?.weight_kg ?? childData?.birth_weight ?? null} {...consentGateProps} />;
