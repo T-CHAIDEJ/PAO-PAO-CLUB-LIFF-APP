@@ -83,57 +83,58 @@ const ZONE_COLORS = {
   very_high: { bg: 'var(--orange-100, #FFF3E0)', fg: 'var(--orange-700, #E65100)' },
 };
 
-// ─── RangeBar ────────────────────────────────────────────────────────────────
+// ─── GrowthZoneBar ───────────────────────────────────────────────────────────
+// The 5-color zone bar from before the card merge — brought back per explicit
+// request after the merge's single green WHO-range bar read as having lost
+// the at-a-glance "how far into which zone" picture the 5 colors gave.
 
-// The track only ever spans [min, max] — the normal WHO window — instead of
-// auto-expanding its domain to fit an outlier value. An out-of-range value
-// pins to the near edge and gets called out with a floating value bubble
-// connected by a dashed line, so the "normal" band always reads as a full,
-// uncluttered bar rather than a sliver squeezed between two padded ends.
-function RangeBar({ value, min, max, unit, accentColor, statusLabel }) {
-  const pct = Math.max(0, Math.min(100, ((value - min) / ((max - min) || 1)) * 100));
-  const tickStyle = { width: 0, height: 7, borderLeft: '1.5px dashed var(--gray-300)' };
+const ZONE_SEGS = [
+  { key: 'very_low',  label: 'ต่ำกว่ามาก',    width: 1,   bg: '#FFCC80' },
+  { key: 'low',       label: 'ต่ำกว่าเล็กน้อย', width: 0.5, bg: '#FFE082' },
+  { key: 'normal',    label: 'ปกติ',           width: 3,   bg: '#A5D6A7' },
+  { key: 'high',      label: 'สูงกว่าเล็กน้อย', width: 0.5, bg: '#FFE082' },
+  { key: 'very_high', label: 'สูงกว่ามาก',     width: 1,   bg: '#FFCC80' },
+];
+const TOTAL_UNITS = ZONE_SEGS.reduce((s, z) => s + z.width, 0); // 6
+
+function GrowthZoneBar({ zScore }) {
+  const clamped = Math.max(-3, Math.min(3, zScore ?? 0));
+  // map clamped z (-3..+3) → percentage across bar
+  // bar segments: -3→-2 (1u), -2→-1.5 (0.5u), -1.5→1.5 (3u), 1.5→2 (0.5u), 2→3 (1u)
+  // cumulative edges: 0, 1, 1.5, 4.5, 5, 6
+  const zToUnit = (z) => {
+    if (z <= -2) return (z + 3);           // -3..−2 → 0..1
+    if (z <= -1.5) return 1 + (z + 2) * 1;// -2..−1.5 → 1..1.5
+    if (z <=  1.5) return 1.5 + (z + 1.5) * (3 / 3); // -1.5..1.5 → 1.5..4.5
+    if (z <=  2)   return 4.5 + (z - 1.5) * 1;        // 1.5..2 → 4.5..5
+    return 5 + (z - 2);                                // 2..3 → 5..6
+  };
+  const markerPct = (zToUnit(clamped) / TOTAL_UNITS) * 100;
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 24, font: 'var(--type-caption)', color: 'var(--text-muted)' }}>
-        <Calendar width={13} height={13} style={{ flex: 'none' }} />
-        เกณฑ์ปกติ: {min}–{max} {unit}
-      </div>
-
-      <div style={{ position: 'relative' }}>
-        {/* Floating current-value callout, pinned above the marker */}
-        <div style={{
-          position: 'absolute', left: `${pct}%`, top: -30, transform: 'translateX(-50%)',
-          whiteSpace: 'nowrap', padding: '3px 10px', borderRadius: 999,
-          background: accentColor, color: '#fff',
-          font: 'var(--weight-bold) 11px var(--font-base)', zIndex: 3,
-        }}>
-          {value.toFixed(2)} {unit}
-        </div>
-        <div style={{ position: 'absolute', left: `${pct}%`, top: -8, height: 8, borderLeft: `1.5px dashed ${accentColor}`, transform: 'translateX(-50%)' }} />
-
-        {/* Track — the whole visible bar is the normal WHO band */}
-        <div style={{ position: 'relative', height: 24, background: 'var(--surface-green)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-          <span style={{ font: 'var(--weight-semibold) 11px var(--font-base)', color: 'var(--green-700)' }}>{statusLabel}</span>
-          <div style={{
-            position: 'absolute', top: '50%', left: `${pct}%`, transform: 'translate(-50%, -50%)',
-            width: 4, height: 28, borderRadius: 2,
-            background: accentColor, boxShadow: '0 0 0 2px #fff', zIndex: 2,
+      <div style={{ position: 'relative', display: 'flex', borderRadius: 8, overflow: 'visible', height: 14 }}>
+        {ZONE_SEGS.map((seg, i) => (
+          <div key={seg.key} style={{
+            flex: seg.width, height: '100%', background: seg.bg,
+            borderRadius: i === 0 ? '8px 0 0 8px' : i === ZONE_SEGS.length - 1 ? '0 8px 8px 0' : 0,
           }} />
-        </div>
+        ))}
+        {/* Marker */}
+        <div style={{
+          position: 'absolute', top: '50%', left: `${markerPct}%`,
+          transform: 'translate(-50%, -50%)',
+          width: 4, height: 22, borderRadius: 2,
+          background: 'var(--text-heading)', boxShadow: '0 0 0 2px #fff',
+          zIndex: 2,
+        }} />
       </div>
-
-      {/* Min/max labels, each with a short dashed tick pointing up at the bar */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-          <span style={tickStyle} />
-          <span style={{ font: 'var(--weight-medium) 10px var(--font-base)', color: 'var(--text-faint)' }}>{min} {unit}</span>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-          <span style={tickStyle} />
-          <span style={{ font: 'var(--weight-medium) 10px var(--font-base)', color: 'var(--text-faint)' }}>{max} {unit}</span>
-        </div>
+      <div style={{ display: 'flex', marginTop: 4 }}>
+        {ZONE_SEGS.map(seg => (
+          <div key={seg.key} style={{ flex: seg.width, textAlign: 'center', font: '8px var(--font-base)', color: 'var(--text-faint)', lineHeight: 1.2, overflow: 'hidden', whiteSpace: 'nowrap' }}>
+            {seg.width >= 1 ? seg.label : ''}
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -182,7 +183,7 @@ function ChartTabBar({ active, onChange }) {
 // for weight+height, plus a separate per-tab interpretation card with its
 // own second range bar) — same value/zone/range info, said once.
 
-function MergedMetricCard({ metric, value, who, zone, measurementText }) {
+function MergedMetricCard({ metric, value, who, zone, zScore, measurementText }) {
   const { label, unit, Icon, iconSrc, tone, fg } = metric;
   const colors = ZONE_COLORS[zone.key] || ZONE_COLORS.normal;
   return (
@@ -198,9 +199,9 @@ function MergedMetricCard({ metric, value, who, zone, measurementText }) {
           font: 'var(--weight-bold) 12px var(--font-base)', whiteSpace: 'nowrap',
         }}>{zone.label}</span>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14, paddingRight: 70 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 14, paddingRight: 60 }}>
           {iconSrc
-            ? <img src={iconSrc} alt="" style={{ width: 56, height: 56, objectFit: 'contain', flex: 'none' }} />
+            ? <img src={iconSrc} alt="" style={{ height: 92, width: 'auto', maxWidth: 110, objectFit: 'contain', flex: 'none' }} />
             : (
               <span style={{ width: 48, height: 48, borderRadius: 14, background: tone, color: fg, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
                 <Icon width={23} height={23} />
@@ -225,7 +226,11 @@ function MergedMetricCard({ metric, value, who, zone, measurementText }) {
         ข้อมูลนี้ใช้เพื่อช่วยติดตามแนวโน้มการเจริญเติบโตเบื้องต้น ไม่ใช่การวินิจฉัยทางการแพทย์
       </div>
 
-      <RangeBar value={value} min={who.sd2neg} max={who.sd2pos} unit={unit} accentColor={colors.fg} statusLabel="อยู่ในเกณฑ์ปกติ" />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10, font: 'var(--type-caption)', color: 'var(--text-muted)' }}>
+        <Calendar width={13} height={13} style={{ flex: 'none' }} />
+        เกณฑ์ปกติ: {who.sd2neg}–{who.sd2pos} {unit}
+      </div>
+      <GrowthZoneBar zScore={zScore} />
 
       <div style={{ marginTop: 14, font: 'var(--type-caption)', color: 'var(--text-faint)', textAlign: 'center' }}>
         อ้างอิงจากเกณฑ์การเจริญเติบโตขององค์การอนามัยโลก (WHO) สำหรับเด็กอายุ 0–5 ปี
@@ -795,7 +800,7 @@ function OverviewPanel({ records, gender, birthDate, chartTab, onChartTabChange,
       {chartTab === 'wa' && (
         <>
           <MergedMetricCard
-            metric={METRICS[0]} value={latest.weightKg} who={whoWA} zone={waZone}
+            metric={METRICS[0]} value={latest.weightKg} who={whoWA} zone={waZone} zScore={zWA}
             measurementText={`เมื่ออายุ ${ageLabel}`}
           />
           <AgeChart chartData={waChart} title="น้ำหนักตามอายุ" />
@@ -804,7 +809,7 @@ function OverviewPanel({ records, gender, birthDate, chartTab, onChartTabChange,
       {chartTab === 'ha' && (
         <>
           <MergedMetricCard
-            metric={METRICS[1]} value={latest.heightCm} who={whoHA} zone={haZone}
+            metric={METRICS[1]} value={latest.heightCm} who={whoHA} zone={haZone} zScore={zHA}
             measurementText={`เมื่ออายุ ${ageLabel}`}
           />
           <AgeChart chartData={haChart} title="ส่วนสูงตามอายุ" />
@@ -813,7 +818,7 @@ function OverviewPanel({ records, gender, birthDate, chartTab, onChartTabChange,
       {chartTab === 'wh' && whoWH && (
         <>
           <MergedMetricCard
-            metric={METRICS[2]} value={latest.weightKg} who={whoWH} zone={whZone}
+            metric={METRICS[2]} value={latest.weightKg} who={whoWH} zone={whZone} zScore={zWH}
             measurementText={`ที่ส่วนสูง ${latest.heightCm.toFixed(1)} ซม.`}
           />
           <WHChart records={records} gender={gender} birthDate={birthDate} title="น้ำหนักเทียบส่วนสูง" />
