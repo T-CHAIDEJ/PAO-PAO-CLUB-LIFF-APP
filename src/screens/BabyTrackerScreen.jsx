@@ -306,13 +306,18 @@ function InterpretationCard({ title, zone, measurementText, zScore }) {
 
 // ─── Charts ───────────────────────────────────────────────────────────────────
 
-function ChartLegend({ lineColor = 'var(--color-primary)' }) {
+// Orange (not red) per explicit product direction — flags an out-of-range
+// point without reading as alarming as a red warning color would.
+const OUT_OF_RANGE_COLOR = '#F97316';
+
+function ChartLegend({ lineColor = 'var(--color-primary)', hasOutOfRange = false }) {
   return (
     <div style={{ display: 'flex', gap: 14, marginTop: 8, flexWrap: 'wrap' }}>
       {[
         { color: lineColor, label: 'ข้อมูลลูก', solid: true },
         { color: 'var(--gray-300)', label: 'ช่วงเกณฑ์', solid: false },
         { color: 'var(--blue-300)', label: 'ค่ากลาง',   solid: false },
+        ...(hasOutOfRange ? [{ color: OUT_OF_RANGE_COLOR, label: 'สูง/ต่ำกว่าเกณฑ์', solid: true }] : []),
       ].map(({ color, label, solid }) => (
         <span key={label} style={{ display: 'flex', alignItems: 'center', gap: 6, font: 'var(--type-caption)', color: 'var(--text-muted)' }}>
           <span style={{ width: 16, height: solid ? 2.5 : 1.5, background: color, borderRadius: 1, opacity: solid ? 1 : 0.8 }} />
@@ -393,7 +398,13 @@ function buildAgeChart(records, gender, birthDate, indicator, color) {
   const unit = indicator === 'wfa' ? 'กก.' : 'ซม.';
   const rawPoints = sorted.map(r => ({ month: ageInMonths(birthDate, r.date), val: r[key], date: r.date }));
   if (!rawPoints.length) return null;
-  const points = aggregateMonthly(rawPoints);
+  const aggregated = aggregateMonthly(rawPoints);
+  // Flag points outside the WHO ±2SD band so the chart can call them out
+  // visually instead of blending in with values that are perfectly normal.
+  const points = aggregated.map(p => {
+    const who = getWHOValueAtMonth(gender, indicator, p.month);
+    return { ...p, outOfRange: !!who && (p.val > who.sd2pos || p.val < who.sd2neg) };
+  });
 
   const wfa = getWHOData(gender, indicator);
   let minM = Math.max(0, Math.floor(Math.min(...points.map(p => p.month))) - 1);
@@ -445,14 +456,22 @@ function AgeChart({ chartData, title }) {
         {/* Median */}
         <path d={whoSlice.map((d, i) => `${i === 0 ? 'M' : 'L'} ${xSc(d.month).toFixed(1)} ${ySc(d.median).toFixed(1)}`).join(' ')}
           fill="none" stroke="var(--blue-300)" strokeWidth="1.5" strokeDasharray="4 4" opacity="0.8" />
-        {/* Child line */}
-        <path d={points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${xSc(p.month).toFixed(1)} ${ySc(p.val).toFixed(1)}`).join(' ')}
-          fill="none" stroke={color} strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
+        {/* Child line — each segment turns orange if either endpoint falls
+            outside the WHO ±2SD band, instead of one uniform color that
+            can't tell a parent anything is off. */}
+        {points.slice(1).map((p, i) => {
+          const prev = points[i];
+          const segColor = (prev.outOfRange || p.outOfRange) ? OUT_OF_RANGE_COLOR : color;
+          return (
+            <path key={i} d={`M ${xSc(prev.month).toFixed(1)} ${ySc(prev.val).toFixed(1)} L ${xSc(p.month).toFixed(1)} ${ySc(p.val).toFixed(1)}`}
+              fill="none" stroke={segColor} strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
+          );
+        })}
         {points.map((p, i) => (
           <circle
             key={i}
             cx={xSc(p.month)} cy={ySc(p.val)} r={selected === i ? 6 : 4.5}
-            fill={color} stroke="#fff" strokeWidth="2"
+            fill={p.outOfRange ? OUT_OF_RANGE_COLOR : color} stroke="#fff" strokeWidth="2"
             style={{ cursor: 'pointer' }}
             onClick={(e) => { e.stopPropagation(); setSelected(selected === i ? null : i); }}
           />
@@ -472,7 +491,7 @@ function AgeChart({ chartData, title }) {
           />
         )}
       </svg>
-      <ChartLegend lineColor={color} />
+      <ChartLegend lineColor={color} hasOutOfRange={points.some(p => p.outOfRange)} />
     </Card>
   );
 }
@@ -488,7 +507,10 @@ function WHChart({ records, gender, birthDate, title }) {
     .map(r => ({ month: ageInMonths(birthDate, r.date), val: r.heightCm, date: r.date, r }));
   const monthly = aggregateMonthly(withAge).map(p => p.r);
   const sorted = monthly.sort((a, b) => a.heightCm - b.heightCm);
-  const points = sorted.map(r => ({ h: r.heightCm, w: r.weightKg, date: r.date }));
+  const points = sorted.map(r => {
+    const who = getWHOWflAtLength(gender, r.heightCm);
+    return { h: r.heightCm, w: r.weightKg, date: r.date, outOfRange: !!who && (r.weightKg > who.sd2pos || r.weightKg < who.sd2neg) };
+  });
   if (!points.length) return null;
 
   const wflData = getWHOWflData(gender);
@@ -538,13 +560,19 @@ function WHChart({ records, gender, birthDate, title }) {
         <path d={band} fill="var(--blue-100,#E3F2FD)" opacity="0.5" />
         <path d={whoSlice.map((d, i) => `${i === 0 ? 'M' : 'L'} ${xSc(d.length).toFixed(1)} ${ySc(d.median).toFixed(1)}`).join(' ')}
           fill="none" stroke="var(--blue-300)" strokeWidth="1.5" strokeDasharray="4 4" opacity="0.8" />
-        <path d={points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${xSc(p.h).toFixed(1)} ${ySc(p.w).toFixed(1)}`).join(' ')}
-          fill="none" stroke="var(--color-primary)" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
+        {points.slice(1).map((p, i) => {
+          const prev = points[i];
+          const segColor = (prev.outOfRange || p.outOfRange) ? OUT_OF_RANGE_COLOR : 'var(--color-primary)';
+          return (
+            <path key={i} d={`M ${xSc(prev.h).toFixed(1)} ${ySc(prev.w).toFixed(1)} L ${xSc(p.h).toFixed(1)} ${ySc(p.w).toFixed(1)}`}
+              fill="none" stroke={segColor} strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
+          );
+        })}
         {points.map((p, i) => (
           <circle
             key={i}
             cx={xSc(p.h)} cy={ySc(p.w)} r={selected === i ? 6 : 4.5}
-            fill="var(--blue-600)" stroke="#fff" strokeWidth="2"
+            fill={p.outOfRange ? OUT_OF_RANGE_COLOR : 'var(--blue-600)'} stroke="#fff" strokeWidth="2"
             style={{ cursor: 'pointer' }}
             onClick={(e) => { e.stopPropagation(); setSelected(selected === i ? null : i); }}
           />
@@ -564,7 +592,7 @@ function WHChart({ records, gender, birthDate, title }) {
           />
         )}
       </svg>
-      <ChartLegend />
+      <ChartLegend hasOutOfRange={points.some(p => p.outOfRange)} />
     </Card>
   );
 }
@@ -619,9 +647,13 @@ function HistoryList({ records, onEditRecord }) {
 // ─── Add record panel ─────────────────────────────────────────────────────────
 
 function FormField({ label, children }) {
+  const required = typeof label === 'string' && label.endsWith(' *');
   return (
     <div style={{ marginBottom: 16 }}>
-      <div style={{ font: 'var(--type-label)', color: 'var(--text-title)', marginBottom: 8 }}>{label}</div>
+      <div style={{ font: 'var(--type-label)', color: 'var(--text-title)', marginBottom: 8 }}>
+        {required ? label.slice(0, -2) : label}
+        {required && <span style={{ color: '#dc2626' }}> *</span>}
+      </div>
       {children}
     </div>
   );
@@ -733,7 +765,7 @@ function AddRecordPanel({ childId, lineUid, record, needsConsent, onCancel, onSa
           <input type="number" step="0.5" placeholder="เช่น 44.0" value={waist} onChange={e => setWaist(e.target.value)} style={inputStyle} />
         </FormField>
       </div>
-      <div style={{ font: 'var(--type-caption)', color: 'var(--text-faint)', marginBottom: 14 }}>* จำเป็น · ช่องอื่นไม่บังคับ</div>
+      <div style={{ font: 'var(--type-caption)', color: 'var(--text-faint)', marginBottom: 14 }}><span style={{ color: '#dc2626' }}>*</span> จำเป็น · ช่องอื่นไม่บังคับ</div>
       {needsConsent && <ConsentGateNotice />}
       {error && <div style={{ font: 'var(--type-caption)', color: 'var(--red-400)', marginBottom: 12 }}>{error}</div>}
       <Button variant="primary" fullWidth disabled={needsConsent || !canSave} loading={saving} onClick={handleSave} leftIcon={<Plus width={18} height={18} />}>
