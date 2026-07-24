@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Bell, ChevronRight, Star, UserPlus, UserCircle2, Mars, Venus, Flame } from 'lucide-react';
 import { Card, Badge, Button, ProgressBar } from '../components/index.jsx';
-import { SectionTitle, ProfileButton, ChildCardsRow, SizeBoundaryNotice, ComingSoon } from '../shared/index.jsx';
+import { SectionTitle, ProfileButton, ChildCardsRow, SizeBoundaryNotice, ComingSoon, HERO_BG } from '../shared/index.jsx';
 import { recommendSize } from './TrackerScreen.jsx';
 import { isNearSizeBoundary } from '../lib/diaperSize.js';
 import { supabase } from '../lib/supabase.js';
@@ -460,11 +460,8 @@ export default function HomeScreen({ go, user, child, goOnboarding, goProfile, c
       )}
       {/* Hero */}
       <div style={{
+        ...HERO_BG,
         position: 'relative',
-        background: 'var(--gradient-hero)',
-        backgroundImage: 'url(/home-hero-bg.png)',
-        backgroundSize: 'cover',
-        backgroundPosition: 'right 35%',
         padding: '12px 20px 42px', color: '#fff', borderBottomLeftRadius: 28, borderBottomRightRadius: 28,
       }}>
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>

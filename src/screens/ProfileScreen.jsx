@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Medal, MapPin, Headphones, ChevronRight } from 'lucide-react';
 import { Card, Badge, Avatar, Button } from '../components/index.jsx';
-import { SkyDeco, SectionTitle, ComingSoon } from '../shared/index.jsx';
+import { SkyDeco, SectionTitle, ComingSoon, HERO_BG } from '../shared/index.jsx';
 import { calcAge } from '../lib/age.js';
 import { AddressModal, hasShippingInfo } from './AddressModal.jsx';
 
@@ -41,7 +41,7 @@ export default function ProfileScreen({ go, user, child, childrenList, onSwitchC
 
   return (
     <div style={{ background: 'var(--gradient-sky)', minHeight: '100%', paddingBottom: 24 }}>
-      <div style={{ position: 'relative', background: 'var(--gradient-hero)', padding: '24px 20px 52px', color: '#fff', borderBottomLeftRadius: 28, borderBottomRightRadius: 28 }}>
+      <div style={{ ...HERO_BG, position: 'relative', padding: '24px 20px 52px', color: '#fff', borderBottomLeftRadius: 28, borderBottomRightRadius: 28 }}>
         <SkyDeco />
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 14 }}>
           {user?.picture_url

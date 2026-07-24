@@ -1,6 +1,6 @@
 import { ChevronLeft, Info } from 'lucide-react';
 import { Card, Badge } from '../components/index.jsx';
-import { SkyDeco, SizeBoundaryNotice } from '../shared/index.jsx';
+import { SkyDeco, SizeBoundaryNotice, HERO_BG } from '../shared/index.jsx';
 import { recommendSize, getSizes, isNearSizeBoundary } from '../lib/diaperSize.js';
 
 export default function SizeChartScreen({ go, currentKg = 8.5 }) {
@@ -16,7 +16,7 @@ export default function SizeChartScreen({ go, currentKg = 8.5 }) {
 
   return (
     <div style={{ background: 'var(--gradient-sky)', minHeight: '100%', paddingBottom: 24 }}>
-      <div style={{ position: 'relative', background: 'var(--gradient-hero)', padding: '16px 16px 24px', color: '#fff', borderBottomLeftRadius: 28, borderBottomRightRadius: 28 }}>
+      <div style={{ ...HERO_BG, position: 'relative', padding: '16px 16px 24px', color: '#fff', borderBottomLeftRadius: 28, borderBottomRightRadius: 28 }}>
         <SkyDeco />
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 10 }}>
           <button onClick={() => go('diaper')} style={{ width: 38, height: 38, borderRadius: '50%', border: 'none', background: 'rgba(255,255,255,.18)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>

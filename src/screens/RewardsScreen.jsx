@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Star, Gift, Plus, ChevronRight, X } from 'lucide-react';
 import { Card, Badge, Button, Tabs } from '../components/index.jsx';
-import { SkyDeco, ProfileButton, SizeBoundaryNotice } from '../shared/index.jsx';
+import { SkyDeco, ProfileButton, SizeBoundaryNotice, HERO_BG } from '../shared/index.jsx';
 import { supabase } from '../lib/supabase.js';
 import { fetchRewardsCatalog } from '../lib/rewards.js';
 import { redeemReward } from '../lib/redemptions.js';
@@ -254,35 +254,36 @@ export default function RewardsScreen({ go, user, onUserUpdate, needsConsent, on
 
   return (
     <div style={{ background: 'var(--gradient-sky)', minHeight: '100%', paddingBottom: 24 }}>
-      <div style={{ position: 'relative', background: 'var(--gradient-hero)', padding: '20px 20px 30px', color: '#fff', borderBottomLeftRadius: 28, borderBottomRightRadius: 28 }}>
+      <div style={{ ...HERO_BG, position: 'relative', padding: '12px 20px', color: '#fff', borderBottomLeftRadius: 28, borderBottomRightRadius: 28 }}>
         <SkyDeco />
         {go && (
-          <div style={{ position: 'relative', display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+          <div style={{ position: 'relative', display: 'flex', justifyContent: 'flex-end', marginBottom: 2 }}>
             <ProfileButton onClick={() => go('profile')} />
           </div>
         )}
         <div style={{ position: 'relative', textAlign: 'center' }}>
-          <div style={{ font: 'var(--weight-medium) 13px var(--font-base)', opacity: .9 }}>แต้มสะสมของคุณ</div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 4 }}>
-            <Star width={26} height={26} fill="#fff" />
-            <span style={{ font: '800 42px var(--font-display)' }}>{points}</span>
+          <div style={{ font: 'var(--weight-medium) 12px var(--font-base)', opacity: .9 }}>แต้มสะสมของคุณ</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 1 }}>
+            <Star width={22} height={22} fill="#fff" />
+            <span style={{ font: '800 32px var(--font-display)' }}>{points}</span>
           </div>
           <button
             onClick={() => setShowPointsHistory(true)}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 2, border: 'none', background: 'none', color: '#fff', opacity: .85, font: 'var(--weight-medium) 12px var(--font-base)', cursor: 'pointer', padding: '2px 0', marginTop: 2 }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 2, border: 'none', background: 'none', color: '#fff', opacity: .85, font: 'var(--weight-medium) 12px var(--font-base)', cursor: 'pointer', padding: '2px 0', marginTop: 0 }}
           >
             ดูประวัติแต้ม <ChevronRight width={13} height={13} />
           </button>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
-            {streak > 0 && (
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(255,255,255,.18)', padding: '4px 12px', borderRadius: 999 }}>
+          {streak > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 2 }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'rgba(255,255,255,.18)', padding: '3px 12px', borderRadius: 999 }}>
                 <span style={{ font: 'var(--weight-semibold) 12px var(--font-base)' }}>🔥 เข้าระบบต่อเนื่อง {streak} วัน</span>
               </span>
-            )}
-          </div>
-          <div style={{ font: 'var(--type-caption)', opacity: .75, marginTop: 8 }}>แต้มหมดอายุหลังสิ้น SS1 (31 ธ.ค. 2026)</div>
+            </div>
+          )}
         </div>
       </div>
+
+      <div style={{ textAlign: 'center', font: 'var(--type-caption)', color: 'var(--text-faint)', padding: '8px 16px 0' }}>แต้มหมดอายุหลังสิ้น SS1 (31 ธ.ค. 2026)</div>
 
       <div style={{ padding: '16px 16px 0' }}>
         <Tabs value={tab} onChange={setTab} items={TAB_ITEMS} />

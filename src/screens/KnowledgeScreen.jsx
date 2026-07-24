@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Clock, ChevronRight, BookOpen } from 'lucide-react';
 import { Card, Badge } from '../components/index.jsx';
-import { SkyDeco, ProfileButton } from '../shared/index.jsx';
+import { SkyDeco, ProfileButton, HERO_BG } from '../shared/index.jsx';
 import { supabase } from '../lib/supabase.js';
 import { currentStage } from '../lib/stage.js';
 
@@ -149,7 +149,7 @@ export default function KnowledgeScreen({ go, child }) {
 
   return (
     <div style={{ background: 'var(--gradient-sky)', minHeight: '100%', paddingBottom: 24 }}>
-      <div style={{ position: 'relative', background: 'var(--gradient-hero)', padding: '20px 20px 26px', color: '#fff', borderBottomLeftRadius: 28, borderBottomRightRadius: 28 }}>
+      <div style={{ ...HERO_BG, position: 'relative', padding: '20px 20px 26px', color: '#fff', borderBottomLeftRadius: 28, borderBottomRightRadius: 28 }}>
         <SkyDeco />
         {go && (
           <div style={{ position: 'relative', display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>

@@ -2,6 +2,19 @@ import { X, MoreHorizontal, UserCircle2, Plus, Pencil } from 'lucide-react';
 import { calcAge } from '../lib/age.js';
 import { Button } from '../components/index.jsx';
 
+// Every screen's top header shares this exact background art + box ratio
+// (width:height ≈ 2.3:1, matching Home's) so headers read as "the same
+// header" everywhere instead of each screen inventing its own proportions.
+// overflow:hidden makes the ratio strict — screens with more header content
+// than Home's must fit their own layout within it, not grow past it.
+export const HERO_BG = {
+  backgroundImage: 'url(/home-hero-bg.png)',
+  backgroundSize: 'cover',
+  backgroundPosition: 'right 35%',
+  aspectRatio: '2.3',
+  overflow: 'hidden',
+};
+
 // "Feature under construction" popup — shared by every screen that has a
 // visible entry point for something not built yet (notifications, contact
 // page, scan-to-earn), so nothing on screen is ever a silent dead button.
@@ -38,11 +51,11 @@ export function ConsentGateNotice() {
 // something concrete to check for themselves instead of just a number.
 export function SizeBoundaryNotice({ style }) {
   return (
-    <div style={{ font: 'var(--type-caption)', color: '#9A3412', background: '#FFF7ED', border: '1px solid #FED7AA', borderRadius: 'var(--radius-md)', padding: '10px 12px', lineHeight: 1.6, ...style }}>
-      <div style={{ fontWeight: 700, marginBottom: 4 }}>⚠️ น้ำหนักลูกอยู่ในช่วงใกล้ไซซ์ถัดไป ลองสังเกต:</div>
-      • มีรอยรัดแดงที่ขาหรือรอบเอว<br />
-      • ผ้าอ้อมรั่วซึมบ่อย โดยเฉพาะรอบขา
-      <div style={{ marginTop: 6 }}>ถ้าเจอสัญญาณเหล่านี้ แนะนำขยับขึ้นไซซ์ถัดไปได้เลย</div>
+    <div style={{ font: 'var(--type-caption)', color: 'var(--yellow-800, #F57F17)', background: 'var(--yellow-100, #FFFDE7)', border: '1px solid #FFF59D', borderRadius: 'var(--radius-md)', padding: '10px 12px', lineHeight: 1.6, ...style }}>
+      <div style={{ fontWeight: 700, marginBottom: 4 }}>⚠️ น้ำหนักของเจ้าตัวเล็กใกล้เกินช่วงที่เหมาะกับไซซ์นี้แล้วน้า คุณแม่ลองเช็กสัญญาณเหล่านี้กัน</div>
+      • มีรอยแดงหรือรอยรัดบริเวณขาและรอบเอว<br />
+      • เจ้าตัวเล็กขยับตัวไม่คล่องหรือดูอึดอัด
+      <div style={{ marginTop: 6 }}>ถ้าเจอสัญญาณเหล่านี้ ถึงเวลาขยับขึ้นอีกหนึ่งไซซ์ เพื่อให้เจ้าตัวเล็กสบายตัวมากขึ้นแล้วค่ะ 🤍</div>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { Weight, ChevronRight, Ruler, ShoppingCart, Baby, Camera } from 'lucide-react';
+import { ChevronRight, Ruler, ShoppingCart, Baby, Camera } from 'lucide-react';
 import { Card } from '../components/index.jsx';
-import { SkyDeco, SectionTitle, ProfileButton, ChildCardsRow, SizeBoundaryNotice } from '../shared/index.jsx';
+import { SkyDeco, SectionTitle, ProfileButton, ChildCardsRow, SizeBoundaryNotice, HERO_BG } from '../shared/index.jsx';
 import { GrowthPanel } from './BabyTrackerScreen.jsx';
 import { supabase } from '../lib/supabase.js';
 import { recommendSize, isNearSizeBoundary } from '../lib/diaperSize.js';
@@ -10,6 +10,20 @@ import { calcAge } from '../lib/age.js';
 import { AddChildModal, EditChildModal } from './ChildModals.jsx';
 import { logAction, logError } from '../lib/userLogs.js';
 export { recommendSize };
+
+// lucide-react has no standing bathroom-scale glyph — closest built-in
+// ("Weight") is a kettlebell, which read as a gym icon rather than a scale.
+// Drawn to match lucide's own conventions (24x24, currentColor stroke,
+// round joins) so it blends in with the rest of the icon set.
+function ScaleStandIcon({ width = 21, height = 21, style }) {
+  return (
+    <svg width={width} height={height} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={style}>
+      <rect x="3" y="7" width="18" height="14" rx="3" />
+      <path d="M12 11v2" />
+      <circle cx="12" cy="14.5" r="2.5" />
+    </svg>
+  );
+}
 
 // 011_shop_links.platform codes → display treatment. Order here also sets
 // display order (DB has no sort_order column of its own).
@@ -97,7 +111,7 @@ function DiaperPanel({ go, child }) {
         {/* Weight row */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <span style={{ width: 42, height: 42, borderRadius: 12, background: 'var(--blue-100)', color: 'var(--blue-600)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
-            <Weight width={21} height={21} />
+            <ScaleStandIcon width={21} height={21} />
           </span>
           <div style={{ flex: 1 }}>
             <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)' }}>น้ำหนักล่าสุด</div>
@@ -220,7 +234,7 @@ export function DiaperScreen({ go, child, onChildUpdate, childrenList, activeChi
 
   return (
     <div style={{ background: 'var(--gradient-sky)', minHeight: '100%', paddingBottom: 24 }}>
-      <div style={{ position: 'relative', background: 'var(--gradient-hero)', padding: '20px 20px 28px', color: '#fff', borderBottomLeftRadius: 28, borderBottomRightRadius: 28 }}>
+      <div style={{ ...HERO_BG, position: 'relative', padding: '20px 20px 28px', color: '#fff', borderBottomLeftRadius: 28, borderBottomRightRadius: 28 }}>
         <SkyDeco />
         <div style={{ position: 'relative', display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
           <ProfileButton onClick={() => go('profile')} />
@@ -354,7 +368,7 @@ export default function TrackerScreen({ go, child, onChildUpdate, childrenList, 
 
   return (
     <div style={{ background: 'var(--gradient-sky)', minHeight: '100%', paddingBottom: 24 }}>
-      <div style={{ position: 'relative', background: 'var(--gradient-hero)', padding: '20px 20px 28px', color: '#fff', borderBottomLeftRadius: 28, borderBottomRightRadius: 28 }}>
+      <div style={{ ...HERO_BG, position: 'relative', padding: '20px 20px 28px', color: '#fff', borderBottomLeftRadius: 28, borderBottomRightRadius: 28 }}>
         <SkyDeco />
         {go && (
           <div style={{ position: 'relative', display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
