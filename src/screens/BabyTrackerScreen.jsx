@@ -41,16 +41,9 @@ function calcZScore(value, who) {
   return halfRange > 0 ? 2 * (value - who.median) / halfRange : 0;
 }
 
-function getRangeStatus(value, min, max, unit) {
-  if (value < min) return { status: 'below', chipLabel: 'ต่ำกว่าเกณฑ์', deltaText: `ต่ำกว่าเกณฑ์ ${(min - value).toFixed(1)} ${unit}` };
-  if (value > max) return { status: 'above', chipLabel: 'สูงกว่าเกณฑ์', deltaText: `สูงกว่าเกณฑ์ ${(value - max).toFixed(1)} ${unit}` };
-  return { status: 'normal', chipLabel: 'ตามเกณฑ์', deltaText: 'อยู่ในช่วงเกณฑ์ WHO' };
-}
-
-// Zone labels use the same "ตามเกณฑ์/สูงกว่าเกณฑ์/ต่ำกว่าเกณฑ์" vocabulary as
-// the range indicator chip above (getRangeStatus) across all 3 tabs — used
-// to say "ผอม/อ้วน" or "เตี้ย/สูง" per metric, which read as 3 unrelated
-// scales instead of one consistent one.
+// Zone labels use the same "ตามเกณฑ์/สูงกว่าเกณฑ์/ต่ำกว่าเกณฑ์" vocabulary
+// across all 3 tabs — used to say "ผอม/อ้วน" or "เตี้ย/สูง" per metric, which
+// read as 3 unrelated scales instead of one consistent one.
 const WH_ZONES = [
   { key: 'very_low',    zMin: -3,   zMax: -2,   label: 'ต่ำกว่าเกณฑ์มาก',     friendly: 'น้ำหนักต่ำกว่าเกณฑ์เมื่อเทียบกับส่วนสูง' },
   { key: 'low',         zMin: -2,   zMax: -1.5, label: 'ต่ำกว่าเกณฑ์เล็กน้อย', friendly: 'น้ำหนักต่ำกว่าช่วงสมส่วนเล็กน้อย' },
@@ -90,80 +83,57 @@ const ZONE_COLORS = {
   very_high: { bg: 'var(--orange-100, #FFF3E0)', fg: 'var(--orange-700, #E65100)' },
 };
 
-// ─── RangeIndicator ──────────────────────────────────────────────────────────
+// ─── RangeBar ────────────────────────────────────────────────────────────────
 
-// `hideChip` + `accentColor` let a caller that already shows its own status
-// badge (MergedMetricCard) reuse this bar without a second, duplicate status
-// pill — accentColor lets the marker/highlight match that badge's color
-// instead of this component's own plain normal/not-normal distinction.
-function RangeIndicator({ value, min, max, unit, hideChip = false, accentColor }) {
-  const range = max - min;
-  const buffer = range * 0.3;
-  const displayMin = Math.min(min - buffer, value - buffer * 0.5);
-  const displayMax = Math.max(max + buffer, value + buffer * 0.5);
-  const span = displayMax - displayMin || 1;
-
-  const normStart = ((min - displayMin) / span) * 100;
-  const normEnd   = ((max - displayMin) / span) * 100;
-  const valuePct  = Math.max(1, Math.min(99, ((value - displayMin) / span) * 100));
-
-  const { status, chipLabel, deltaText } = getRangeStatus(value, min, max, unit);
-  const markerColor = accentColor || (status === 'normal' ? 'var(--green-700)' : '#E65100');
-
-  const chipColor = status === 'normal'
-    ? { bg: 'var(--surface-green)', color: 'var(--green-700)' }
-    : { bg: '#FFF3E0', color: '#E65100' };
+// The track only ever spans [min, max] — the normal WHO window — instead of
+// auto-expanding its domain to fit an outlier value. An out-of-range value
+// pins to the near edge and gets called out with a floating value bubble
+// connected by a dashed line, so the "normal" band always reads as a full,
+// uncluttered bar rather than a sliver squeezed between two padded ends.
+function RangeBar({ value, min, max, unit, accentColor, statusLabel }) {
+  const pct = Math.max(0, Math.min(100, ((value - min) / ((max - min) || 1)) * 100));
+  const tickStyle = { width: 0, height: 7, borderLeft: '1.5px dashed var(--gray-300)' };
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: hideChip ? 'flex-start' : 'space-between', alignItems: 'center', marginBottom: 8 }}>
-        {!hideChip && (
-          <span style={{
-            padding: '3px 10px', borderRadius: 999,
-            background: chipColor.bg, color: chipColor.color,
-            font: 'var(--weight-semibold) 11px var(--font-base)',
-          }}>{chipLabel}</span>
-        )}
-        <span style={{ font: 'var(--type-caption)', color: 'var(--text-faint)' }}>
-          เกณฑ์ WHO: {min}–{max} {unit}
-        </span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 24, font: 'var(--type-caption)', color: 'var(--text-muted)' }}>
+        <Calendar width={13} height={13} style={{ flex: 'none' }} />
+        เกณฑ์ปกติ: {min}–{max} {unit}
       </div>
 
-      {/* Track */}
-      <div style={{ position: 'relative', height: 10, background: 'var(--gray-100)', borderRadius: 5, marginBottom: 6 }}>
-        {/* Normal zone highlight */}
+      <div style={{ position: 'relative' }}>
+        {/* Floating current-value callout, pinned above the marker */}
         <div style={{
-          position: 'absolute', top: 0, bottom: 0,
-          left: `${normStart}%`, width: `${normEnd - normStart}%`,
-          background: 'var(--color-secondary)', borderRadius: 5, opacity: 0.35,
-        }} />
-        {/* Value marker */}
-        <div style={{
-          position: 'absolute', top: '50%', transform: 'translateX(-50%) translateY(-50%)',
-          left: `${valuePct}%`,
-          width: 4, height: 18, borderRadius: 2,
-          background: markerColor,
-          boxShadow: '0 0 0 2px #fff',
-          zIndex: 2,
-        }} />
+          position: 'absolute', left: `${pct}%`, top: -30, transform: 'translateX(-50%)',
+          whiteSpace: 'nowrap', padding: '3px 10px', borderRadius: 999,
+          background: accentColor, color: '#fff',
+          font: 'var(--weight-bold) 11px var(--font-base)', zIndex: 3,
+        }}>
+          {value.toFixed(2)} {unit}
+        </div>
+        <div style={{ position: 'absolute', left: `${pct}%`, top: -8, height: 8, borderLeft: `1.5px dashed ${accentColor}`, transform: 'translateX(-50%)' }} />
+
+        {/* Track — the whole visible bar is the normal WHO band */}
+        <div style={{ position: 'relative', height: 24, background: 'var(--surface-green)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+          <span style={{ font: 'var(--weight-semibold) 11px var(--font-base)', color: 'var(--green-700)' }}>{statusLabel}</span>
+          <div style={{
+            position: 'absolute', top: '50%', left: `${pct}%`, transform: 'translate(-50%, -50%)',
+            width: 4, height: 28, borderRadius: 2,
+            background: accentColor, boxShadow: '0 0 0 2px #fff', zIndex: 2,
+          }} />
+        </div>
       </div>
 
-      {/* Min/Max labels */}
-      <div style={{ position: 'relative', height: 14 }}>
-        <span style={{
-          position: 'absolute', left: `${normStart}%`,
-          font: 'var(--weight-medium) 9px var(--font-base)', color: 'var(--text-faint)',
-          transform: 'translateX(-50%)',
-        }}>{min}</span>
-        <span style={{
-          position: 'absolute', left: `${normEnd}%`,
-          font: 'var(--weight-medium) 9px var(--font-base)', color: 'var(--text-faint)',
-          transform: 'translateX(-50%)',
-        }}>{max}</span>
-      </div>
-
-      <div style={{ font: 'var(--type-caption)', color: markerColor, marginTop: 2 }}>
-        {deltaText}
+      {/* Min/max labels, each with a short dashed tick pointing up at the bar */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+          <span style={tickStyle} />
+          <span style={{ font: 'var(--weight-medium) 10px var(--font-base)', color: 'var(--text-faint)' }}>{min} {unit}</span>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+          <span style={tickStyle} />
+          <span style={{ font: 'var(--weight-medium) 10px var(--font-base)', color: 'var(--text-faint)' }}>{max} {unit}</span>
+        </div>
       </div>
     </div>
   );
@@ -172,9 +142,9 @@ function RangeIndicator({ value, min, max, unit, hideChip = false, accentColor }
 // ─── Metric config ───────────────────────────────────────────────────────────
 
 const METRICS = [
-  { key: 'weightKg', indicator: 'wfa',  label: 'น้ำหนัก',           unit: 'กก.', Icon: ScaleStandIcon, tone: 'var(--blue-100)',  fg: 'var(--blue-600)'  },
-  { key: 'heightCm', indicator: 'lhfa', label: 'ส่วนสูง',           unit: 'ซม.', Icon: Ruler,          tone: 'var(--green-100)', fg: 'var(--green-700)' },
-  { key: 'weightKg', indicator: 'wfl',  label: 'น้ำหนักเทียบส่วนสูง', unit: 'กก.', Icon: ScaleStandIcon, tone: 'var(--blue-100)',  fg: 'var(--blue-600)'  },
+  { key: 'weightKg', indicator: 'wfa',  label: 'น้ำหนัก',           unit: 'กก.', Icon: ScaleStandIcon, iconSrc: '/icon-weight-hippo.png',   tone: 'var(--blue-100)',  fg: 'var(--blue-600)'  },
+  { key: 'heightCm', indicator: 'lhfa', label: 'ส่วนสูง',           unit: 'ซม.', Icon: Ruler,          iconSrc: '/icon-height-giraffe.png', tone: 'var(--green-100)', fg: 'var(--green-700)' },
+  { key: 'weightKg', indicator: 'wfl',  label: 'น้ำหนักเทียบส่วนสูง', unit: 'กก.', Icon: ScaleStandIcon, iconSrc: '/icon-weight-hippo.png',   tone: 'var(--blue-100)',  fg: 'var(--blue-600)'  },
 ];
 
 // ─── Tab bar ──────────────────────────────────────────────────────────────────
@@ -213,36 +183,52 @@ function ChartTabBar({ active, onChange }) {
 // own second range bar) — same value/zone/range info, said once.
 
 function MergedMetricCard({ metric, value, who, zone, measurementText }) {
-  const { label, unit, Icon, tone, fg } = metric;
+  const { label, unit, Icon, iconSrc, tone, fg } = metric;
   const colors = ZONE_COLORS[zone.key] || ZONE_COLORS.normal;
   return (
     <Card>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
-        <span style={{ width: 42, height: 42, borderRadius: 12, background: tone, color: fg, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
-          <Icon width={21} height={21} />
-        </span>
-        <div style={{ flex: 1 }}>
-          <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)' }}>{label}</div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-            <span style={{ font: '800 26px var(--font-display)', color: 'var(--text-heading)' }}>{value.toFixed(1)}</span>
-            <span style={{ font: 'var(--weight-semibold) 13px var(--font-base)', color: 'var(--text-muted)' }}>{unit}</span>
+      <div style={{ position: 'relative' }}>
+        {/* Ribbon-style status tag — a pointed left edge instead of a plain
+            pill, sitting in the card's top-right corner. */}
+        <span style={{
+          position: 'absolute', top: -4, right: -4,
+          padding: '5px 12px 5px 16px',
+          clipPath: 'polygon(10px 0, 100% 0, 100% 100%, 10px 100%, 0 50%)',
+          background: colors.fg, color: '#fff',
+          font: 'var(--weight-bold) 12px var(--font-base)', whiteSpace: 'nowrap',
+        }}>{zone.label}</span>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14, paddingRight: 70 }}>
+          {iconSrc
+            ? <img src={iconSrc} alt="" style={{ width: 56, height: 56, objectFit: 'contain', flex: 'none' }} />
+            : (
+              <span style={{ width: 48, height: 48, borderRadius: 14, background: tone, color: fg, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
+                <Icon width={23} height={23} />
+              </span>
+            )}
+          <div>
+            <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)' }}>{label}</div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+              <span style={{ font: '800 30px var(--font-display)', color: 'var(--text-heading)' }}>{value.toFixed(1)}</span>
+              <span style={{ font: 'var(--weight-semibold) 13px var(--font-base)', color: 'var(--text-muted)' }}>{unit}</span>
+            </div>
           </div>
         </div>
-        <span style={{
-          padding: '4px 12px', borderRadius: 999, flex: 'none',
-          background: colors.bg, color: colors.fg,
-          font: 'var(--weight-semibold) 12px var(--font-base)',
-        }}>{zone.label}</span>
       </div>
 
-      <div style={{ font: 'var(--weight-medium) 14px var(--font-base)', color: 'var(--text-body)', lineHeight: 1.5, marginBottom: 10 }}>
-        {zone.friendly} · {measurementText}
+      <div style={{ padding: '10px 12px', background: 'var(--surface-soft)', borderRadius: 'var(--radius-sm)', marginBottom: 10 }}>
+        <span style={{ font: 'var(--weight-bold) 14px var(--font-display)', color: colors.fg }}>{zone.friendly}</span>
+        <span style={{ font: 'var(--type-body-sm)', color: 'var(--text-muted)' }}> {measurementText}</span>
       </div>
 
-      <RangeIndicator value={value} min={who.sd2neg} max={who.sd2pos} unit={unit} hideChip accentColor={colors.fg} />
-
-      <div style={{ marginTop: 12, padding: '8px 12px', background: 'var(--gray-50)', borderRadius: 'var(--radius-sm)', font: 'var(--type-caption)', color: 'var(--text-faint)', lineHeight: 1.5 }}>
+      <div style={{ font: 'var(--type-caption)', color: 'var(--text-faint)', lineHeight: 1.5, marginBottom: 14 }}>
         ข้อมูลนี้ใช้เพื่อช่วยติดตามแนวโน้มการเจริญเติบโตเบื้องต้น ไม่ใช่การวินิจฉัยทางการแพทย์
+      </div>
+
+      <RangeBar value={value} min={who.sd2neg} max={who.sd2pos} unit={unit} accentColor={colors.fg} statusLabel="อยู่ในเกณฑ์ปกติ" />
+
+      <div style={{ marginTop: 14, font: 'var(--type-caption)', color: 'var(--text-faint)', textAlign: 'center' }}>
+        อ้างอิงจากเกณฑ์การเจริญเติบโตขององค์การอนามัยโลก (WHO) สำหรับเด็กอายุ 0–5 ปี
       </div>
     </Card>
   );
