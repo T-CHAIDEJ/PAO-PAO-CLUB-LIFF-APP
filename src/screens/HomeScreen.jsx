@@ -464,7 +464,7 @@ export default function HomeScreen({ go, user, child, goOnboarding, goProfile, c
         background: 'var(--gradient-hero)',
         backgroundImage: 'url(/home-hero-bg.png)',
         backgroundSize: 'cover',
-        backgroundPosition: 'right top',
+        backgroundPosition: 'right 35%',
         padding: '12px 20px 42px', color: '#fff', borderBottomLeftRadius: 28, borderBottomRightRadius: 28,
       }}>
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
