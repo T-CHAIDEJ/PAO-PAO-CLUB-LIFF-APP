@@ -92,7 +92,11 @@ const ZONE_COLORS = {
 
 // ─── RangeIndicator ──────────────────────────────────────────────────────────
 
-function RangeIndicator({ value, min, max, unit }) {
+// `hideChip` + `accentColor` let a caller that already shows its own status
+// badge (MergedMetricCard) reuse this bar without a second, duplicate status
+// pill — accentColor lets the marker/highlight match that badge's color
+// instead of this component's own plain normal/not-normal distinction.
+function RangeIndicator({ value, min, max, unit, hideChip = false, accentColor }) {
   const range = max - min;
   const buffer = range * 0.3;
   const displayMin = Math.min(min - buffer, value - buffer * 0.5);
@@ -104,6 +108,7 @@ function RangeIndicator({ value, min, max, unit }) {
   const valuePct  = Math.max(1, Math.min(99, ((value - displayMin) / span) * 100));
 
   const { status, chipLabel, deltaText } = getRangeStatus(value, min, max, unit);
+  const markerColor = accentColor || (status === 'normal' ? 'var(--green-700)' : '#E65100');
 
   const chipColor = status === 'normal'
     ? { bg: 'var(--surface-green)', color: 'var(--green-700)' }
@@ -111,12 +116,14 @@ function RangeIndicator({ value, min, max, unit }) {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-        <span style={{
-          padding: '3px 10px', borderRadius: 999,
-          background: chipColor.bg, color: chipColor.color,
-          font: 'var(--weight-semibold) 11px var(--font-base)',
-        }}>{chipLabel}</span>
+      <div style={{ display: 'flex', justifyContent: hideChip ? 'flex-start' : 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        {!hideChip && (
+          <span style={{
+            padding: '3px 10px', borderRadius: 999,
+            background: chipColor.bg, color: chipColor.color,
+            font: 'var(--weight-semibold) 11px var(--font-base)',
+          }}>{chipLabel}</span>
+        )}
         <span style={{ font: 'var(--type-caption)', color: 'var(--text-faint)' }}>
           เกณฑ์ WHO: {min}–{max} {unit}
         </span>
@@ -135,7 +142,7 @@ function RangeIndicator({ value, min, max, unit }) {
           position: 'absolute', top: '50%', transform: 'translateX(-50%) translateY(-50%)',
           left: `${valuePct}%`,
           width: 4, height: 18, borderRadius: 2,
-          background: status === 'normal' ? 'var(--green-700)' : '#E65100',
+          background: markerColor,
           boxShadow: '0 0 0 2px #fff',
           zIndex: 2,
         }} />
@@ -155,93 +162,20 @@ function RangeIndicator({ value, min, max, unit }) {
         }}>{max}</span>
       </div>
 
-      <div style={{ font: 'var(--type-caption)', color: status === 'normal' ? 'var(--green-700)' : '#E65100', marginTop: 2 }}>
+      <div style={{ font: 'var(--type-caption)', color: markerColor, marginTop: 2 }}>
         {deltaText}
       </div>
     </div>
   );
 }
 
-// ─── GrowthZoneBar ───────────────────────────────────────────────────────────
-
-const ZONE_SEGS = [
-  { key: 'very_low',  width: 1,   bg: '#FFCC80' },
-  { key: 'low',       width: 0.5, bg: '#FFE082' },
-  { key: 'normal',    width: 3,   bg: '#A5D6A7' },
-  { key: 'high',      width: 0.5, bg: '#FFE082' },
-  { key: 'very_high', width: 1,   bg: '#FFCC80' },
-];
-const TOTAL_UNITS = ZONE_SEGS.reduce((s, z) => s + z.width, 0); // 6
-
-function GrowthZoneBar({ zScore }) {
-  const clamped = Math.max(-3, Math.min(3, zScore ?? 0));
-  // map clamped z (-3..+3) → percentage across bar
-  // bar segments: -3→-2 (1u), -2→-1.5 (0.5u), -1.5→1.5 (3u), 1.5→2 (0.5u), 2→3 (1u)
-  // cumulative edges: 0, 1, 1.5, 4.5, 5, 6
-  const zToUnit = (z) => {
-    if (z <= -2) return (z + 3);           // -3..−2 → 0..1
-    if (z <= -1.5) return 1 + (z + 2) * 1;// -2..−1.5 → 1..1.5
-    if (z <=  1.5) return 1.5 + (z + 1.5) * (3 / 3); // -1.5..1.5 → 1.5..4.5
-    if (z <=  2)   return 4.5 + (z - 1.5) * 1;        // 1.5..2 → 4.5..5
-    return 5 + (z - 2);                                // 2..3 → 5..6
-  };
-  const markerPct = (zToUnit(clamped) / TOTAL_UNITS) * 100;
-
-  return (
-    <div style={{ marginTop: 4 }}>
-      <div style={{ position: 'relative', display: 'flex', borderRadius: 6, overflow: 'visible', height: 10 }}>
-        {ZONE_SEGS.map((seg, i) => (
-          <div key={seg.key} style={{
-            flex: seg.width, height: '100%', background: seg.bg,
-            borderRadius: i === 0 ? '6px 0 0 6px' : i === ZONE_SEGS.length - 1 ? '0 6px 6px 0' : 0,
-          }} />
-        ))}
-        {/* Marker */}
-        <div style={{
-          position: 'absolute', top: '50%', left: `${markerPct}%`,
-          transform: 'translate(-50%, -50%)',
-          width: 4, height: 18, borderRadius: 2,
-          background: 'var(--text-heading)', boxShadow: '0 0 0 2px #fff',
-          zIndex: 2,
-        }} />
-      </div>
-      <div style={{ display: 'flex', marginTop: 3 }}>
-        {ZONE_SEGS.map(seg => (
-          <div key={seg.key} style={{ flex: seg.width, textAlign: 'center', font: '9px var(--font-base)', color: 'var(--text-faint)', lineHeight: 1.2 }}>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ─── Summary metric cards ─────────────────────────────────────────────────────
+// ─── Metric config ───────────────────────────────────────────────────────────
 
 const METRICS = [
-  { key: 'weightKg', indicator: 'wfa',  label: 'น้ำหนัก',  unit: 'กก.', Icon: ScaleStandIcon,  tone: 'var(--blue-100)',  fg: 'var(--blue-600)'  },
-  { key: 'heightCm', indicator: 'lhfa', label: 'ส่วนสูง',  unit: 'ซม.', Icon: Ruler,  tone: 'var(--green-100)', fg: 'var(--green-700)' },
+  { key: 'weightKg', indicator: 'wfa',  label: 'น้ำหนัก',           unit: 'กก.', Icon: ScaleStandIcon, tone: 'var(--blue-100)',  fg: 'var(--blue-600)'  },
+  { key: 'heightCm', indicator: 'lhfa', label: 'ส่วนสูง',           unit: 'ซม.', Icon: Ruler,          tone: 'var(--green-100)', fg: 'var(--green-700)' },
+  { key: 'weightKg', indicator: 'wfl',  label: 'น้ำหนักเทียบส่วนสูง', unit: 'กก.', Icon: ScaleStandIcon, tone: 'var(--blue-100)',  fg: 'var(--blue-600)'  },
 ];
-
-function MetricSummaryCard({ metric, value, who }) {
-  const { label, unit, Icon, tone, fg } = metric;
-  return (
-    <Card>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-        <span style={{ width: 42, height: 42, borderRadius: 12, background: tone, color: fg, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
-          <Icon width={21} height={21} />
-        </span>
-        <div style={{ flex: 1 }}>
-          <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)' }}>{label}</div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-            <span style={{ font: '800 26px var(--font-display)', color: 'var(--text-heading)' }}>{value.toFixed(1)}</span>
-            <span style={{ font: 'var(--weight-semibold) 13px var(--font-base)', color: 'var(--text-muted)' }}>{unit}</span>
-          </div>
-        </div>
-      </div>
-      <RangeIndicator value={value} min={who.sd2neg} max={who.sd2pos} unit={unit} />
-    </Card>
-  );
-}
 
 // ─── Tab bar ──────────────────────────────────────────────────────────────────
 
@@ -273,29 +207,39 @@ function ChartTabBar({ active, onChange }) {
   );
 }
 
-// ─── Growth Interpretation Card ───────────────────────────────────────────────
+// ─── Merged Metric Card ────────────────────────────────────────────────────────
+// One card per metric instead of the old pair (a summary card always shown
+// for weight+height, plus a separate per-tab interpretation card with its
+// own second range bar) — same value/zone/range info, said once.
 
-function InterpretationCard({ title, zone, measurementText, zScore }) {
+function MergedMetricCard({ metric, value, who, zone, measurementText }) {
+  const { label, unit, Icon, tone, fg } = metric;
   const colors = ZONE_COLORS[zone.key] || ZONE_COLORS.normal;
   return (
     <Card>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-        <div style={{ font: 'var(--weight-bold) 15px var(--font-display)', color: 'var(--text-heading)' }}>{title}</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+        <span style={{ width: 42, height: 42, borderRadius: 12, background: tone, color: fg, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
+          <Icon width={21} height={21} />
+        </span>
+        <div style={{ flex: 1 }}>
+          <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)' }}>{label}</div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+            <span style={{ font: '800 26px var(--font-display)', color: 'var(--text-heading)' }}>{value.toFixed(1)}</span>
+            <span style={{ font: 'var(--weight-semibold) 13px var(--font-base)', color: 'var(--text-muted)' }}>{unit}</span>
+          </div>
+        </div>
         <span style={{
-          padding: '4px 12px', borderRadius: 999,
+          padding: '4px 12px', borderRadius: 999, flex: 'none',
           background: colors.bg, color: colors.fg,
           font: 'var(--weight-semibold) 12px var(--font-base)',
         }}>{zone.label}</span>
       </div>
 
-      <div style={{ font: 'var(--weight-medium) 14px var(--font-base)', color: 'var(--text-body)', lineHeight: 1.5, marginBottom: 6 }}>
-        {zone.friendly}
-      </div>
-      <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)', marginBottom: 10 }}>
-        {measurementText}
+      <div style={{ font: 'var(--weight-medium) 14px var(--font-base)', color: 'var(--text-body)', lineHeight: 1.5, marginBottom: 10 }}>
+        {zone.friendly} · {measurementText}
       </div>
 
-      {zScore !== null && <GrowthZoneBar zScore={zScore} />}
+      <RangeIndicator value={value} min={who.sd2neg} max={who.sd2pos} unit={unit} hideChip accentColor={colors.fg} />
 
       <div style={{ marginTop: 12, padding: '8px 12px', background: 'var(--gray-50)', borderRadius: 'var(--radius-sm)', font: 'var(--type-caption)', color: 'var(--text-faint)', lineHeight: 1.5 }}>
         ข้อมูลนี้ใช้เพื่อช่วยติดตามแนวโน้มการเจริญเติบโตเบื้องต้น ไม่ใช่การวินิจฉัยทางการแพทย์
@@ -310,17 +254,37 @@ function InterpretationCard({ title, zone, measurementText, zScore }) {
 // point without reading as alarming as a red warning color would.
 const OUT_OF_RANGE_COLOR = '#F97316';
 
+// Matches each legend swatch to how that element actually renders on the
+// chart — a flat bar read the same for the solid line, the dashed median,
+// and the translucent band, so none of them were visually distinguishable.
+function LegendSwatch({ kind, color }) {
+  if (kind === 'band') {
+    return <span style={{ width: 16, height: 10, background: color, opacity: 0.5, borderRadius: 2, flex: 'none' }} />;
+  }
+  if (kind === 'dashed') {
+    return (
+      <svg width="16" height="8" style={{ flex: 'none' }}>
+        <line x1="0" y1="4" x2="16" y2="4" stroke={color} strokeWidth="1.5" strokeDasharray="3 3" />
+      </svg>
+    );
+  }
+  if (kind === 'dot') {
+    return <span style={{ width: 10, height: 10, background: color, border: '1.5px solid #fff', outline: `1px solid ${color}`, borderRadius: '50%', flex: 'none' }} />;
+  }
+  return <span style={{ width: 16, height: 2.5, background: color, borderRadius: 1, flex: 'none' }} />;
+}
+
 function ChartLegend({ lineColor = 'var(--color-primary)', hasOutOfRange = false }) {
   return (
     <div style={{ display: 'flex', gap: 14, marginTop: 8, flexWrap: 'wrap' }}>
       {[
-        { color: lineColor, label: 'ข้อมูลลูก', solid: true },
-        { color: 'var(--gray-300)', label: 'ช่วงเกณฑ์', solid: false },
-        { color: 'var(--blue-300)', label: 'ค่ากลาง',   solid: false },
-        ...(hasOutOfRange ? [{ color: OUT_OF_RANGE_COLOR, label: 'สูง/ต่ำกว่าเกณฑ์', solid: true }] : []),
-      ].map(({ color, label, solid }) => (
+        { color: lineColor, label: 'ข้อมูลลูก', kind: 'line' },
+        { color: 'var(--blue-100,#E3F2FD)', label: 'ช่วงเกณฑ์', kind: 'band' },
+        { color: 'var(--blue-300)', label: 'ค่ากลาง',   kind: 'dashed' },
+        ...(hasOutOfRange ? [{ color: OUT_OF_RANGE_COLOR, label: 'สูง/ต่ำกว่าเกณฑ์', kind: 'dot' }] : []),
+      ].map(({ color, label, kind }) => (
         <span key={label} style={{ display: 'flex', alignItems: 'center', gap: 6, font: 'var(--type-caption)', color: 'var(--text-muted)' }}>
-          <span style={{ width: 16, height: solid ? 2.5 : 1.5, background: color, borderRadius: 1, opacity: solid ? 1 : 0.8 }} />
+          <LegendSwatch kind={kind} color={color} />
           {label}
         </span>
       ))}
@@ -415,15 +379,14 @@ function buildAgeChart(records, gender, birthDate, indicator, color) {
 
   const vMin = Math.min(...points.map(p => p.val), ...whoSlice.map(d => d.sd2neg)) - (indicator === 'wfa' ? 0.5 : 1);
   const vMax = Math.max(...points.map(p => p.val), ...whoSlice.map(d => d.sd2pos)) + (indicator === 'wfa' ? 0.5 : 1);
-  const currentM = Math.min(maxM, Math.max(minM, ageInMonths(birthDate, new Date())));
 
-  return { points, whoSlice, minM, maxM, vMin, vMax, currentM, color, unit };
+  return { points, whoSlice, minM, maxM, vMin, vMax, color, unit };
 }
 
 function AgeChart({ chartData, title }) {
   const [selected, setSelected] = useState(null);
   if (!chartData) return null;
-  const { points, whoSlice, minM, maxM, vMin, vMax, currentM, color, unit } = chartData;
+  const { points, whoSlice, minM, maxM, vMin, vMax, color, unit } = chartData;
   const W = 326, H = 190, mg = { top: 14, right: 10, bottom: 30, left: 30 };
   const pW = W - mg.left - mg.right, pH = H - mg.top - mg.bottom;
   const xSc = m => mg.left + ((m - minM) / ((maxM - minM) || 1)) * pW;
@@ -437,8 +400,6 @@ function AgeChart({ chartData, title }) {
   const monthStep = pickMonthStep(maxM - minM);
   const xTicks = [];
   for (let m = Math.ceil(minM / monthStep) * monthStep; m <= maxM; m += monthStep) xTicks.push(m);
-
-  const currentX = xSc(currentM);
 
   return (
     <Card>
@@ -467,18 +428,29 @@ function AgeChart({ chartData, title }) {
               fill="none" stroke={segColor} strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
           );
         })}
-        {points.map((p, i) => (
-          <circle
-            key={i}
-            cx={xSc(p.month)} cy={ySc(p.val)} r={selected === i ? 6 : 4.5}
-            fill={p.outOfRange ? OUT_OF_RANGE_COLOR : color} stroke="#fff" strokeWidth="2"
-            style={{ cursor: 'pointer' }}
-            onClick={(e) => { e.stopPropagation(); setSelected(selected === i ? null : i); }}
-          />
-        ))}
-        {/* Current-age indicator: vertical line + triangle marker on the x-axis */}
-        <line x1={currentX} x2={currentX} y1={mg.top} y2={mg.top + pH} stroke="var(--text-heading)" strokeWidth="1.5" />
-        <path d={`M ${currentX - 5} ${mg.top + pH + 6} L ${currentX + 5} ${mg.top + pH + 6} L ${currentX} ${mg.top + pH} Z`} fill="var(--text-heading)" />
+        {points.map((p, i) => {
+          const isLast = i === points.length - 1;
+          const r = selected === i ? 6 : isLast ? 5.5 : 4.5;
+          return (
+            <circle
+              key={i}
+              cx={xSc(p.month)} cy={ySc(p.val)} r={r}
+              fill={p.outOfRange ? OUT_OF_RANGE_COLOR : color} stroke="#fff" strokeWidth={isLast ? 2.5 : 2}
+              style={{ cursor: 'pointer' }}
+              onClick={(e) => { e.stopPropagation(); setSelected(selected === i ? null : i); }}
+            />
+          );
+        })}
+        {/* Label the current point directly instead of a connecting guide
+            line + arrow pointing down at the x-axis. */}
+        {points.length > 0 && (() => {
+          const last = points[points.length - 1];
+          const lx = xSc(last.month), ly = ySc(last.val);
+          const above = ly - mg.top > 16;
+          return (
+            <text x={lx} y={above ? ly - 10 : ly + 16} textAnchor="middle" fontSize="9" fontWeight="700" fill="var(--text-heading)">ปัจจุบัน</text>
+          );
+        })()}
         {/* x-axis month ticks */}
         {xTicks.map((m, i) => (
           <text key={`x${i}`} x={xSc(m)} y={H - 4} textAnchor="middle" fontSize="8.5" fill="var(--text-faint)">{Math.round(m)}</text>
@@ -540,11 +512,11 @@ function WHChart({ records, gender, birthDate, title }) {
   const xTicks = [];
   for (let h = minH; h <= maxH; h += xStep) xTicks.push(h);
 
-  // "Current" here = height from the most recently recorded entry (by date,
-  // not by height value — points are sorted by height for the trend line).
+  // "Current" here = the most recently recorded entry by date, not by
+  // height value — points are sorted by height for the trend line, so this
+  // is looked up by matching date rather than assumed to be points[last].
   const latestByDate = [...records].sort((a, b) => new Date(b.date) - new Date(a.date))[0];
-  const currentH = Math.min(maxH, Math.max(minH, latestByDate.heightCm));
-  const currentX = xSc(currentH);
+  const currentIdx = points.findIndex(p => p.date === latestByDate.date);
 
   return (
     <Card>
@@ -568,18 +540,29 @@ function WHChart({ records, gender, birthDate, title }) {
               fill="none" stroke={segColor} strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
           );
         })}
-        {points.map((p, i) => (
-          <circle
-            key={i}
-            cx={xSc(p.h)} cy={ySc(p.w)} r={selected === i ? 6 : 4.5}
-            fill={p.outOfRange ? OUT_OF_RANGE_COLOR : 'var(--blue-600)'} stroke="#fff" strokeWidth="2"
-            style={{ cursor: 'pointer' }}
-            onClick={(e) => { e.stopPropagation(); setSelected(selected === i ? null : i); }}
-          />
-        ))}
-        {/* Current-height indicator: vertical line + triangle marker on the x-axis */}
-        <line x1={currentX} x2={currentX} y1={mg.top} y2={mg.top + pH} stroke="var(--text-heading)" strokeWidth="1.5" />
-        <path d={`M ${currentX - 5} ${mg.top + pH + 6} L ${currentX + 5} ${mg.top + pH + 6} L ${currentX} ${mg.top + pH} Z`} fill="var(--text-heading)" />
+        {points.map((p, i) => {
+          const isCurrent = i === currentIdx;
+          const r = selected === i ? 6 : isCurrent ? 5.5 : 4.5;
+          return (
+            <circle
+              key={i}
+              cx={xSc(p.h)} cy={ySc(p.w)} r={r}
+              fill={p.outOfRange ? OUT_OF_RANGE_COLOR : 'var(--blue-600)'} stroke="#fff" strokeWidth={isCurrent ? 2.5 : 2}
+              style={{ cursor: 'pointer' }}
+              onClick={(e) => { e.stopPropagation(); setSelected(selected === i ? null : i); }}
+            />
+          );
+        })}
+        {/* Label the current point directly instead of a connecting guide
+            line + arrow pointing down at the x-axis. */}
+        {currentIdx >= 0 && (() => {
+          const cur = points[currentIdx];
+          const lx = xSc(cur.h), ly = ySc(cur.w);
+          const above = ly - mg.top > 16;
+          return (
+            <text x={lx} y={above ? ly - 10 : ly + 16} textAnchor="middle" fontSize="9" fontWeight="700" fill="var(--text-heading)">ปัจจุบัน</text>
+          );
+        })()}
         {/* x-axis (height) ticks */}
         {xTicks.map((h, i) => (
           <text key={`x${i}`} x={xSc(h)} y={H - 4} textAnchor="middle" fontSize="8.5" fill="var(--text-faint)">{Math.round(h)}</text>
@@ -796,10 +779,10 @@ function OverviewPanel({ records, gender, birthDate, chartTab, onChartTabChange,
   const zHA  = calcZScore(latest.heightCm, whoHA);
 
   // WH z-score — interpolate by exact height using getWHOWflAtLength
-  let zWH = null;
+  let zWH = null, whoWH = null;
   if (latest.heightCm >= 45 && latest.heightCm <= 120) {
-    const wflAtH = getWHOWflAtLength(gender, latest.heightCm);
-    if (wflAtH) zWH = calcZScore(latest.weightKg, wflAtH);
+    whoWH = getWHOWflAtLength(gender, latest.heightCm);
+    if (whoWH) zWH = calcZScore(latest.weightKg, whoWH);
   }
 
   const waZone  = getZone(zWA,  WA_ZONES);
@@ -818,43 +801,34 @@ function OverviewPanel({ records, gender, birthDate, chartTab, onChartTabChange,
         อัพเดตล่าสุด: {formatThaiDate(latest.date)}
       </div>
 
-      {/* Summary cards */}
-      <MetricSummaryCard metric={METRICS[0]} value={latest.weightKg} who={whoWA} />
-      <MetricSummaryCard metric={METRICS[1]} value={latest.heightCm} who={whoHA} />
-
       {/* Tab selector */}
       <ChartTabBar active={chartTab} onChange={onChartTabChange} />
 
-      {/* Interpretation card + Chart */}
+      {/* Metric card + Chart — one merged card per tab instead of always
+          showing both weight+height cards plus a second per-tab card. */}
       {chartTab === 'wa' && (
         <>
-          <InterpretationCard
-            title="น้ำหนักตามอายุ"
-            zone={waZone}
-            measurementText={`${latest.weightKg.toFixed(1)} กก. เมื่ออายุ ${ageLabel}`}
-            zScore={zWA}
+          <MergedMetricCard
+            metric={METRICS[0]} value={latest.weightKg} who={whoWA} zone={waZone}
+            measurementText={`เมื่ออายุ ${ageLabel}`}
           />
           <AgeChart chartData={waChart} title="น้ำหนักตามอายุ" />
         </>
       )}
       {chartTab === 'ha' && (
         <>
-          <InterpretationCard
-            title="ส่วนสูงตามอายุ"
-            zone={haZone}
-            measurementText={`${latest.heightCm.toFixed(1)} ซม. เมื่ออายุ ${ageLabel}`}
-            zScore={zHA}
+          <MergedMetricCard
+            metric={METRICS[1]} value={latest.heightCm} who={whoHA} zone={haZone}
+            measurementText={`เมื่ออายุ ${ageLabel}`}
           />
           <AgeChart chartData={haChart} title="ส่วนสูงตามอายุ" />
         </>
       )}
-      {chartTab === 'wh' && (
+      {chartTab === 'wh' && whoWH && (
         <>
-          <InterpretationCard
-            title="น้ำหนักเทียบส่วนสูง"
-            zone={whZone}
-            measurementText={`${latest.weightKg.toFixed(1)} กก. ที่ส่วนสูง ${latest.heightCm.toFixed(1)} ซม.`}
-            zScore={zWH}
+          <MergedMetricCard
+            metric={METRICS[2]} value={latest.weightKg} who={whoWH} zone={whZone}
+            measurementText={`ที่ส่วนสูง ${latest.heightCm.toFixed(1)} ซม.`}
           />
           <WHChart records={records} gender={gender} birthDate={birthDate} title="น้ำหนักเทียบส่วนสูง" />
         </>
