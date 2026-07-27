@@ -122,6 +122,16 @@ export default function ProfileScreen({ go, user, child, childrenList, onSwitchC
         <Button variant="soft" fullWidth onClick={handleLogout}>ออกจากระบบ</Button>
       </div>
 
+      {/* Lets whoever's checking a deploy (Director, QA) confirm the running
+          build actually is the commit they expect, instead of guessing from
+          "it looks about right" — browser/CDN caching can otherwise make an
+          old build look current. See vite.config.js for where these come from. */}
+      <div style={{ textAlign: 'center', marginTop: 18, font: 'var(--type-caption)', color: 'var(--text-faint)' }}>
+        เวอร์ชัน #{typeof __APP_COMMIT__ !== 'undefined' ? __APP_COMMIT__ : 'unknown'}
+        {' · build '}
+        {typeof __APP_BUILD_TIME__ !== 'undefined' ? new Date(__APP_BUILD_TIME__).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' }) : '-'}
+      </div>
+
       {showAddress && (
         <AddressModal
           user={user}
