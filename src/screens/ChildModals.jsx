@@ -182,7 +182,15 @@ export function AddChildModal({ onClose, onSaved, lineUid, needsConsent }) {
   }
 
   return (
-    <ModalShell title={kind === 'pregnant' ? '🤰 เพิ่มการตั้งครรภ์' : '👶 เพิ่มลูก'} onClose={onClose}>
+    <ModalShell
+      title={(
+        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <img src={kind === 'pregnant' ? '/icon-pregnant-mom.png' : '/icon-newborn-baby.png'} alt="" width={26} height={26} style={{ objectFit: 'contain', flex: 'none' }} />
+          {kind === 'pregnant' ? 'เพิ่มการตั้งครรภ์' : 'เพิ่มลูก'}
+        </span>
+      )}
+      onClose={onClose}
+    >
       {kind === 'pregnant' ? (
         <>
           <PhotoPicker preview={photoPreview} onPick={onPhotoPick} />

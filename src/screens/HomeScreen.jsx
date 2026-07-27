@@ -121,7 +121,9 @@ function BabyInfoCard({ child, latestKg, latestCm, go, onBabyArrived }) {
           {child?.avatar_url ? (
             <img src={child.avatar_url} alt={child?.name || 'คุณแม่ตั้งครรภ์'} style={{ width: 40, height: 40, borderRadius: 12, objectFit: 'cover', flex: 'none' }} />
           ) : (
-            <span style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--surface-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none', fontSize: 20 }}>🤰</span>
+            <span style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--surface-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
+              <img src="/icon-pregnant-mom.png" alt="" width={28} height={28} style={{ objectFit: 'contain' }} />
+            </span>
           )}
           <div>
             <div style={{ font: 'var(--weight-bold) 17px var(--font-display)', color: 'var(--text-heading)' }}>{child?.name || 'คุณแม่ตั้งครรภ์'}</div>
@@ -580,7 +582,7 @@ export default function HomeScreen({ go, user, child, goOnboarding, goProfile, c
       {!isGuest && (!childrenList || childrenList.length === 0) && (
         <div style={{ padding: '20px 16px 0' }}>
           <Card style={{ boxShadow: 'var(--shadow-md)', textAlign: 'center' }}>
-            <div style={{ fontSize: 32, marginBottom: 8 }}>👶</div>
+            <img src="/icon-newborn-baby.png" alt="" width={40} height={40} style={{ objectFit: 'contain', marginBottom: 8 }} />
             <div style={{ font: 'var(--weight-bold) 16px var(--font-display)', color: 'var(--text-heading)' }}>ยังไม่มีข้อมูลลูกน้อย</div>
             <div style={{ font: 'var(--type-body-sm)', color: 'var(--text-muted)', marginTop: 4 }}>กรอกข้อมูลลูกเพื่อเริ่มติดตามพัฒนาการและแนะนำไซซ์ผ้าอ้อม</div>
             <div style={{ marginTop: 14 }}>

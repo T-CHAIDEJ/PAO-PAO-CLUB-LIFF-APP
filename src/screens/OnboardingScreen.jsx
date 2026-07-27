@@ -86,14 +86,14 @@ function SegmentPicker({ onPick }) {
         <div style={{ font: 'var(--type-body)', color: 'var(--text-muted)', marginTop: 6 }}>เพื่อให้เปาเปาดูแลคุณและลูกน้อยได้ตรงจุดขึ้น</div>
       </div>
       <Card interactive onClick={() => onPick('A')} style={{ display: 'flex', alignItems: 'center', gap: 16, cursor: 'pointer' }}>
-        <span style={{ fontSize: 36 }}>🤰</span>
+        <img src="/icon-pregnant-mom.png" alt="" width={48} height={48} style={{ objectFit: 'contain', flex: 'none' }} />
         <div>
           <div style={{ font: 'var(--weight-bold) 17px var(--font-display)', color: 'var(--text-heading)' }}>เตรียมต้อนรับลูกน้อย</div>
           <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)', marginTop: 3 }}>ติดตามข้อมูลการตั้งครรภ์และเตรียมความพร้อมสำหรับคุณพ่อคุณแม่</div>
         </div>
       </Card>
       <Card interactive onClick={() => onPick('B')} style={{ display: 'flex', alignItems: 'center', gap: 16, cursor: 'pointer' }}>
-        <span style={{ fontSize: 36 }}>👶</span>
+        <img src="/icon-newborn-baby.png" alt="" width={48} height={48} style={{ objectFit: 'contain', flex: 'none' }} />
         <div>
           <div style={{ font: 'var(--weight-bold) 17px var(--font-display)', color: 'var(--text-heading)' }}>มีลูกแล้ว</div>
           <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)', marginTop: 3 }}>ติดตามพัฒนาการและการดูแลลูกน้อย</div>
@@ -160,8 +160,9 @@ function SegmentForm({ segment, lineProfile, onSubmit, loading, error }) {
 
   return (
     <div style={{ padding: '24px 24px 32px', overflowY: 'auto' }}>
-      <div style={{ font: '800 20px var(--font-display)', color: 'var(--text-heading)', marginBottom: 20 }}>
-        {segment === 'A' ? '🤰 ข้อมูลของคุณแม่' : '👶 ข้อมูลลูกน้อย'}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, font: '800 20px var(--font-display)', color: 'var(--text-heading)', marginBottom: 20 }}>
+        <img src={segment === 'A' ? '/icon-pregnant-mom.png' : '/icon-newborn-baby.png'} alt="" width={26} height={26} style={{ objectFit: 'contain', flex: 'none' }} />
+        {segment === 'A' ? 'ข้อมูลของคุณแม่' : 'ข้อมูลลูกน้อย'}
       </div>
 
       <FormField label="ชื่อคุณแม่">

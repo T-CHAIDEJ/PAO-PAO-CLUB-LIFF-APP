@@ -77,9 +77,9 @@ export default function ProfileScreen({ go, user, child, childrenList, onSwitchC
               <span style={{ width: 38, height: 38, borderRadius: '50%', overflow: 'hidden', background: 'var(--surface-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
                 {c.avatar_url
                   ? <img src={c.avatar_url} alt={c.name || 'ลูก'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  : <span style={{ fontSize: 18 }}>{c.is_pregnant ? '🤰' : '👶'}</span>}
+                  : <img src={c.is_pregnant ? '/icon-pregnant-mom.png' : '/icon-newborn-baby.png'} alt="" width={26} height={26} style={{ objectFit: 'contain' }} />}
               </span>
-              <span style={{ flex: 1, font: 'var(--weight-medium) 15px var(--font-base)', color: 'var(--text-body)' }}>{c.name || (c.is_pregnant ? 'ลูกน้อยในท้อง' : 'ลูกน้อย')}</span>
+              <span style={{ flex: 1, font: 'var(--weight-medium) 15px var(--font-base)', color: 'var(--text-body)' }}>{c.name || (c.is_pregnant ? 'คุณแม่ตั้งครรภ์' : 'ลูกน้อย')}</span>
               <span style={{ font: 'var(--type-caption)', color: 'var(--text-faint)' }}>{c.is_pregnant ? 'ตั้งครรภ์' : calcAge(c.birth_date)}</span>
               <ChevronRight width={19} height={19} style={{ color: 'var(--text-faint)' }} />
             </div>

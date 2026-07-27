@@ -165,7 +165,7 @@ function ChildMiniCard({ c, active, latestKg, latestCm, onSelect, onEdit }) {
         <span style={{ width: 36, height: 36, borderRadius: 10, overflow: 'hidden', background: 'var(--surface-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
           {c.avatar_url
             ? <img src={c.avatar_url} alt={c.name || 'ลูก'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            : <span style={{ fontSize: 16 }}>{c.is_pregnant ? '🤰' : '👶'}</span>}
+            : <img src={c.is_pregnant ? '/icon-pregnant-mom.png' : '/icon-newborn-baby.png'} alt="" width={24} height={24} style={{ objectFit: 'contain' }} />}
         </span>
         <div style={{ minWidth: 0 }}>
           <div style={{ font: 'var(--weight-bold) 13px var(--font-display)', color: 'var(--text-heading)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
