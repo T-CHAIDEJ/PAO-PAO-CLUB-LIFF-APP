@@ -1,8 +1,9 @@
-import { Home, Baby, Activity, BookOpen, Gift } from 'lucide-react';
+import { Home, Activity, BookOpen, Gift } from 'lucide-react';
+import { DiaperIcon } from '../shared/index.jsx';
 
 const TABS = [
   { id: 'home',      label: 'หน้าแรก',   Icon: Home },
-  { id: 'diaper',    label: 'ผ้าอ้อม',   Icon: Baby },
+  { id: 'diaper',    label: 'ผ้าอ้อม',   Icon: DiaperIcon },
   { id: 'tracker',   label: 'พัฒนาการ',  Icon: Activity },
   { id: 'knowledge', label: 'ความรู้',    Icon: BookOpen },
   { id: 'rewards',   label: 'รางวัล',    Icon: Gift },

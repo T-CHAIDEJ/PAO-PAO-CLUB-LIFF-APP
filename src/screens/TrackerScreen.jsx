@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ChevronRight, Ruler, ShoppingCart, Baby, Camera } from 'lucide-react';
+import { ChevronRight, ShoppingCart, Baby, Camera } from 'lucide-react';
 import { Card } from '../components/index.jsx';
 import { SkyDeco, SectionTitle, ProfileButton, ChildCardsRow, SizeBoundaryNotice, HERO_BG, ScaleStandIcon } from '../shared/index.jsx';
 import { GrowthPanel } from './BabyTrackerScreen.jsx';
@@ -120,35 +120,12 @@ function DiaperPanel({ go, child }) {
           )}
         </div>
 
-        {/* Thigh & Waist — secondary */}
+        {/* Thigh/waist fit-check hidden for now per explicit request — keep
+            just weight + the link into the Tracker's add-record form. */}
         <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border-default)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-            <Ruler width={14} height={14} style={{ color: 'var(--text-faint)' }} />
-            <span style={{ font: 'var(--weight-medium) 12px var(--font-base)', color: 'var(--text-muted)' }}>เช็คความพอดี (รอบขา / รอบเอว)</span>
-          </div>
-          <div style={{ display: 'flex', gap: 10 }}>
-            {[
-              { label: 'รอบขา', value: latestMeasurements.thigh },
-              { label: 'รอบเอว', value: latestMeasurements.waist },
-            ].map(({ label, value }) => (
-              <div key={label} style={{ flex: 1, background: 'var(--surface-soft)', borderRadius: 'var(--radius-md)', padding: '8px 10px' }}>
-                <div style={{ font: '11px var(--font-base)', color: 'var(--text-faint)', marginBottom: 2 }}>{label}</div>
-                {loadingWeight ? (
-                  <span style={{ font: '13px var(--font-base)', color: 'var(--text-faint)' }}>...</span>
-                ) : value ? (
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
-                    <span style={{ font: 'var(--weight-bold) 16px var(--font-display)', color: 'var(--text-title)' }}>{value.toFixed(1)}</span>
-                    <span style={{ font: '11px var(--font-base)', color: 'var(--text-faint)' }}>ซม.</span>
-                  </div>
-                ) : (
-                  <span style={{ font: '12px var(--font-base)', color: 'var(--text-faint)' }}>—</span>
-                )}
-              </div>
-            ))}
-          </div>
           <button
             onClick={() => go && go('tracker', { openAddRecord: true })}
-            style={{ marginTop: 8, border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', font: 'var(--type-caption)', color: 'var(--blue-600)', textDecoration: 'underline', textAlign: 'left' }}
+            style={{ border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', font: 'var(--type-caption)', color: 'var(--blue-600)', textDecoration: 'underline', textAlign: 'left' }}
           >
             บันทึกผ่านหน้า พัฒนาการ → บันทึกข้อมูลใหม่
           </button>
