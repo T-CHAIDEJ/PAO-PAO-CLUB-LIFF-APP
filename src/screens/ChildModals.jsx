@@ -160,14 +160,14 @@ export function AddChildModal({ onClose, onSaved, lineUid, needsConsent }) {
       <ModalShell title="เพิ่มลูก" onClose={onClose}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <button onClick={() => setKind('pregnant')} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: 16, border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', background: '#fff', cursor: 'pointer', textAlign: 'left' }}>
-            <span style={{ fontSize: 30 }}>🤰</span>
+            <img src="/icon-pregnant-mom.png" alt="" width={44} height={44} style={{ objectFit: 'contain', flex: 'none' }} />
             <div>
               <div style={{ font: 'var(--weight-bold) 15px var(--font-display)', color: 'var(--text-heading)' }}>กำลังตั้งครรภ์</div>
               <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)' }}>ยังไม่คลอด</div>
             </div>
           </button>
           <button onClick={() => setKind('born')} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: 16, border: '1px solid var(--border-default)', borderRadius: 'var(--radius-md)', background: '#fff', cursor: 'pointer', textAlign: 'left' }}>
-            <span style={{ fontSize: 30 }}>👶</span>
+            <img src="/icon-newborn-baby.png" alt="" width={44} height={44} style={{ objectFit: 'contain', flex: 'none' }} />
             <div>
               <div style={{ font: 'var(--weight-bold) 15px var(--font-display)', color: 'var(--text-heading)' }}>มีลูกแล้ว</div>
               <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)' }}>เกิดแล้ว</div>
