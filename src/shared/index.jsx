@@ -169,7 +169,7 @@ function ChildMiniCard({ c, active, latestKg, latestCm, onSelect, onEdit }) {
         </span>
         <div style={{ minWidth: 0 }}>
           <div style={{ font: 'var(--weight-bold) 13px var(--font-display)', color: 'var(--text-heading)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {c.name || (c.is_pregnant ? 'ในท้อง' : 'ลูก')}
+            {c.name || (c.is_pregnant ? 'คุณแม่' : 'ลูก')}
           </div>
           <div style={{ font: '10px var(--font-base)', color: 'var(--text-faint)' }}>{c.is_pregnant ? 'ตั้งครรภ์' : childAge}</div>
         </div>

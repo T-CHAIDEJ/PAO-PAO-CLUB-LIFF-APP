@@ -40,8 +40,10 @@ function MemberHero({ user, child }) {
   const childAge = calcAge(child?.birth_date);
 
   const parts = [];
-  parts.push(streak > 0 ? `streak วันที่ ${streak}` : null);
-  if (child?.name) parts.push(childAge ? `${child.name} อายุ ${childAge}` : child.name);
+  parts.push(streak > 0 ? `ลงชื่อต่อเนื่อง วันที่ ${streak}` : null);
+  // child?.name is the mother's own name while pregnant (see BabyInfoCard) —
+  // "น้อง" only makes sense in front of the baby's own name.
+  if (child?.name && !child?.is_pregnant) parts.push(childAge ? `น้อง ${child.name} อายุ ${childAge}` : `น้อง ${child.name}`);
   else if (childAge) parts.push(`อายุ ${childAge}`);
   const subLine = parts.filter(Boolean).join(' · ') || null;
 
@@ -116,9 +118,13 @@ function BabyInfoCard({ child, latestKg, latestCm, go, onBabyArrived }) {
     return (
       <Card style={{ boxShadow: 'var(--shadow-md)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--surface-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none', fontSize: 20 }}>🤰</span>
+          {child?.avatar_url ? (
+            <img src={child.avatar_url} alt={child?.name || 'คุณแม่ตั้งครรภ์'} style={{ width: 40, height: 40, borderRadius: 12, objectFit: 'cover', flex: 'none' }} />
+          ) : (
+            <span style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--surface-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none', fontSize: 20 }}>🤰</span>
+          )}
           <div>
-            <div style={{ font: 'var(--weight-bold) 17px var(--font-display)', color: 'var(--text-heading)' }}>{child?.name || 'ลูกน้อยในท้อง'}</div>
+            <div style={{ font: 'var(--weight-bold) 17px var(--font-display)', color: 'var(--text-heading)' }}>{child?.name || 'คุณแม่ตั้งครรภ์'}</div>
             {dueDateLabel && (
               <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)', marginTop: 2 }}>กำหนดคลอด {dueDateLabel}</div>
             )}
@@ -133,7 +139,7 @@ function BabyInfoCard({ child, latestKg, latestCm, go, onBabyArrived }) {
                   <span style={{ font: '800 32px var(--font-display)', color: 'var(--color-secondary)' }}>{daysLeft}</span>
                   <span style={{ font: 'var(--weight-semibold) 14px var(--font-base)', color: 'var(--text-muted)' }}>วัน</span>
                 </div>
-                <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)', marginTop: 2 }}>ก่อนถึงกำหนดคลอด นับถอยหลังรอเจอลูกน้อย 💛</div>
+                <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)', marginTop: 2 }}>ก่อนถึงกำหนดคลอด</div>
               </>
             ) : (
               <div style={{ font: 'var(--weight-bold) 15px var(--font-display)', color: 'var(--color-secondary)' }}>ถึงกำหนดคลอดแล้ว! เตรียมพร้อมต้อนรับลูกน้อยได้เลย</div>
@@ -145,7 +151,7 @@ function BabyInfoCard({ child, latestKg, latestCm, go, onBabyArrived }) {
           onClick={onBabyArrived}
           style={{ marginTop: 12, width: '100%', border: 'none', background: 'var(--color-secondary)', color: '#fff', borderRadius: 'var(--radius-md)', padding: '12px 16px', font: 'var(--weight-bold) 14px var(--font-base)', cursor: 'pointer' }}
         >
-          ลูกเกิดแล้ว 🎉 กดเพื่อลงทะเบียน
+          ลูกคลอดแล้ว 🎉 ลงทะเบียนต้อนรับสมาชิกใหม่
         </button>
       </Card>
     );
@@ -510,7 +516,9 @@ export default function HomeScreen({ go, user, child, goOnboarding, goProfile, c
                   <span style={{ font: 'var(--weight-semibold) 14px var(--font-base)', color: 'var(--text-muted)' }}>แต้ม</span>
                 </div>
               </div>
-              <Badge variant="solidGreen">สะสมไว้แลกของรางวัล</Badge>
+              <button onClick={() => go('rewards')} style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer' }}>
+                <Badge variant="solidGreen">แลกของรางวัล</Badge>
+              </button>
             </div>
             {nextReward && (
               <div style={{ marginTop: 14 }}>

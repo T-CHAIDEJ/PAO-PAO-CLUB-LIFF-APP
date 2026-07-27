@@ -312,9 +312,9 @@ function ChartLegend({ lineColor = 'var(--color-primary)', hasOutOfRange = false
   return (
     <div style={{ display: 'flex', gap: 14, marginTop: 8, flexWrap: 'wrap' }}>
       {[
-        { color: lineColor, label: 'ข้อมูลลูก', kind: 'line' },
-        { color: 'var(--blue-100,#E3F2FD)', label: 'ช่วงเกณฑ์', kind: 'band' },
-        { color: 'var(--blue-300)', label: 'ค่ากลาง',   kind: 'dashed' },
+        { color: lineColor, label: 'ข้อมูลลูก', kind: 'dot' },
+        { color: 'var(--green-100)', label: 'ช่วงเกณฑ์', kind: 'band' },
+        { color: 'var(--green-400)', label: 'ค่ากลาง',   kind: 'dashed' },
         ...(hasOutOfRange ? [{ color: OUT_OF_RANGE_COLOR, label: 'สูง/ต่ำกว่าเกณฑ์', kind: 'dot' }] : []),
       ].map(({ color, label, kind }) => (
         <span key={label} style={{ display: 'flex', alignItems: 'center', gap: 6, font: 'var(--type-caption)', color: 'var(--text-muted)' }}>
@@ -323,6 +323,19 @@ function ChartLegend({ lineColor = 'var(--color-primary)', hasOutOfRange = false
         </span>
       ))}
     </div>
+  );
+}
+
+// Labels the WHO band's three regions directly on the chart, next to where
+// the band ends at the right edge — so a parent can read "too high / normal
+// / too low" off the lines themselves instead of only inferring it from color.
+function ZoneLabels({ x, ySdPos, yMedian, ySdNeg }) {
+  return (
+    <>
+      <text x={x} y={ySdPos} dominantBaseline="middle" fontSize="7.5" fontWeight="600" fill="var(--text-muted)">สูงกว่าเกณฑ์</text>
+      <text x={x} y={yMedian} dominantBaseline="middle" fontSize="7.5" fontWeight="600" fill="var(--text-muted)">เกณฑ์ปกติ</text>
+      <text x={x} y={ySdNeg} dominantBaseline="middle" fontSize="7.5" fontWeight="600" fill="var(--text-muted)">ต่ำกว่าเกณฑ์</text>
+    </>
   );
 }
 
@@ -421,7 +434,7 @@ function AgeChart({ chartData, title }) {
   const [selected, setSelected] = useState(null);
   if (!chartData) return null;
   const { points, whoSlice, minM, maxM, vMin, vMax, color, unit } = chartData;
-  const W = 326, H = 190, mg = { top: 14, right: 10, bottom: 30, left: 30 };
+  const W = 326, H = 190, mg = { top: 14, right: 54, bottom: 30, left: 30 };
   const pW = W - mg.left - mg.right, pH = H - mg.top - mg.bottom;
   const xSc = m => mg.left + ((m - minM) / ((maxM - minM) || 1)) * pW;
   const ySc = v => mg.top + (1 - (v - vMin) / ((vMax - vMin) || 1)) * pH;
@@ -447,21 +460,16 @@ function AgeChart({ chartData, title }) {
           </g>
         ))}
         {/* WHO band */}
-        <path d={band} fill="var(--blue-100,#E3F2FD)" opacity="0.5" />
+        <path d={band} fill="var(--green-100)" opacity="0.6" />
         {/* Median */}
         <path d={whoSlice.map((d, i) => `${i === 0 ? 'M' : 'L'} ${xSc(d.month).toFixed(1)} ${ySc(d.median).toFixed(1)}`).join(' ')}
-          fill="none" stroke="var(--blue-300)" strokeWidth="1.5" strokeDasharray="4 4" opacity="0.8" />
-        {/* Child line — each segment turns orange if either endpoint falls
-            outside the WHO ±2SD band, instead of one uniform color that
-            can't tell a parent anything is off. */}
-        {points.slice(1).map((p, i) => {
-          const prev = points[i];
-          const segColor = (prev.outOfRange || p.outOfRange) ? OUT_OF_RANGE_COLOR : color;
-          return (
-            <path key={i} d={`M ${xSc(prev.month).toFixed(1)} ${ySc(prev.val).toFixed(1)} L ${xSc(p.month).toFixed(1)} ${ySc(p.val).toFixed(1)}`}
-              fill="none" stroke={segColor} strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
-          );
-        })}
+          fill="none" stroke="var(--green-400)" strokeWidth="1.5" strokeDasharray="4 4" opacity="0.9" />
+        <ZoneLabels
+          x={W - mg.right + 5}
+          ySdPos={ySc(whoSlice[whoSlice.length - 1].sd2pos)}
+          yMedian={ySc(whoSlice[whoSlice.length - 1].median)}
+          ySdNeg={ySc(whoSlice[whoSlice.length - 1].sd2neg)}
+        />
         {points.map((p, i) => {
           const isLast = i === points.length - 1;
           const r = selected === i ? 6 : isLast ? 5.5 : 4.5;
@@ -532,7 +540,7 @@ function WHChart({ records, gender, birthDate, title }) {
   const wMin = Math.min(...points.map(p => p.w), ...whoSlice.map(d => d.sd2neg)) - 0.5;
   const wMax = Math.max(...points.map(p => p.w), ...whoSlice.map(d => d.sd2pos)) + 0.5;
 
-  const W = 326, H = 190, mg = { top: 14, right: 10, bottom: 30, left: 30 };
+  const W = 326, H = 190, mg = { top: 14, right: 54, bottom: 30, left: 30 };
   const pW = W - mg.left - mg.right, pH = H - mg.top - mg.bottom;
   const xSc = h => mg.left + ((h - minH) / ((maxH - minH) || 1)) * pW;
   const ySc = w => mg.top + (1 - (w - wMin) / ((wMax - wMin) || 1)) * pH;
@@ -563,17 +571,15 @@ function WHChart({ records, gender, birthDate, title }) {
             <text x={mg.left - 6} y={ySc(v)} textAnchor="end" dominantBaseline="middle" fontSize="8.5" fill="var(--text-faint)">{v}</text>
           </g>
         ))}
-        <path d={band} fill="var(--blue-100,#E3F2FD)" opacity="0.5" />
+        <path d={band} fill="var(--green-100)" opacity="0.6" />
         <path d={whoSlice.map((d, i) => `${i === 0 ? 'M' : 'L'} ${xSc(d.length).toFixed(1)} ${ySc(d.median).toFixed(1)}`).join(' ')}
-          fill="none" stroke="var(--blue-300)" strokeWidth="1.5" strokeDasharray="4 4" opacity="0.8" />
-        {points.slice(1).map((p, i) => {
-          const prev = points[i];
-          const segColor = (prev.outOfRange || p.outOfRange) ? OUT_OF_RANGE_COLOR : 'var(--color-primary)';
-          return (
-            <path key={i} d={`M ${xSc(prev.h).toFixed(1)} ${ySc(prev.w).toFixed(1)} L ${xSc(p.h).toFixed(1)} ${ySc(p.w).toFixed(1)}`}
-              fill="none" stroke={segColor} strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
-          );
-        })}
+          fill="none" stroke="var(--green-400)" strokeWidth="1.5" strokeDasharray="4 4" opacity="0.9" />
+        <ZoneLabels
+          x={W - mg.right + 5}
+          ySdPos={ySc(whoSlice[whoSlice.length - 1].sd2pos)}
+          yMedian={ySc(whoSlice[whoSlice.length - 1].median)}
+          ySdNeg={ySc(whoSlice[whoSlice.length - 1].sd2neg)}
+        />
         {points.map((p, i) => {
           const isCurrent = i === currentIdx;
           const r = selected === i ? 6 : isCurrent ? 5.5 : 4.5;

@@ -216,7 +216,11 @@ export function AddChildModal({ onClose, onSaved, lineUid, needsConsent }) {
 
 export function EditChildModal({ child, onClose, onSaved, startGraduating = false, needsConsent }) {
   const [graduating, setGraduating] = useState(startGraduating);
-  const [name, setName] = useState(child?.name || '');
+  // `child.name` holds the mother's name while pregnant — must not seed the
+  // baby's own name field when landing straight into BornChildFields (the
+  // Home screen's "ลูกเกิดแล้ว" button opens this modal with
+  // startGraduating=true from the very first render).
+  const [name, setName] = useState((child?.is_pregnant && startGraduating) ? '' : (child?.name || ''));
   const [gender, setGender] = useState(child?.gender || '');
   const [birthdate, setBirthdate] = useState(child?.birth_date || '');
   const [weightKg, setWeightKg] = useState(child?.birth_weight ?? '');
@@ -280,14 +284,17 @@ export function EditChildModal({ child, onClose, onSaved, startGraduating = fals
       {isPregnant ? (
         <>
           <PhotoPicker preview={photoPreview} onPick={onPhotoPick} />
-          <Field label="ชื่อ (ถ้ามี)">
-            <input type="text" value={name} onChange={(e) => setName(e.target.value)} style={inputStyle} placeholder="ชื่อเล่น (ไม่บังคับ)" />
+          <Field label="ชื่อคุณแม่ (ถ้ามี)">
+            <input type="text" value={name} onChange={(e) => setName(e.target.value)} style={inputStyle} placeholder="ชื่อคุณแม่ (ไม่บังคับ)" />
           </Field>
           <Field label="กำหนดคลอด (EDD)">
             <input type="date" value={dueDate} min={todayStr()} onChange={(e) => setDueDate(e.target.value)} style={dateInputStyle} />
           </Field>
           <div style={{ marginBottom: 14 }}>
-            <Button variant="soft" fullWidth onClick={() => setGraduating(true)}>ลูกเกิดแล้ว 🎉</Button>
+            {/* Resets `name` before switching to BornChildFields — it held
+                the mother's name while pregnant, which must not leak in as
+                a starting value for the baby's own name field. */}
+            <Button variant="soft" fullWidth onClick={() => { setName(''); setGraduating(true); }}>ลูกเกิดแล้ว 🎉</Button>
           </div>
         </>
       ) : (
