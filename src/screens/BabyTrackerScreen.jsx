@@ -169,29 +169,26 @@ const CHART_TABS = [
   { id: 'wh', label: 'น้ำหนักเทียบส่วนสูง' },
 ];
 
-// Folder-tab look: the active tab is white and sits flush against the white
-// content panel below it (no gap, square where they meet) so the two read
-// as one continuous sheet — inactive tabs recede on a muted strip instead
-// of floating as a separate pill disconnected from the card underneath.
+// Each tab is a fully-rounded pill so it reads as a pressable button —
+// inactive tabs use a neutral gray (not the app's light-blue surface tone,
+// which was too close to the page's own blue background to look distinct
+// or tappable) with a faint shadow for a bit of lift; the active tab is
+// white and elevated to match the panel below it.
 function ChartTabBar({ active, onChange }) {
   return (
-    <div style={{ display: 'flex', gap: 0, padding: 0 }}>
-      {CHART_TABS.map((t, i) => {
+    <div style={{ display: 'flex', gap: 6, padding: '10px 10px 6px' }}>
+      {CHART_TABS.map(t => {
         const on = active === t.id;
-        // Only the outermost corners round — an inner corner where two tabs
-        // touch stays square, otherwise it cuts a small rounded notch at
-        // the seam that shows the white surface behind it peeking through.
-        const radius = i === 0 ? '10px 0 0 0' : i === CHART_TABS.length - 1 ? '0 10px 0 0' : '0';
         return (
           <button key={t.id} onClick={() => onChange(t.id)} style={{
-            flex: 1, border: 'none', cursor: 'pointer', padding: '10px 2px',
-            borderRadius: radius,
-            background: on ? '#fff' : 'var(--surface-soft)',
+            flex: 1, border: 'none', cursor: 'pointer', padding: '10px 4px',
+            borderRadius: 'var(--radius-md)',
+            background: on ? '#fff' : '#E1E4E8',
+            boxShadow: on ? 'var(--shadow-card)' : '0 1px 2px rgba(0,0,0,.08)',
             font: `${on ? 'var(--weight-bold)' : 'var(--weight-medium)'} 10px var(--font-base)`,
             color: on ? 'var(--color-primary)' : 'var(--text-muted)',
             transition: 'all var(--dur-base)',
             whiteSpace: 'nowrap',
-            position: 'relative',
           }}>{t.label}</button>
         );
       })}
@@ -841,7 +838,7 @@ function OverviewPanel({ records, gender, birthDate, chartTab, onChartTabChange,
       {/* Tab selector + metric card fused into one continuous sheet — the
           active tab is the same white as the panel below it, with no gap,
           instead of a pill floating disconnected above a separate card. */}
-      <div style={{ background: '#fff', borderRadius: '10px 10px var(--radius-lg) var(--radius-lg)', boxShadow: 'var(--shadow-card)', overflow: 'hidden' }}>
+      <div style={{ background: '#fff', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-card)', overflow: 'hidden' }}>
         <ChartTabBar active={chartTab} onChange={onChartTabChange} />
         <div style={{ padding: 'var(--pad-card)' }}>
           {chartTab === 'wa' && (
