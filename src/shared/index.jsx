@@ -30,26 +30,6 @@ export function ScaleStandIcon({ width = 21, height = 21, style }) {
   );
 }
 
-// Classic "diaper face" convention: a smile-shaped waistband arc, a tab at
-// each end, and two leg-hole circles hanging below — lucide-react has no
-// diaper glyph, so the bottom nav's "ผ้าอ้อม" tab used a generic baby-figure
-// icon instead. Drawn fresh in the app's own stroke style (not traced from
-// any stock icon, to stay clear of attribution-required stock-icon terms).
-export function DiaperIcon({ width = 21, height = 21, style }) {
-  return (
-    <svg width={width} height={height} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={style}>
-      {/* waistband smile */}
-      <path d="M3.5 6c2.5 4.5 14.5 4.5 17 0" />
-      {/* side tabs */}
-      <rect x="1" y="4" width="4.2" height="4.2" rx="1.4" />
-      <rect x="18.8" y="4" width="4.2" height="4.2" rx="1.4" />
-      {/* leg holes */}
-      <circle cx="8.3" cy="14.5" r="5.3" />
-      <circle cx="15.7" cy="14.5" r="5.3" />
-    </svg>
-  );
-}
-
 // "Feature under construction" popup — shared by every screen that has a
 // visible entry point for something not built yet (notifications, contact
 // page, scan-to-earn), so nothing on screen is ever a silent dead button.
