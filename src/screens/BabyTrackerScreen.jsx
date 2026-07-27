@@ -204,7 +204,7 @@ function ChartTabBar({ active, onChange }) {
 // beneath the folder-tab bar, which already supplies the white card surface
 // (so the tabs and this content read as one continuous sheet, not a pill
 // floating disconnected above a separate card).
-function MergedMetricCard({ metric, value, who, zone, zScore, measurementText, bare = false }) {
+function MergedMetricCard({ metric, value, who, zone, zScore, measurementText, bare = false, secondary }) {
   const { label, unit, Icon, iconSrc, tone, fg } = metric;
   const colors = ZONE_COLORS[zone.key] || ZONE_COLORS.normal;
   const Wrapper = bare ? 'div' : Card;
@@ -230,10 +230,12 @@ function MergedMetricCard({ metric, value, who, zone, zScore, measurementText, b
         </div>
       </div>
 
-      {/* Big mascot + label above a dominant value */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 16 }}>
+      {/* Big mascot + label above a dominant value — generous gap between
+          icon and text instead of the two crowding each other, and the
+          text block vertically centered against the icon's full height. */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 20, marginBottom: 16 }}>
         {iconSrc
-          ? <img src={iconSrc} alt="" style={{ height: 104, width: 'auto', maxWidth: 120, objectFit: 'contain', flex: 'none', marginLeft: -6 }} />
+          ? <img src={iconSrc} alt="" style={{ height: 104, width: 'auto', maxWidth: 120, objectFit: 'contain', flex: 'none' }} />
           : (
             <span style={{ width: 52, height: 52, borderRadius: 14, background: tone, color: fg, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
               <Icon width={25} height={25} />
@@ -241,9 +243,16 @@ function MergedMetricCard({ metric, value, who, zone, zScore, measurementText, b
           )}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ font: 'var(--weight-semibold) 14px var(--font-base)', color: 'var(--text-muted)', marginBottom: 2 }}>{label}</div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, flexWrap: 'wrap' }}>
             <span style={{ font: '800 42px var(--font-display)', color: 'var(--text-heading)', lineHeight: 1 }}>{value.toFixed(1)}</span>
             <span style={{ font: 'var(--weight-semibold) 16px var(--font-base)', color: 'var(--text-muted)' }}>{unit}</span>
+            {secondary && (
+              <>
+                <span style={{ font: 'var(--weight-semibold) 20px var(--font-base)', color: 'var(--text-faint)', margin: '0 2px' }}>/</span>
+                <span style={{ font: '800 30px var(--font-display)', color: 'var(--text-heading)', lineHeight: 1 }}>{secondary.value.toFixed(1)}</span>
+                <span style={{ font: 'var(--weight-semibold) 16px var(--font-base)', color: 'var(--text-muted)' }}>{secondary.unit}</span>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -828,7 +837,7 @@ function OverviewPanel({ records, gender, birthDate, chartTab, onChartTabChange,
       {/* Tab selector + metric card fused into one continuous sheet — the
           active tab is the same white as the panel below it, with no gap,
           instead of a pill floating disconnected above a separate card. */}
-      <div style={{ background: '#fff', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-card)', overflow: 'hidden' }}>
+      <div style={{ background: '#fff', borderRadius: '10px 10px var(--radius-lg) var(--radius-lg)', boxShadow: 'var(--shadow-card)', overflow: 'hidden' }}>
         <ChartTabBar active={chartTab} onChange={onChartTabChange} />
         <div style={{ padding: 'var(--pad-card)' }}>
           {chartTab === 'wa' && (
@@ -846,7 +855,8 @@ function OverviewPanel({ records, gender, birthDate, chartTab, onChartTabChange,
           {chartTab === 'wh' && whoWH && (
             <MergedMetricCard
               bare metric={METRICS[2]} value={latest.weightKg} who={whoWH} zone={whZone} zScore={zWH}
-              measurementText={`ที่ส่วนสูง ${latest.heightCm.toFixed(1)} ซม.`}
+              secondary={{ value: latest.heightCm, unit: 'ซม.' }}
+              measurementText={`เมื่ออายุ ${ageLabel}`}
             />
           )}
         </div>
