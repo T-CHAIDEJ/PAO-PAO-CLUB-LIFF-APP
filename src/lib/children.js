@@ -1,10 +1,24 @@
 import { computeStage, PREGNANCY_STAGE } from './stage.js';
 import { recommendSize } from './diaperSize.js';
 import { uploadChildAvatar } from './avatar.js';
+import { todayStr } from './formStyles.js';
 
 // Everything that touches 003_children beyond simple reads lives here so
 // Home's "+ เพิ่มลูก" / "แก้ไข" / "ลูกเกิดแล้ว" flows and onboarding's
 // segment B form all share one source of truth instead of drifting.
+
+// The born-child form only ever asks for one weight/height with no way to
+// say whether it's a true birth reading or today's — a parent adding an
+// already-months-old baby naturally types in the CURRENT weight/height,
+// which then got logged as a growth record dated at birth, plotting a
+// 9-month-old's numbers at month 0 against newborn WHO norms. If the birth
+// date is recent (within a week) it's almost certainly a real newborn
+// registration, so keep dating it at birth; otherwise treat the entered
+// value as a present-day reading.
+export function growthEntryDate(birthdate) {
+  const daysSinceBirth = (new Date(todayStr()) - new Date(birthdate)) / 86400000;
+  return daysSinceBirth <= 7 ? birthdate : todayStr();
+}
 
 export async function insertPregnantChild(supabase, lineUid, { name, dueDate, photoFile } = {}) {
   const { data, error } = await supabase.from('003_children').insert({
@@ -36,7 +50,7 @@ export async function insertBornChild(supabase, lineUid, { name, gender, birthda
 
   if (weightKg && heightCm) {
     await supabase.from('004_growth').insert({
-      child_id: child.child_id, recorded_date: birthdate,
+      child_id: child.child_id, recorded_date: growthEntryDate(birthdate),
       weight_kg: weightKg, height_cm: heightCm,
       diaper_size: recommendSize(weightKg).code,
     });
@@ -61,7 +75,7 @@ export async function graduatePregnantChild(supabase, child, { name, gender, bir
 
   if (weightKg && heightCm) {
     await supabase.from('004_growth').insert({
-      child_id: child.child_id, recorded_date: birthdate,
+      child_id: child.child_id, recorded_date: growthEntryDate(birthdate),
       weight_kg: weightKg, height_cm: heightCm,
       diaper_size: recommendSize(weightKg).code,
     });

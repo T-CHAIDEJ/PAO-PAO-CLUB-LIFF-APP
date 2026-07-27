@@ -4,6 +4,7 @@ import { Card, Button } from '../components/index.jsx';
 import { supabase } from '../lib/supabase.js';
 import { recommendSize } from './TrackerScreen.jsx';
 import { computeStage, PREGNANCY_STAGE } from '../lib/stage.js';
+import { growthEntryDate } from '../lib/children.js';
 import { uploadChildAvatar } from '../lib/avatar.js';
 import { logAction, logError } from '../lib/userLogs.js';
 import { inputStyle, dateInputStyle, todayStr } from '../lib/formStyles.js';
@@ -373,7 +374,7 @@ export default function OnboardingScreen({ lineProfile, initialSegment, onComple
         if (childData && formData.weightKg && formData.heightCm) {
           await supabase.from('004_growth').insert({
             child_id: childData.child_id,
-            recorded_date: formData.birthdate,
+            recorded_date: growthEntryDate(formData.birthdate),
             weight_kg: formData.weightKg,
             height_cm: formData.heightCm,
             diaper_size: recommendSize(formData.weightKg).code,
