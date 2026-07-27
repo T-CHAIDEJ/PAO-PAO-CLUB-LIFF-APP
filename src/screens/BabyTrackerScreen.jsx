@@ -46,9 +46,9 @@ function calcZScore(value, who) {
 // read as 3 unrelated scales instead of one consistent one.
 const WH_ZONES = [
   { key: 'very_low',    zMin: -3,   zMax: -2,   label: 'ต่ำกว่าเกณฑ์มาก',     friendly: 'น้ำหนักต่ำกว่าเกณฑ์เมื่อเทียบกับส่วนสูง' },
-  { key: 'low',         zMin: -2,   zMax: -1.5, label: 'ต่ำกว่าเกณฑ์เล็กน้อย', friendly: 'น้ำหนักต่ำกว่าช่วงสมส่วนเล็กน้อย' },
+  { key: 'low',         zMin: -2,   zMax: -1.5, label: 'ต่ำกว่าเกณฑ์เล็กน้อย', friendly: 'น้ำหนักต่ำกว่าเกณฑ์เล็กน้อย' },
   { key: 'normal',      zMin: -1.5, zMax:  1.5, label: 'ตามเกณฑ์',            friendly: 'น้ำหนักเหมาะสมเมื่อเทียบกับส่วนสูง' },
-  { key: 'high',        zMin:  1.5, zMax:  2,   label: 'สูงกว่าเกณฑ์เล็กน้อย', friendly: 'น้ำหนักสูงกว่าช่วงสมส่วนเล็กน้อย' },
+  { key: 'high',        zMin:  1.5, zMax:  2,   label: 'สูงกว่าเกณฑ์เล็กน้อย', friendly: 'น้ำหนักสูงกว่าเกณฑ์เล็กน้อย' },
   { key: 'very_high',   zMin:  2,   zMax:  3,   label: 'สูงกว่าเกณฑ์มาก',     friendly: 'น้ำหนักสูงกว่าเกณฑ์เมื่อเทียบกับส่วนสูง' },
 ];
 const WA_ZONES = [
@@ -116,9 +116,9 @@ function GrowthZoneBar({ zScore, value, unit, accentColor }) {
 
   return (
     <div>
-      {/* Floating current-value callout above the marker */}
+      {/* Floating current-value callout, with visible clearance above the marker */}
       {value != null && (
-        <div style={{ position: 'relative', height: 24 }}>
+        <div style={{ position: 'relative', height: 26, marginBottom: 8 }}>
           <div style={{
             position: 'absolute', left: `${markerPct}%`, top: 0, transform: `translateX(${shift})`,
             whiteSpace: 'nowrap', padding: '3px 10px', borderRadius: 999,
@@ -137,7 +137,7 @@ function GrowthZoneBar({ zScore, value, unit, accentColor }) {
         <div style={{
           position: 'absolute', top: '50%', left: `${markerPct}%`,
           transform: 'translate(-50%, -50%)',
-          width: 5, height: 28, borderRadius: 3,
+          width: 5, height: 24, borderRadius: 3,
           background: marker, boxShadow: '0 0 0 2px #fff',
           zIndex: 2,
         }} />
@@ -158,7 +158,7 @@ function GrowthZoneBar({ zScore, value, unit, accentColor }) {
 const METRICS = [
   { key: 'weightKg', indicator: 'wfa',  label: 'น้ำหนัก',           unit: 'กก.', Icon: ScaleStandIcon, iconSrc: '/icon-weight-hippo.png',   tone: 'var(--blue-100)',  fg: 'var(--blue-600)'  },
   { key: 'heightCm', indicator: 'lhfa', label: 'ส่วนสูง',           unit: 'ซม.', Icon: Ruler,          iconSrc: '/icon-height-giraffe.png', tone: 'var(--green-100)', fg: 'var(--green-700)' },
-  { key: 'weightKg', indicator: 'wfl',  label: 'น้ำหนักเทียบส่วนสูง', unit: 'กก.', Icon: ScaleStandIcon, iconSrc: '/icon-weight-hippo.png',   tone: 'var(--blue-100)',  fg: 'var(--blue-600)'  },
+  { key: 'weightKg', indicator: 'wfl',  label: 'น้ำหนักเทียบส่วนสูง', unit: 'กก.', Icon: ScaleStandIcon, iconSrc: '/icon-weightheight-combo.png', tone: 'var(--blue-100)',  fg: 'var(--blue-600)'  },
 ];
 
 // ─── Tab bar ──────────────────────────────────────────────────────────────────
@@ -169,21 +169,25 @@ const CHART_TABS = [
   { id: 'wh', label: 'น้ำหนักเทียบส่วนสูง' },
 ];
 
+// Folder-tab look: the active tab is white and sits flush against the white
+// content panel below it (no gap, square where they meet) so the two read
+// as one continuous sheet — inactive tabs recede on a muted strip instead
+// of floating as a separate pill disconnected from the card underneath.
 function ChartTabBar({ active, onChange }) {
   return (
-    <div style={{ display: 'flex', background: 'var(--surface-soft)', borderRadius: 'var(--radius-md)', padding: 3, gap: 2 }}>
+    <div style={{ display: 'flex', gap: 2, padding: '2px 2px 0' }}>
       {CHART_TABS.map(t => {
         const on = active === t.id;
         return (
           <button key={t.id} onClick={() => onChange(t.id)} style={{
-            flex: 1, border: 'none', cursor: 'pointer', padding: '7px 2px',
-            borderRadius: 'calc(var(--radius-md) - 2px)',
-            background: on ? '#fff' : 'transparent',
-            boxShadow: on ? 'var(--shadow-card)' : 'none',
-            font: `${on ? 'var(--weight-semibold)' : 'var(--weight-medium)'} 10px var(--font-base)`,
+            flex: 1, border: 'none', cursor: 'pointer', padding: '10px 2px',
+            borderRadius: '10px 10px 0 0',
+            background: on ? '#fff' : 'var(--surface-soft)',
+            font: `${on ? 'var(--weight-bold)' : 'var(--weight-medium)'} 10px var(--font-base)`,
             color: on ? 'var(--color-primary)' : 'var(--text-muted)',
             transition: 'all var(--dur-base)',
             whiteSpace: 'nowrap',
+            position: 'relative',
           }}>{t.label}</button>
         );
       })}
@@ -196,29 +200,22 @@ function ChartTabBar({ active, onChange }) {
 // for weight+height, plus a separate per-tab interpretation card with its
 // own second range bar) — same value/zone/range info, said once.
 
-function MergedMetricCard({ metric, value, who, zone, zScore, measurementText }) {
+// `bare` skips the outer <Card> — used when this is embedded directly
+// beneath the folder-tab bar, which already supplies the white card surface
+// (so the tabs and this content read as one continuous sheet, not a pill
+// floating disconnected above a separate card).
+function MergedMetricCard({ metric, value, who, zone, zScore, measurementText, bare = false }) {
   const { label, unit, Icon, iconSrc, tone, fg } = metric;
   const colors = ZONE_COLORS[zone.key] || ZONE_COLORS.normal;
+  const Wrapper = bare ? 'div' : Card;
   return (
-    <Card>
-      {/* Header: big mascot + label above a dominant value, with a
-          chat-bubble status tag floating at the value's level on the right. */}
-      <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 6, marginBottom: 16 }}>
-        {iconSrc
-          ? <img src={iconSrc} alt="" style={{ height: 104, width: 'auto', maxWidth: 120, objectFit: 'contain', flex: 'none', marginLeft: -6 }} />
-          : (
-            <span style={{ width: 52, height: 52, borderRadius: 14, background: tone, color: fg, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
-              <Icon width={25} height={25} />
-            </span>
-          )}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ font: 'var(--weight-semibold) 14px var(--font-base)', color: 'var(--text-muted)', marginBottom: 2 }}>{label}</div>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
-            <span style={{ font: '800 42px var(--font-display)', color: 'var(--text-heading)', lineHeight: 1 }}>{value.toFixed(1)}</span>
-            <span style={{ font: 'var(--weight-semibold) 16px var(--font-base)', color: 'var(--text-muted)' }}>{unit}</span>
-          </div>
-        </div>
-        <div style={{ position: 'absolute', top: 8, right: 0, alignSelf: 'flex-start' }}>
+    <Wrapper>
+      {/* Chat-bubble status tag gets its own row, right-aligned, so a long
+          label (e.g. "น้ำหนักเทียบส่วนสูง") below it can never collide with
+          a long zone label (e.g. "ต่ำกว่าเกณฑ์เล็กน้อย") regardless of
+          either string's length. */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 6 }}>
+        <div style={{ position: 'relative' }}>
           <span style={{
             display: 'inline-block', padding: '6px 14px', borderRadius: 999,
             background: colors.fg, color: '#fff',
@@ -233,13 +230,31 @@ function MergedMetricCard({ metric, value, who, zone, zScore, measurementText })
         </div>
       </div>
 
+      {/* Big mascot + label above a dominant value */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 16 }}>
+        {iconSrc
+          ? <img src={iconSrc} alt="" style={{ height: 104, width: 'auto', maxWidth: 120, objectFit: 'contain', flex: 'none', marginLeft: -6 }} />
+          : (
+            <span style={{ width: 52, height: 52, borderRadius: 14, background: tone, color: fg, display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
+              <Icon width={25} height={25} />
+            </span>
+          )}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ font: 'var(--weight-semibold) 14px var(--font-base)', color: 'var(--text-muted)', marginBottom: 2 }}>{label}</div>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
+            <span style={{ font: '800 42px var(--font-display)', color: 'var(--text-heading)', lineHeight: 1 }}>{value.toFixed(1)}</span>
+            <span style={{ font: 'var(--weight-semibold) 16px var(--font-base)', color: 'var(--text-muted)' }}>{unit}</span>
+          </div>
+        </div>
+      </div>
+
       {/* Interpretation + disclaimer, together in one tinted box */}
       <div style={{ padding: '12px 14px', background: 'var(--surface-soft)', borderRadius: 'var(--radius-md)', marginBottom: 18 }}>
-        <div style={{ marginBottom: 5 }}>
-          <span style={{ font: 'var(--weight-bold) 15px var(--font-display)', color: colors.fg }}>{zone.friendly}</span>
-          <span style={{ font: 'var(--type-body-sm)', color: 'var(--text-muted)' }}> {measurementText}</span>
+        <div style={{ marginBottom: 4, lineHeight: 1.4 }}>
+          <span style={{ font: 'var(--weight-bold) 13px var(--font-display)', color: colors.fg }}>{zone.friendly}</span>
+          <span style={{ font: '12px var(--font-base)', color: 'var(--text-muted)' }}> {measurementText}</span>
         </div>
-        <div style={{ font: 'var(--type-caption)', color: 'var(--text-faint)', lineHeight: 1.5 }}>
+        <div style={{ font: '11px var(--font-base)', color: 'var(--text-faint)', lineHeight: 1.4 }}>
           ข้อมูลนี้ใช้เพื่อช่วยติดตามแนวโน้มการเจริญเติบโตเบื้องต้น ไม่ใช่การวินิจฉัยทางการแพทย์
         </div>
       </div>
@@ -253,7 +268,7 @@ function MergedMetricCard({ metric, value, who, zone, zScore, measurementText })
       <div style={{ marginTop: 16, font: 'var(--type-caption)', color: 'var(--text-faint)', textAlign: 'center', lineHeight: 1.5 }}>
         อ้างอิงจากเกณฑ์การเจริญเติบโตขององค์การอนามัยโลก (WHO) สำหรับเด็กอายุ 0–5 ปี
       </div>
-    </Card>
+    </Wrapper>
   );
 }
 
@@ -810,38 +825,36 @@ function OverviewPanel({ records, gender, birthDate, chartTab, onChartTabChange,
         อัพเดตล่าสุด: {formatThaiDate(latest.date)}
       </div>
 
-      {/* Tab selector */}
-      <ChartTabBar active={chartTab} onChange={onChartTabChange} />
+      {/* Tab selector + metric card fused into one continuous sheet — the
+          active tab is the same white as the panel below it, with no gap,
+          instead of a pill floating disconnected above a separate card. */}
+      <div style={{ background: '#fff', borderRadius: 'var(--radius-lg)', boxShadow: 'var(--shadow-card)', overflow: 'hidden' }}>
+        <ChartTabBar active={chartTab} onChange={onChartTabChange} />
+        <div style={{ padding: 'var(--pad-card)' }}>
+          {chartTab === 'wa' && (
+            <MergedMetricCard
+              bare metric={METRICS[0]} value={latest.weightKg} who={whoWA} zone={waZone} zScore={zWA}
+              measurementText={`เมื่ออายุ ${ageLabel}`}
+            />
+          )}
+          {chartTab === 'ha' && (
+            <MergedMetricCard
+              bare metric={METRICS[1]} value={latest.heightCm} who={whoHA} zone={haZone} zScore={zHA}
+              measurementText={`เมื่ออายุ ${ageLabel}`}
+            />
+          )}
+          {chartTab === 'wh' && whoWH && (
+            <MergedMetricCard
+              bare metric={METRICS[2]} value={latest.weightKg} who={whoWH} zone={whZone} zScore={zWH}
+              measurementText={`ที่ส่วนสูง ${latest.heightCm.toFixed(1)} ซม.`}
+            />
+          )}
+        </div>
+      </div>
 
-      {/* Metric card + Chart — one merged card per tab instead of always
-          showing both weight+height cards plus a second per-tab card. */}
-      {chartTab === 'wa' && (
-        <>
-          <MergedMetricCard
-            metric={METRICS[0]} value={latest.weightKg} who={whoWA} zone={waZone} zScore={zWA}
-            measurementText={`เมื่ออายุ ${ageLabel}`}
-          />
-          <AgeChart chartData={waChart} title="น้ำหนักตามอายุ" />
-        </>
-      )}
-      {chartTab === 'ha' && (
-        <>
-          <MergedMetricCard
-            metric={METRICS[1]} value={latest.heightCm} who={whoHA} zone={haZone} zScore={zHA}
-            measurementText={`เมื่ออายุ ${ageLabel}`}
-          />
-          <AgeChart chartData={haChart} title="ส่วนสูงตามอายุ" />
-        </>
-      )}
-      {chartTab === 'wh' && whoWH && (
-        <>
-          <MergedMetricCard
-            metric={METRICS[2]} value={latest.weightKg} who={whoWH} zone={whZone} zScore={zWH}
-            measurementText={`ที่ส่วนสูง ${latest.heightCm.toFixed(1)} ซม.`}
-          />
-          <WHChart records={records} gender={gender} birthDate={birthDate} title="น้ำหนักเทียบส่วนสูง" />
-        </>
-      )}
+      {chartTab === 'wa' && <AgeChart chartData={waChart} title="น้ำหนักตามอายุ" />}
+      {chartTab === 'ha' && <AgeChart chartData={haChart} title="ส่วนสูงตามอายุ" />}
+      {chartTab === 'wh' && whoWH && <WHChart records={records} gender={gender} birthDate={birthDate} title="น้ำหนักเทียบส่วนสูง" />}
 
       {/* History */}
       <HistoryList records={records} onEditRecord={onEditRecord} />
