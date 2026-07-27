@@ -326,15 +326,24 @@ function ChartLegend({ lineColor = 'var(--color-primary)', hasOutOfRange = false
   );
 }
 
-// Labels the WHO band's three regions directly on the chart, next to where
-// the band ends at the right edge — so a parent can read "too high / normal
-// / too low" off the lines themselves instead of only inferring it from color.
-function ZoneLabels({ x, ySdPos, yMedian, ySdNeg }) {
+// Labels the WHO band's three regions as an overlay inside the plot itself
+// (not a side gutter that shrinks the chart) — each label sits centered in
+// its own region's vertical space rather than pinned to the boundary line,
+// with a translucent backing so it stays readable over the band/gridlines.
+function ZoneLabels({ x, yAbove, yNormal, yBelow }) {
+  const labels = [
+    { text: 'สูงกว่าเกณฑ์', y: yAbove, w: 52 },
+    { text: 'เกณฑ์ปกติ',   y: yNormal, w: 40 },
+    { text: 'ต่ำกว่าเกณฑ์', y: yBelow, w: 50 },
+  ];
   return (
     <>
-      <text x={x} y={ySdPos} dominantBaseline="middle" fontSize="7.5" fontWeight="600" fill="var(--text-muted)">สูงกว่าเกณฑ์</text>
-      <text x={x} y={yMedian} dominantBaseline="middle" fontSize="7.5" fontWeight="600" fill="var(--text-muted)">เกณฑ์ปกติ</text>
-      <text x={x} y={ySdNeg} dominantBaseline="middle" fontSize="7.5" fontWeight="600" fill="var(--text-muted)">ต่ำกว่าเกณฑ์</text>
+      {labels.map(({ text, y, w }) => (
+        <g key={text}>
+          <rect x={x - w} y={y - 7.5} width={w} height={15} rx="4" fill="#fff" opacity="0.75" />
+          <text x={x - 4} y={y} textAnchor="end" dominantBaseline="middle" fontSize="7.5" fontWeight="700" fill="var(--text-muted)">{text}</text>
+        </g>
+      ))}
     </>
   );
 }
@@ -434,7 +443,7 @@ function AgeChart({ chartData, title }) {
   const [selected, setSelected] = useState(null);
   if (!chartData) return null;
   const { points, whoSlice, minM, maxM, vMin, vMax, color, unit } = chartData;
-  const W = 326, H = 190, mg = { top: 14, right: 54, bottom: 30, left: 30 };
+  const W = 326, H = 190, mg = { top: 14, right: 12, bottom: 30, left: 30 };
   const pW = W - mg.left - mg.right, pH = H - mg.top - mg.bottom;
   const xSc = m => mg.left + ((m - minM) / ((maxM - minM) || 1)) * pW;
   const ySc = v => mg.top + (1 - (v - vMin) / ((vMax - vMin) || 1)) * pH;
@@ -465,10 +474,10 @@ function AgeChart({ chartData, title }) {
         <path d={whoSlice.map((d, i) => `${i === 0 ? 'M' : 'L'} ${xSc(d.month).toFixed(1)} ${ySc(d.median).toFixed(1)}`).join(' ')}
           fill="none" stroke="var(--green-400)" strokeWidth="1.5" strokeDasharray="4 4" opacity="0.9" />
         <ZoneLabels
-          x={W - mg.right + 5}
-          ySdPos={ySc(whoSlice[whoSlice.length - 1].sd2pos)}
-          yMedian={ySc(whoSlice[whoSlice.length - 1].median)}
-          ySdNeg={ySc(whoSlice[whoSlice.length - 1].sd2neg)}
+          x={W - mg.right - 4}
+          yAbove={(mg.top + ySc(whoSlice[whoSlice.length - 1].sd2pos)) / 2}
+          yNormal={ySc(whoSlice[whoSlice.length - 1].median)}
+          yBelow={(ySc(whoSlice[whoSlice.length - 1].sd2neg) + (mg.top + pH)) / 2}
         />
         {points.map((p, i) => {
           const isLast = i === points.length - 1;
@@ -540,7 +549,7 @@ function WHChart({ records, gender, birthDate, title }) {
   const wMin = Math.min(...points.map(p => p.w), ...whoSlice.map(d => d.sd2neg)) - 0.5;
   const wMax = Math.max(...points.map(p => p.w), ...whoSlice.map(d => d.sd2pos)) + 0.5;
 
-  const W = 326, H = 190, mg = { top: 14, right: 54, bottom: 30, left: 30 };
+  const W = 326, H = 190, mg = { top: 14, right: 12, bottom: 30, left: 30 };
   const pW = W - mg.left - mg.right, pH = H - mg.top - mg.bottom;
   const xSc = h => mg.left + ((h - minH) / ((maxH - minH) || 1)) * pW;
   const ySc = w => mg.top + (1 - (w - wMin) / ((wMax - wMin) || 1)) * pH;
@@ -575,10 +584,10 @@ function WHChart({ records, gender, birthDate, title }) {
         <path d={whoSlice.map((d, i) => `${i === 0 ? 'M' : 'L'} ${xSc(d.length).toFixed(1)} ${ySc(d.median).toFixed(1)}`).join(' ')}
           fill="none" stroke="var(--green-400)" strokeWidth="1.5" strokeDasharray="4 4" opacity="0.9" />
         <ZoneLabels
-          x={W - mg.right + 5}
-          ySdPos={ySc(whoSlice[whoSlice.length - 1].sd2pos)}
-          yMedian={ySc(whoSlice[whoSlice.length - 1].median)}
-          ySdNeg={ySc(whoSlice[whoSlice.length - 1].sd2neg)}
+          x={W - mg.right - 4}
+          yAbove={(mg.top + ySc(whoSlice[whoSlice.length - 1].sd2pos)) / 2}
+          yNormal={ySc(whoSlice[whoSlice.length - 1].median)}
+          yBelow={(ySc(whoSlice[whoSlice.length - 1].sd2neg) + (mg.top + pH)) / 2}
         />
         {points.map((p, i) => {
           const isCurrent = i === currentIdx;
@@ -831,7 +840,10 @@ function OverviewPanel({ records, gender, birthDate, chartTab, onChartTabChange,
 
   // Chart data
   const waChart = buildAgeChart(records, gender, birthDate, 'wfa',  'var(--color-primary)');
-  const haChart = buildAgeChart(records, gender, birthDate, 'lhfa', 'var(--color-secondary)');
+  // Blue on all 3 trend charts (not the metric's own accent color) — the WHO
+  // band is green now, so the data dots need to contrast against it rather
+  // than blend in.
+  const haChart = buildAgeChart(records, gender, birthDate, 'lhfa', 'var(--color-primary)');
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
