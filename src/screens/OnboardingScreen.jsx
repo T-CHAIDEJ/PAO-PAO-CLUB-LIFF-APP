@@ -9,6 +9,7 @@ import { uploadChildAvatar } from '../lib/avatar.js';
 import { logAction, logError } from '../lib/userLogs.js';
 import { inputStyle, dateInputStyle, todayStr } from '../lib/formStyles.js';
 import { fetchActiveConsent, PDPA_VERSION_FALLBACK, PDPA_TEXT_FALLBACK } from '../lib/consent.js';
+import { awardEventSignupBonus } from '../lib/points.js';
 
 function FormField({ label, children }) {
   return (
@@ -240,6 +241,34 @@ function SegmentForm({ segment, lineProfile, onSubmit, loading, error }) {
   );
 }
 
+// Shown once, right after a successful signup during the event-bonus window
+// — celebrates the +50 points and names the event so it's clearly a
+// deliberate, time-boxed perk rather than something every signup gets.
+function EventBonusPopup({ points, onClose }) {
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(15,23,42,.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, animation: 'ppFade .2s ease' }}>
+      <style>{`@keyframes ppFade{from{opacity:0}to{opacity:1}}@keyframes ppPop{from{transform:scale(.82);opacity:0}to{transform:scale(1);opacity:1}}`}</style>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 340, background: '#fff', borderRadius: 24, overflow: 'hidden', animation: 'ppPop .32s cubic-bezier(.32,1.4,.5,1)' }}>
+        <div style={{ background: 'var(--gradient-hero)', padding: '30px 20px 24px', textAlign: 'center', color: '#fff' }}>
+          <div style={{ fontSize: 52, lineHeight: 1 }}>🎉</div>
+          <div style={{ font: '800 24px var(--font-display)', marginTop: 8 }}>ยินดีต้อนรับ!</div>
+          <div style={{ font: '800 34px var(--font-display)', marginTop: 2 }}>+{points} แต้ม</div>
+        </div>
+        <div style={{ padding: '20px 22px 24px', textAlign: 'center' }}>
+          <div style={{ font: 'var(--weight-semibold) 14px var(--font-base)', color: 'var(--text-body)', lineHeight: 1.6 }}>
+            สิทธิพิเศษสำหรับคุณแม่ที่ลงทะเบียนในงาน<br />
+            <span style={{ color: 'var(--color-primary)' }}>Baby &amp; Kids Best Buy ครั้งที่ 64</span><br />
+            วันที่ 30 ก.ค. – 2 ส.ค. 69 เท่านั้น
+          </div>
+          <div style={{ marginTop: 18 }}>
+            <Button variant="primary" fullWidth size="lg" onClick={onClose}>เข้าใช้งานเลย!</Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function OnboardingScreen({ lineProfile, initialSegment, onComplete }) {
   // PDPA consent is required regardless of entry point — even the Home-screen
   // shortcut buttons that pre-pick a segment must still pass through it.
@@ -249,6 +278,11 @@ export default function OnboardingScreen({ lineProfile, initialSegment, onComple
   const [consent, setConsent] = useState(null);
   const [pdpaDoc, setPdpaDoc] = useState(null);
   const [saveError, setSaveError] = useState(null);
+  // Holds the just-created user until the event-bonus popup (if shown) is
+  // dismissed — onComplete() is deferred so the celebration isn't skipped
+  // by an immediate screen transition.
+  const [pendingComplete, setPendingComplete] = useState(null);
+  const [eventBonus, setEventBonus] = useState(null);
 
   // Falls back to the hardcoded text/version if 008_consent has no active
   // row, or the active row's pdpa_text itself is unset.
@@ -383,7 +417,22 @@ export default function OnboardingScreen({ lineProfile, initialSegment, onComple
       }
 
       logAction(userData.line_uid, `onboarding_complete_${segment.toLowerCase()}`);
-      onComplete(userData);
+
+      // Onboarding only ever runs for a line_uid with no existing 001_users
+      // row (App.jsx routes straight to 'home' otherwise), so reaching here
+      // always means a genuinely new signup — safe to award the one-time
+      // event bonus without a separate "is this really new" check. Guests
+      // (segment C) didn't register, so they don't qualify. For real
+      // signups, hold onComplete() until the celebration popup (if the
+      // bonus actually fired) is dismissed, so the transition to Home
+      // doesn't cut the celebration off before the parent sees it.
+      const bonus = segment !== 'C' ? await awardEventSignupBonus(userData.line_uid) : null;
+      if (bonus) {
+        setEventBonus(bonus);
+        setPendingComplete(() => () => onComplete(userData));
+      } else {
+        onComplete(userData);
+      }
     } catch (err) {
       // Never silently proceed to Home on failure — that leaves the user
       // stuck with a 001_users row but no 003_children row, and once
@@ -418,6 +467,12 @@ export default function OnboardingScreen({ lineProfile, initialSegment, onComple
           onSubmit={handleSubmit}
           loading={loading}
           error={saveError}
+        />
+      )}
+      {pendingComplete && (
+        <EventBonusPopup
+          points={eventBonus?.awarded ?? 50}
+          onClose={() => { const go = pendingComplete; setPendingComplete(null); go(); }}
         />
       )}
     </div>

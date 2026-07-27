@@ -13,6 +13,39 @@ function todayStr() {
   return new Date().toISOString().slice(0, 10);
 }
 
+// Temporary registration-day promo: sign up as a member (segment A/B, not a
+// guest) while this window is open and get a one-time +50 bonus, to draw
+// registrations at the physical event. Dates are hardcoded here rather than
+// DB-driven since this is a one-off short campaign — change these two
+// strings (and redeploy) for the next event rather than building out a full
+// admin-configurable promo system for a single use.
+const EVENT_BONUS_START = '2026-07-30';
+const EVENT_BONUS_END   = '2026-08-02';
+const EVENT_BONUS_POINTS = 50;
+
+export function isEventBonusWindowOpen() {
+  const today = todayStr();
+  return today >= EVENT_BONUS_START && today <= EVENT_BONUS_END;
+}
+
+// Fire-and-forget: called once right after a brand-new member finishes
+// onboarding. Never throws — a failed bonus shouldn't block signup itself.
+export async function awardEventSignupBonus(lineUid) {
+  if (!lineUid || !isEventBonusWindowOpen()) return null;
+  try {
+    const currentBalance = await getCurrentBalance(lineUid);
+    const newBalance = currentBalance + EVENT_BONUS_POINTS;
+    await supabase.from('006_points').insert({
+      line_uid: lineUid, source: 'event_signup_bonus', points: EVENT_BONUS_POINTS,
+      balance: newBalance, expired_at: SEASON_EXPIRES_AT,
+    });
+    return { awarded: EVENT_BONUS_POINTS, points: newBalance };
+  } catch (e) {
+    console.warn('[points] event signup bonus failed:', e?.message);
+    return null;
+  }
+}
+
 // Dev B's schema (006_points) is a ledger: every award is a row that also
 // snapshots the running balance. There is no `points` column on 001_users —
 // "current points" = the balance on the most recent ledger row for this user.
