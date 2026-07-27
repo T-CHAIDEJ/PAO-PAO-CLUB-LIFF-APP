@@ -175,13 +175,17 @@ const CHART_TABS = [
 // of floating as a separate pill disconnected from the card underneath.
 function ChartTabBar({ active, onChange }) {
   return (
-    <div style={{ display: 'flex', gap: 2, padding: '2px 2px 0' }}>
-      {CHART_TABS.map(t => {
+    <div style={{ display: 'flex', gap: 0, padding: 0 }}>
+      {CHART_TABS.map((t, i) => {
         const on = active === t.id;
+        // Only the outermost corners round — an inner corner where two tabs
+        // touch stays square, otherwise it cuts a small rounded notch at
+        // the seam that shows the white surface behind it peeking through.
+        const radius = i === 0 ? '10px 0 0 0' : i === CHART_TABS.length - 1 ? '0 10px 0 0' : '0';
         return (
           <button key={t.id} onClick={() => onChange(t.id)} style={{
             flex: 1, border: 'none', cursor: 'pointer', padding: '10px 2px',
-            borderRadius: '10px 10px 0 0',
+            borderRadius: radius,
             background: on ? '#fff' : 'var(--surface-soft)',
             font: `${on ? 'var(--weight-bold)' : 'var(--weight-medium)'} 10px var(--font-base)`,
             color: on ? 'var(--color-primary)' : 'var(--text-muted)',
