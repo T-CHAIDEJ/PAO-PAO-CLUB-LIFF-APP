@@ -15,9 +15,9 @@ function needsSizeChoice(reward) {
   return /ผ้าอ้อม|ไซซ์|size|sampling/i.test(reward?.name ?? '');
 }
 
-// 007_rewards has no "tag"/icon columns — these only decorate the 3
-// hardcoded fallback ids (see lib/rewards.js); real DB rewards just
-// won't show a badge.
+// 007_rewards has no "tag"/icon columns — a reward only gets a badge if
+// its id happens to match one of these; add real DB reward ids here if
+// they should show a "ยอดนิยม"/"ใหม่!" badge.
 const TAG_BY_ID = { sampling: 'ยอดนิยม', 'toy-bin': 'ใหม่!' };
 
 const TAB_ITEMS = [
@@ -289,6 +289,15 @@ export default function RewardsScreen({ go, user, onUserUpdate, needsConsent, on
       </div>
 
       {tab === 'catalog' ? (
+        rawCatalog !== null && catalog.length === 0 ? (
+          <div style={{ padding: '16px 16px 0' }}>
+            <Card style={{ textAlign: 'center', padding: 28 }}>
+              <div style={{ fontSize: 40, marginBottom: 10 }}>🎁</div>
+              <div style={{ font: 'var(--weight-bold) 15px var(--font-display)', color: 'var(--text-heading)' }}>ยังไม่มีของรางวัลให้แลก</div>
+              <div style={{ font: 'var(--type-body)', color: 'var(--text-muted)', marginTop: 6 }}>แวะมาเช็คใหม่อีกครั้งเร็วๆนี้นะ</div>
+            </Card>
+          </div>
+        ) : (
         <div style={{ padding: '16px 16px 0', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           {catalog.map((r, i) => {
             const outOfStock = r.stock != null && r.stock <= 0;
@@ -319,6 +328,7 @@ export default function RewardsScreen({ go, user, onUserUpdate, needsConsent, on
             );
           })}
         </div>
+        )
       ) : (
         <div style={{ padding: '16px 16px 0' }}>
           {redemptions.length === 0 ? (

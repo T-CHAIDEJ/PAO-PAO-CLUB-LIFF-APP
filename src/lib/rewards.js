@@ -1,16 +1,9 @@
 import { supabase } from './supabase.js';
 
-// Used until 007_rewards loads, or as a fallback if it's empty/unreachable.
-// Kept in one place so Home (progress-to-next-reward) and Rewards (catalog)
-// never drift out of sync with each other. redeemable:false marks these as
-// display-only — their id isn't a real reward_id, so redeemReward() would
-// fail trying to write it as a FK. Real DB rows are always redeemable.
-export const REWARDS_FALLBACK = [
-  { id: 'sampling',   name: 'Sampling PaoPao (เลือกไซซ์ NB-2XL)',      pts: 100, stock: null, redeemable: false },
-  { id: 'mini-pack',  name: 'ผ้าอ้อมเปาเปา ไซซ์มินิ (NB-2XL) 1 ชิ้น', pts: 200, stock: null, redeemable: false },
-  { id: 'toy-bin',    name: 'ถังเก็บของเล่นลูกน้อย 1 ชิ้น (คละลาย)',  pts: 300, stock: null, redeemable: false },
-];
-
+// An empty/unreachable 007_rewards genuinely means "nothing to show yet" —
+// no placeholder catalog. A fake-but-unredeemable list here previously
+// made an empty table look like a real (if broken) catalog, which is more
+// confusing than an honest empty state.
 export async function fetchRewardsCatalog() {
   try {
     const { data, error } = await supabase
@@ -19,15 +12,13 @@ export async function fetchRewardsCatalog() {
       .eq('is_active', true)
       .order('points_required', { ascending: true });
     if (error) throw error;
-    if (data && data.length) {
-      // reward_id (not id) is the business key 016_redemptions.reward_id
-      // references — same PK-vs-business-key split as children.child_id.
-      return data.map(r => ({ id: r.id, rewardId: r.reward_id, name: r.name, pts: r.points_required, stock: r.stock, redeemable: true }));
-    }
+    // reward_id (not id) is the business key 016_redemptions.reward_id
+    // references — same PK-vs-business-key split as children.child_id.
+    return (data ?? []).map(r => ({ id: r.id, rewardId: r.reward_id, name: r.name, pts: r.points_required, stock: r.stock, redeemable: true }));
   } catch (e) {
     console.warn('[rewards] catalog fetch failed:', e?.message);
+    return [];
   }
-  return REWARDS_FALLBACK;
 }
 
 // The cheapest reward the user can't afford yet (skipping out-of-stock
