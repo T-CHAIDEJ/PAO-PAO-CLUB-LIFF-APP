@@ -13,19 +13,15 @@ function todayStr() {
   return new Date().toISOString().slice(0, 10);
 }
 
-// Temporary registration-day promo: sign up as a member (segment A/B, not a
-// guest) while this window is open and get a one-time +50 bonus, to draw
-// registrations at the physical event. Dates are hardcoded here rather than
-// DB-driven since this is a one-off short campaign — change these two
-// strings (and redeploy) for the next event rather than building out a full
-// admin-configurable promo system for a single use.
-const EVENT_BONUS_START = '2026-07-30';
-const EVENT_BONUS_END   = '2026-08-02';
+// Registration promo: sign up as a member (segment A/B, not a guest) and
+// get a one-time +50 bonus. Originally date-gated to the "Baby & Kids Best
+// Buy ครั้งที่ 64" event window (30 ก.ค.–2 ส.ค. 2026) — left permanently open
+// for now per explicit request, to avoid the risk of the date window
+// accidentally missing real signups on event day.
 const EVENT_BONUS_POINTS = 50;
 
 export function isEventBonusWindowOpen() {
-  const today = todayStr();
-  return today >= EVENT_BONUS_START && today <= EVENT_BONUS_END;
+  return true;
 }
 
 // Fire-and-forget: called once right after a brand-new member finishes

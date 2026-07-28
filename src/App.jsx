@@ -250,7 +250,7 @@ export default function App() {
   else if (screen === 'size')      view = <SizeChartScreen go={go} currentKg={growthByChild[activeChildId]?.weight_kg ?? childData?.birth_weight ?? 8.5} />;
   else if (screen === 'knowledge') view = <KnowledgeScreen go={go} child={childData} />;
   else if (screen === 'rewards')   view = <RewardsScreen go={go} user={userData} onUserUpdate={onUserUpdate} currentKg={growthByChild[activeChildId]?.weight_kg ?? childData?.birth_weight ?? null} {...consentGateProps} />;
-  else if (screen === 'profile')   view = <ProfileScreen go={go} user={userData} child={childData} childrenList={childrenList} onSwitchChild={switchActiveChild} onUserUpdate={onUserUpdate} />;
+  else if (screen === 'profile')   view = <ProfileScreen go={go} user={userData} child={childData} childrenList={childrenList} onSwitchChild={switchActiveChild} onUserUpdate={onUserUpdate} activeConsent={activeConsent} />;
 
   return (
     <div style={{ width: '100vw', height: '100vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>

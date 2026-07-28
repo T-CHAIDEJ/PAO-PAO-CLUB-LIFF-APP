@@ -50,30 +50,41 @@ function StepWelcome({ onNext }) {
 }
 
 
+// Same floating-card treatment as ConsentUpdateModal/PrivacyPolicyModal
+// (Profile) — this step used to be a plain flat page while those looked
+// like a proper card, so first-time signup read as less polished than
+// reconsent/viewing the policy later.
 function StepPDPA({ onAccept, pdpaText, version }) {
   const [checked, setChecked] = useState(false);
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', padding: '32px 24px', gap: 24 }}>
-      <div style={{ textAlign: 'center' }}>
-        <div style={{ font: '800 22px var(--font-display)', color: 'var(--text-heading)' }}>นโยบายความเป็นส่วนตัว</div>
+    <div style={{ minHeight: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <div style={{ width: '100%', maxWidth: 380, background: '#fff', borderRadius: 20, padding: '24px 22px' }}>
+        <div style={{ font: '800 20px var(--font-display)', color: 'var(--text-heading)', textAlign: 'center' }}>นโยบายความเป็นส่วนตัว</div>
+        <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)', textAlign: 'center', marginTop: 4 }}>
+          เวอร์ชัน {version || PDPA_VERSION_FALLBACK}
+        </div>
+
+        <Card style={{ marginTop: 16 }}>
+          <p style={{ font: 'var(--type-body)', color: 'var(--text-body)', lineHeight: 1.7, margin: 0 }}>
+            {pdpaText || PDPA_TEXT_FALLBACK}
+          </p>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 20, cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={checked}
+              onChange={(e) => setChecked(e.target.checked)}
+              style={{ width: 20, height: 20, accentColor: 'var(--color-primary)', cursor: 'pointer', flex: 'none' }}
+            />
+            <span style={{ font: 'var(--weight-medium) 14px var(--font-base)', color: 'var(--text-body)' }}>
+              ฉันยอมรับเงื่อนไขและนโยบายความเป็นส่วนตัว
+            </span>
+          </label>
+        </Card>
+
+        <div style={{ marginTop: 16 }}>
+          <Button variant="primary" fullWidth disabled={!checked} onClick={() => onAccept({ accepted: true, at: new Date().toISOString(), version: version || PDPA_VERSION_FALLBACK })}>ยืนยัน</Button>
+        </div>
       </div>
-      <Card>
-        <p style={{ font: 'var(--type-body)', color: 'var(--text-body)', lineHeight: 1.7 }}>
-          {pdpaText || PDPA_TEXT_FALLBACK}
-        </p>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 20, cursor: 'pointer' }}>
-          <input
-            type="checkbox"
-            checked={checked}
-            onChange={(e) => setChecked(e.target.checked)}
-            style={{ width: 20, height: 20, accentColor: 'var(--color-primary)', cursor: 'pointer', flex: 'none' }}
-          />
-          <span style={{ font: 'var(--weight-medium) 14px var(--font-base)', color: 'var(--text-body)' }}>
-            ฉันยอมรับเงื่อนไขและนโยบายความเป็นส่วนตัว
-          </span>
-        </label>
-      </Card>
-      <Button variant="primary" fullWidth disabled={!checked} onClick={() => onAccept({ accepted: true, at: new Date().toISOString(), version: version || PDPA_VERSION_FALLBACK })}>ยืนยัน</Button>
     </div>
   );
 }

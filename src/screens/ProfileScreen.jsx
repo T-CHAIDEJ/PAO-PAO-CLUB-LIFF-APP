@@ -1,13 +1,44 @@
 import { useState } from 'react';
-import { Medal, MapPin, Headphones, ChevronRight } from 'lucide-react';
+import { Medal, MapPin, Headphones, ShieldCheck, ChevronRight, X } from 'lucide-react';
 import { Card, Badge, Avatar, Button } from '../components/index.jsx';
 import { SkyDeco, SectionTitle, ComingSoon, HERO_BG } from '../shared/index.jsx';
 import { calcAge } from '../lib/age.js';
+import { PDPA_TEXT_FALLBACK, PDPA_VERSION_FALLBACK } from '../lib/consent.js';
 import { AddressModal, hasShippingInfo } from './AddressModal.jsx';
 
-export default function ProfileScreen({ go, user, child, childrenList, onSwitchChild, onUserUpdate }) {
+// Read-only — just lets a member look up what they already agreed to,
+// any time, not only when a new version needs (re)accepting. Unlike
+// ConsentUpdateModal there's no checkbox/accept action here.
+function PrivacyPolicyModal({ activeConsent, onClose }) {
+  return (
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(15,23,42,.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: '100%', maxWidth: 380, background: '#fff', borderRadius: 20, padding: '24px 22px', maxHeight: '85vh', overflowY: 'auto' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+          <div style={{ font: '800 20px var(--font-display)', color: 'var(--text-heading)' }}>นโยบายความเป็นส่วนตัว</div>
+          <button onClick={onClose} style={{ width: 32, height: 32, borderRadius: '50%', border: 'none', background: 'var(--surface-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--text-muted)', flex: 'none' }}>
+            <X width={16} height={16} />
+          </button>
+        </div>
+        <div style={{ font: 'var(--type-caption)', color: 'var(--text-muted)' }}>
+          เวอร์ชันปัจจุบัน: {activeConsent?.consent_version ?? PDPA_VERSION_FALLBACK}
+        </div>
+        <Card style={{ marginTop: 14 }}>
+          <p style={{ font: 'var(--type-body)', color: 'var(--text-body)', lineHeight: 1.7, margin: 0, whiteSpace: 'pre-wrap' }}>
+            {activeConsent?.pdpa_text || PDPA_TEXT_FALLBACK}
+          </p>
+        </Card>
+        <div style={{ marginTop: 16 }}>
+          <Button variant="soft" fullWidth onClick={onClose}>ปิด</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function ProfileScreen({ go, user, child, childrenList, onSwitchChild, onUserUpdate, activeConsent }) {
   const [showAddress, setShowAddress] = useState(false);
   const [comingSoon, setComingSoon] = useState(null);
+  const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
 
   const name = user?.parent_name || user?.display_name || 'คุณแม่';
   const points = user?.points ?? 0;
@@ -30,8 +61,9 @@ export default function ProfileScreen({ go, user, child, childrenList, onSwitchC
   // yet to back it. "ติดต่อเรา" stays visible but as coming-soon until the
   // contact page + its DB wiring get built.
   const LINKS = [
-    { Icon: MapPin,     label: 'ที่อยู่จัดส่ง', note: hasShippingInfo(user) ? user.province : 'ยังไม่ได้ระบุ', onClick: () => setShowAddress(true) },
-    { Icon: Headphones, label: 'ติดต่อเรา',      note: null, onClick: () => setComingSoon('ติดต่อเรา') },
+    { Icon: MapPin,      label: 'ที่อยู่จัดส่ง',           note: hasShippingInfo(user) ? user.province : 'ยังไม่ได้ระบุ', onClick: () => setShowAddress(true) },
+    { Icon: Headphones,  label: 'ติดต่อเรา',              note: null, onClick: () => setComingSoon('ติดต่อเรา') },
+    { Icon: ShieldCheck, label: 'นโยบายความเป็นส่วนตัว', note: activeConsent?.consent_version ?? null, onClick: () => setShowPrivacyPolicy(true) },
   ];
 
   const handleLogout = () => {
@@ -142,6 +174,9 @@ export default function ProfileScreen({ go, user, child, childrenList, onSwitchC
         />
       )}
       {comingSoon && <ComingSoon title={comingSoon} onClose={() => setComingSoon(null)} />}
+      {showPrivacyPolicy && (
+        <PrivacyPolicyModal activeConsent={activeConsent} onClose={() => setShowPrivacyPolicy(false)} />
+      )}
     </div>
   );
 }
